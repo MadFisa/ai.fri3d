@@ -1,8 +1,11 @@
 
+import numpy
+
 _lat = None
 _lon = None
 _tilt = None
 _half_width = None
+_coeff_angle = None
 _radius_tor = None
 _radius_pol = None
 _coeff_flat = None
@@ -17,7 +20,6 @@ _core_field = None
 
 """
 Order of transformations:
-
 1. Flattening
 2. Latitude
 3. Longitude
@@ -25,6 +27,24 @@ Order of transformations:
 5. Twist
 6. Pancaking
 """
+
+def set_radius_tor(new_radius_tor):
+    global _radius_tor
+    _radius_tor = new_radius_tor
+
+def set_radius_pol(new_radius_pol):
+    global _radius_pol
+    _radius_pol = new_radius_pol
+
+def set_half_width(new_half_width):
+    global _half_width
+    global _coeff_angle
+    _half_width = new_half_width
+    _coeff_angle = numpy.pi/2.0/_half_width
+
+def set_coeff_flat(new_coeff_flat):
+    global _coeff_flat
+    _coeff_flat = new_coeff_flat
 
 def set_lat(new_lat):
     global _lat
@@ -38,15 +58,26 @@ def set_tilt(new_tilt):
     global _tilt
     _tilt = new_tilt
 
-def fr_axis_x():
+def _axis_r(phi):
+    return _radius_tor*numpy.cos(_coeff_angle*phi)**_coeff_flat
 
-def fr_axis_y():
+def _axis_tangent(phi):
+    return numpy.arctan2(1.0, _coeff_angle*_coeff_flat*
+                              numpy.tan(_coeff_angle*phi))
 
-def fr_axis_z():
+def _axis_x():
 
-def fr_x():
+def _axis_y():
 
-def fr_y():
+def _axis_z():
 
-def fr_z():
+def _axis():
+
+def _shell_x():
+
+def _shell_y():
+
+def _shell_z():
+
+def _shell():
 
