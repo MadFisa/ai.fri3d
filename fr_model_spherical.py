@@ -20,7 +20,7 @@ def fr_z(phi, theta, a, n, Rt, Rp):
 phi0 = numpy.pi/6.0
 Rt = 1.0
 Rp = 0.2
-n = 0.4
+n = 0.5
 a = numpy.pi/2.0/phi0
 
 n_phi = 50
