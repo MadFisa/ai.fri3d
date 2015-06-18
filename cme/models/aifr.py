@@ -47,6 +47,22 @@ class AIFR:
         return self._radius_tor* \
                numpy.cos(self._coeff_angle*phi)**self._coeff_flat
 
+    def _axis_dr(self, phi):
+        return self._axis_r(phi)*(-self._coeff_angle*
+                                   self._coeff_flat*
+                                   numpy.tan(self._coeff_angle*phi))
+
+    def _axis_d2r(self, phi):
+        return self._axis_r(phi)*self._coeff_angle**2* \
+               (self._coeff_flat*(self._coeff_flat-1)*
+                numpy.tan(self._coeff_angle*phi)**2-self._coeff_flat)
+
+    def axis_curv(self, phi):
+        return (self._axis_r(phi)**2+self._axis_dr(phi)**2)**(1.5)/ \
+               numpy.abs(self._axis_r(phi)**2+
+                         2.0*self._axis_dr(phi)**2-
+                         self._axis_r(phi)*self._axis_d2r(phi))
+
     def _axis_tangent(self, phi):
         return numpy.arctan2(1.0, self._coeff_angle*self._coeff_flat*
                                   numpy.tan(self._coeff_angle*phi))
@@ -139,7 +155,8 @@ def demo_shell():
     fr.set_lat(numpy.pi/6.0)
     fr.set_lon(numpy.pi/6.0)
     fr.set_tilt(numpy.pi/6.0)
-    fr.set_radius_pol(0.2)
+    fr.set_radius_pol(0.3)
+    fr.set_coeff_flat(0.2)
     theta = numpy.linspace(0.0, 2.0*numpy.pi, 30)
     phi = numpy.linspace(-numpy.pi/6.0, numpy.pi/6.0, 60)
     x, y, z = fr.shell(theta, phi)
@@ -148,7 +165,19 @@ def demo_shell():
     ax.plot_wireframe(x, y, z)
     fig.show()
 
-    
+def demo_curv():
+    fr = AIFR()
+    fr.set_radius_tor(1.0)
+    fr.set_radius_pol(0.3)
+    fr.set_coeff_flat(0.2)
+    fr.set_half_width(numpy.pi/6.0)
+    phi = numpy.linspace(-numpy.pi/6.0*0.9, numpy.pi/6.0*0.9, 60)
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.plot(phi*180.0/numpy.pi, fr.axis_curv(phi))
+    ax.plot(phi*180.0/numpy.pi, fr._axis_r(phi)*fr._radius_pol/fr._radius_tor)
+    fig.show()
+
 """
 Order of transformations:
 1. Flattening
