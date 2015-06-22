@@ -2,6 +2,7 @@
 import numpy
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d import proj3d
 
 class AIFR:
     _radius_tor = 1.0
@@ -12,9 +13,9 @@ class AIFR:
     _lat = 0.0
     _lon = 0.0
     _tilt = 0.0
-    # _coeff_twist = None
-    # _radius_corot = None
-    # _coeff_panc = None
+    _coeff_twist = 0.0
+    _radius_corot = 0.02
+    _coeff_panc = 0.1
     # _grid_tor = None
     # _grid_pol = None
     # _helicity = None
@@ -42,6 +43,15 @@ class AIFR:
 
     def set_tilt(self, new_tilt):
         self._tilt = new_tilt
+
+    def set_coeff_twist(self, new_coeff_twist):
+        self._coeff_twist = new_coeff_twist
+
+    def set_radius_corot(self, new_radius_corot):
+        self._radius_corot = new_radius_corot
+
+    def set_coeff_panc(self, new_coeff_panc):
+        self._coeff_panc = new_coeff_panc
 
     def _axis_r(self, phi):
         return self._radius_tor* \
@@ -125,6 +135,9 @@ class AIFR:
         x = T[0,0]*x0+T[0,1]*y0+T[0,2]*z0
         y = T[1,0]*x0+T[1,1]*y0+T[1,2]*z0
         z = T[2,0]*x0+T[2,1]*y0+T[2,2]*z0
+        r, theta, phi = self.cart2sp(x, y, z)
+        phi = phi+self._coeff_twist*(r-self._radius_corot).clip(min=0)
+        x, y, z = self.sp2cart(r, theta, phi)
         return (x, y, z)
 
     def shell(self, theta, phi):
@@ -132,50 +145,73 @@ class AIFR:
         x0 = self._shell_x(theta, phi)
         y0 = self._shell_y(theta, phi)
         z0 = self._shell_z(theta, phi)
+        
+        # pancaking
+        r, theta, phi = self.cart2sp(x0, y0, z0)
+        r_max = r.max()
+        r = r+r_max*self._coeff_panc
+        r = r/r.max()*r_max
+        # theta_max = numpy.arctan2(self._radius_pol, self._radius_tor)
+        # theta = theta/theta_max*self._coeff_panc#*r/self._radius_tor
+        x0, y0, z0 = self.sp2cart(r, theta, phi)
+
         T = self.mx_rot(self._lat, -self._lon, -self._tilt)
         x = T[0,0]*x0+T[0,1]*y0+T[0,2]*z0
         y = T[1,0]*x0+T[1,1]*y0+T[1,2]*z0
         z = T[2,0]*x0+T[2,1]*y0+T[2,2]*z0
+        r, theta, phi = self.cart2sp(x, y, z)
+        phi = phi+self._coeff_twist*(r-self._radius_corot).clip(min=0)
+        x, y, z = self.sp2cart(r, theta, phi)
         return (x, y, z)
 
-def demo_axis():
-    fr = AIFR()
-    fr.set_lat(numpy.pi/6.0)
-    fr.set_lon(numpy.pi/6.0)
-    fr.set_tilt(numpy.pi/6.0)
-    phi = numpy.linspace(-numpy.pi/6.0, numpy.pi/6.0, 30)
-    x, y, z = fr.axis(phi)
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.plot(x, y, z)
-    fig.show()
+def demo():
 
-def demo_shell():
-    fr = AIFR()
-    fr.set_lat(numpy.pi/6.0)
-    fr.set_lon(numpy.pi/6.0)
-    fr.set_tilt(numpy.pi/6.0)
-    fr.set_radius_pol(0.3)
-    fr.set_coeff_flat(0.2)
-    theta = numpy.linspace(0.0, 2.0*numpy.pi, 30)
-    phi = numpy.linspace(-numpy.pi/6.0, numpy.pi/6.0, 60)
-    x, y, z = fr.shell(theta, phi)
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.plot_wireframe(x, y, z)
-    fig.show()
+    def orthogonal_proj(zfront, zback):
+        a = (zfront+zback)/(zfront-zback)
+        b = -2*(zfront*zback)/(zfront-zback)
+        return numpy.array([[1,0,0,0],
+                            [0,1,0,0],
+                            [0,0,a,b],
+                            [0,0,-0.0001,zback]])
+    proj3d.persp_transformation = orthogonal_proj
 
-def demo_curv():
     fr = AIFR()
-    fr.set_radius_tor(1.0)
-    fr.set_radius_pol(0.3)
-    fr.set_coeff_flat(0.2)
+    fr.set_lat(numpy.pi/6.0*0.0)
+    fr.set_lon(numpy.pi/6.0*0.0)
+    fr.set_tilt(numpy.pi/6.0*0.0)
+    fr.set_radius_tor(215.0)
+    fr.set_radius_pol(30.0)
+    fr.set_coeff_flat(0.3)
     fr.set_half_width(numpy.pi/6.0)
-    phi = numpy.linspace(-numpy.pi/6.0*0.9, numpy.pi/6.0*0.9, 60)
+    fr.set_coeff_twist(0.0)
+    fr.set_radius_corot(0.0)
+    fr.set_coeff_panc(10.0)
+
+    theta = numpy.linspace(0.0, 2.0*numpy.pi, 30)
+    phi = numpy.linspace(-numpy.pi/6.0, numpy.pi/6.0, 20)
+    phir = numpy.linspace(-numpy.pi/6.0*0.9, numpy.pi/6.0*0.9, 100)
+    
     fig = plt.figure()
-    ax = fig.add_subplot(111)
-    ax.plot(phi*180.0/numpy.pi, fr.axis_curv(phi))
-    ax.plot(phi*180.0/numpy.pi, fr._axis_r(phi)*fr._radius_pol/fr._radius_tor)
+
+    x, y, z = fr.axis(phi)
+    ax = fig.add_subplot(221, projection='3d')
+    ax.plot(x, y, z)
+
+    ax = fig.add_subplot(222)
+    ax.plot(phir*180.0/numpy.pi, fr.axis_curv(phir))
+    ax.plot(phir*180.0/numpy.pi, fr._axis_r(phir)*fr._radius_pol/fr._radius_tor)
+
+    ax = fig.add_subplot(212, projection='3d')
+    x, y, z = fr.shell(theta, phi)
+    ax.plot_wireframe(x, y, z)
+    max_range = numpy.array([x.max()-x.min(), y.max()-y.min(), z.max()-z.min()]).max()/2.0
+    mean_x = x.mean()
+    mean_y = y.mean()
+    mean_z = z.mean()
+    ax.set_xlim(0.0, mean_x+max_range)
+    ax.set_ylim(mean_y-max_range, mean_y+max_range)
+    ax.set_zlim(mean_z-max_range, mean_z+max_range)
+
     fig.show()
 
 """
@@ -187,3 +223,4 @@ Order of transformations:
 5. Twist
 6. Pancaking
 """
+ 
