@@ -3,6 +3,7 @@ import numpy
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d import proj3d
+import scipy.special
 
 class AIFR:
     _radius_tor = 1.0
@@ -129,6 +130,18 @@ class AIFR:
         z = r*numpy.sin(theta)
         return (x, y, z)
 
+    @staticmethod
+    def cyl2cart(r, phi, z):
+        x = r*numpy.cos(phi)
+        y = r*numpy.sin(phi)
+        return (x, y, z)
+
+    @staticmethod
+    def cart2cyl(x, y, z):
+        r = numpy.sqrt(x**2+y**2)
+        phi = numpy.arctan2(y, x)
+        return (r, phi, z)
+
     def axis(self, phi):
         x0, y0, z0 = self.sp2cart(self._axis_r(phi), 0.0, phi)
         T = self.mx_rot(self._lat, -self._lon, -self._tilt)
@@ -136,7 +149,8 @@ class AIFR:
         y = T[1,0]*x0+T[1,1]*y0+T[1,2]*z0
         z = T[2,0]*x0+T[2,1]*y0+T[2,2]*z0
         r, theta, phi = self.cart2sp(x, y, z)
-        phi = phi+self._coeff_twist*(r-self._radius_corot).clip(min=0)
+        # phi = phi+self._coeff_twist*(r-self._radius_corot).clip(min=0)
+        phi = phi+self._coeff_twist*r/r.max()
         x, y, z = self.sp2cart(r, theta, phi)
         return (x, y, z)
 
@@ -148,11 +162,11 @@ class AIFR:
         
         # pancaking
         r, theta, phi = self.cart2sp(x0, y0, z0)
-        r_max = r.max()
-        r = r+r_max*self._coeff_panc
-        r = r/r.max()*r_max
-        # theta_max = numpy.arctan2(self._radius_pol, self._radius_tor)
-        # theta = theta/theta_max*self._coeff_panc#*r/self._radius_tor
+        # r_max = r.max()
+        # r = r+r_max*self._coeff_panc
+        # r = r/r.max()*r_max
+        theta_max = numpy.arctan2(self._radius_pol, self._radius_tor)
+        theta = theta/theta_max*self._coeff_panc#*r/self._radius_tor
         x0, y0, z0 = self.sp2cart(r, theta, phi)
 
         T = self.mx_rot(self._lat, -self._lon, -self._tilt)
@@ -160,7 +174,8 @@ class AIFR:
         y = T[1,0]*x0+T[1,1]*y0+T[1,2]*z0
         z = T[2,0]*x0+T[2,1]*y0+T[2,2]*z0
         r, theta, phi = self.cart2sp(x, y, z)
-        phi = phi+self._coeff_twist*(r-self._radius_corot).clip(min=0)
+        # phi = phi+self._coeff_twist*(r-self._radius_corot).clip(min=0)
+        phi = phi+self._coeff_twist*r/r.max()
         x, y, z = self.sp2cart(r, theta, phi)
         return (x, y, z)
 
@@ -176,20 +191,31 @@ def demo():
     proj3d.persp_transformation = orthogonal_proj
 
     fr = AIFR()
-    fr.set_lat(numpy.pi/6.0*0.0)
-    fr.set_lon(numpy.pi/6.0*0.0)
-    fr.set_tilt(numpy.pi/6.0*0.0)
-    fr.set_radius_tor(215.0)
-    fr.set_radius_pol(30.0)
-    fr.set_coeff_flat(0.3)
-    fr.set_half_width(numpy.pi/6.0)
-    fr.set_coeff_twist(0.0)
-    fr.set_radius_corot(0.0)
-    fr.set_coeff_panc(10.0)
+    han = numpy.pi/6.0
+    fr.set_lat(numpy.pi/180.0*0.0)
+    fr.set_lon(numpy.pi/180.0*50.0)
+    fr.set_tilt(numpy.pi/180.0*0.0)
+    fr.set_radius_tor(1.0)
+    fr.set_radius_pol(0.1)
+    fr.set_coeff_flat(0.4)
+    fr.set_half_width(han)
+    fr.set_coeff_twist(-numpy.pi/180.0*50.0)
+    fr.set_radius_corot(0.02)
+    fr.set_coeff_panc(numpy.pi/180.0*30.0)
 
     theta = numpy.linspace(0.0, 2.0*numpy.pi, 30)
-    phi = numpy.linspace(-numpy.pi/6.0, numpy.pi/6.0, 20)
-    phir = numpy.linspace(-numpy.pi/6.0*0.9, numpy.pi/6.0*0.9, 100)
+    phi = numpy.linspace(-han, han, 1000)
+    n = 20
+    ds = numpy.sum(fr._axis_r(phi[1:])*(phi[1]-phi[0]))/2.0/n
+    phi = [0.0]
+    for i in range(1, n+1):
+        phi = numpy.append(phi, phi[i-1]+ds/fr._axis_r(phi[i-1]))
+    phi = numpy.append(phi, han)
+    # phi[-1] = han
+    phi = numpy.append(-phi[::-1], phi[1:])
+    print phi*180.0/numpy.pi
+    # phi = numpy.linspace(-han, han, 20)
+    phir = numpy.linspace(-han*0.9, han*0.9, 100)
     
     fig = plt.figure()
 
@@ -203,6 +229,9 @@ def demo():
 
     ax = fig.add_subplot(212, projection='3d')
     x, y, z = fr.shell(theta, phi)
+    print x.shape
+    print y.shape
+    print z.shape
     ax.plot_wireframe(x, y, z)
     max_range = numpy.array([x.max()-x.min(), y.max()-y.min(), z.max()-z.min()]).max()/2.0
     mean_x = x.mean()
@@ -211,8 +240,32 @@ def demo():
     ax.set_xlim(0.0, mean_x+max_range)
     ax.set_ylim(mean_y-max_range, mean_y+max_range)
     ax.set_zlim(mean_z-max_range, mean_z+max_range)
+    x, y, z = fr.axis(phi)
+    ax.plot(x, y, z, color='red', linewidth=2.0)
 
     fig.show()
+
+def b_cyl(r, phi, z):
+    a = 2.4048
+    return (0.0, scipy.special.j1(a*r), scipy.special.j0(a*r))
+
+def b_cart(x, y, z):
+    r, phi, z = AIFR.cart2cyl(x, y, z)
+    br, bp, bz = b_cyl(r, phi, z)
+    return (numpy.cos(phi)*br-numpy.sin(phi)*bp,
+            numpy.sin(phi)*br+numpy.cos(phi)*bp,
+            bz)
+
+
+
+def test():
+
+    r = 0.5
+    phi = numpy.pi/180.0*30.0
+
+    
+
+    
 
 """
 Order of transformations:
