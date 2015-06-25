@@ -1,2 +1,3 @@
 
 export PYTHONPATH=$PYTHONPATH:~/Development/python-cme
+export PYTHONPATH=$PYTHONPATH:/media/data/Science/python-cme
