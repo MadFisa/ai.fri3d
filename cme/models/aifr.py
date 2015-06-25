@@ -4,11 +4,9 @@ import cme.cs as cs
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d import proj3d
-import fractions
 import scipy.special
-from scipy.interpolate import interp1d
+import scipy.interpolate
 import scipy.integrate
-import mpmath
 
 class AIFR:
     _b0 = 1.0
@@ -44,7 +42,6 @@ class AIFR:
 
     def set_radius_tor(self, new_radius_tor):
         self._radius_tor = new_radius_tor
-        # self.set_spline_s_phi()
 
     def set_radius_pol(self, new_radius_pol):
         self._radius_pol = new_radius_pol
@@ -52,11 +49,9 @@ class AIFR:
     def set_half_width(self, new_half_width):
         self._half_width = new_half_width
         self._coeff_angle = numpy.pi/2.0/self._half_width
-        # self.set_spline_s_phi()
 
     def set_coeff_flat(self, new_coeff_flat):
         self._coeff_flat = new_coeff_flat
-        # self.set_spline_s_phi()
 
     def set_lat(self, new_lat):
         self._lat = new_lat
@@ -79,7 +74,8 @@ class AIFR:
     def init_spline_axis0_s_phi(self):
         phi = numpy.linspace(-self._half_width, self._half_width, 500)
         s = numpy.array(map(self._axis0_s, phi))
-        self._spline_axis0_s_phi = interp1d(s, phi, kind='cubic')
+        self._spline_axis0_s_phi = scipy.interpolate.interp1d(s, phi, 
+                                                              kind='cubic')
 
     def _axis0_r(self, phi):
         return self._radius_tor* \
