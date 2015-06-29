@@ -18,6 +18,7 @@ class AIFR:
     _half_width = numpy.pi/6.0
     _coeff_angle = 3.0
     _coeff_flat = 0.5
+    _panc_angle = numpy.pi/6.0
     _skew_angle = 0.0
     _lat = 0.0
     _lon = 0.0
@@ -52,6 +53,9 @@ class AIFR:
 
     def set_coeff_flat(self, new_coeff_flat):
         self._coeff_flat = new_coeff_flat
+
+    def set_panc_angle(self, new_panc_angle):
+        self._panc_angle = new_panc_angle
 
     def set_lat(self, new_lat):
         self._lat = new_lat
@@ -109,7 +113,6 @@ class AIFR:
 
     def b_line(self, r0, phi0, s):
         # 0. no deformations
-        b = self.btot_unit_cyl(r0)
         r = numpy.ones(len(s))*r0
         phi = numpy.ones(len(s))*phi0
         # 1. twist
@@ -133,21 +136,26 @@ class AIFR:
         x5 = r*numpy.cos(phi)+numpy.sin(t-phi-numpy.pi/2.0)*y4
         y5 = r*numpy.sin(phi)+numpy.cos(t-phi-numpy.pi/2.0)*y4
         z5 = z4
-        # pancaking
-
-        # 6. orientation
+        # 6. pancaking
+        r, theta, phi = cs.cart2sp(x5, y5, z5)
+        theta = theta/numpy.arctan2(self._radius_pol, self._radius_tor)* \
+                self._panc_angle
+        x6, y6, z6 = cs.sp2cart(r, theta, phi)
+        # calculate magnetic field here
+        b = self.btot_unit_cyl(r0)
+        # 7. orientation
         T = cs.mx_rot(self._lat, -self._lon, -self._tilt)
-        x6 = T[0,0]*x5+T[0,1]*y5+T[0,2]*z5
-        y6 = T[1,0]*x5+T[1,1]*y5+T[1,2]*z5
-        z6 = T[2,0]*x5+T[2,1]*y5+T[2,2]*z5
-
+        x7 = T[0,0]*x6+T[0,1]*y6+T[0,2]*z6
+        y7 = T[1,0]*x6+T[1,1]*y6+T[1,2]*z6
+        z7 = T[2,0]*x6+T[2,1]*y6+T[2,2]*z6
         # 8. scew
-        r, phi, z = cs.cart2cyl(x6, y6, z6)
+        r, phi, z = cs.cart2cyl(x7, y7, z7)
         phi = phi+self._skew_angle*r/r.max()
-        x7, y7, z7 = cs.cyl2cart(r, phi, z)
-        x = x7
-        y = y7
-        z = z7
+        x8, y8, z8 = cs.cyl2cart(r, phi, z)
+        # finished
+        x = x8
+        y = y8
+        z = z8
         return (x, y, z, b)
 
 def demo():
@@ -156,17 +164,17 @@ def demo():
     fr.set_h(1.0)
     fr.set_twist(2.0)
     fr.set_radius_tor(1.0)
-    fr.set_radius_pol(0.15)
+    fr.set_radius_pol(0.1)
     fr.set_half_width(numpy.pi/180.0*30.0)
     fr.set_coeff_flat(0.6)
-    fr.set_skew_angle(-numpy.pi/180.0*10.0)
-    fr.set_lat(numpy.pi/180.0*10.0)
-    fr.set_lon(numpy.pi/180.0*10.0)
-    fr.set_tilt(numpy.pi/180.0*10.0)
+    fr.set_panc_angle(numpy.pi/180.0*30.0)
+    fr.set_skew_angle(-numpy.pi/180.0*0.0)
+    fr.set_lat(numpy.pi/180.0*0.0)
+    fr.set_lon(numpy.pi/180.0*0.0)
+    fr.set_tilt(numpy.pi/180.0*0.0)
     fr.init_spline_axis0_s_phi()
 
     s = numpy.linspace(1.0e-6, 1.0-1.0e-6, 500)
-    # s = numpy.linspace(0.0, 1.0, 100)
     
     b_max = fr.btot_unit_cyl(0.0)
     b_min = fr.btot_unit_cyl(1.0)
@@ -192,11 +200,16 @@ def test():
     fr = AIFR()
     fr.set_b0(10.0)
     fr.set_h(1.0)
-    fr.set_twist(1.0)
+    fr.set_twist(2.0)
     fr.set_radius_tor(1.0)
-    fr.set_radius_pol(0.15)
-    fr.set_half_width(numpy.pi/6.0)
-    fr.set_coeff_flat(0.5)
+    fr.set_radius_pol(0.2)
+    fr.set_half_width(numpy.pi/180.0*30.0)
+    fr.set_coeff_flat(0.6)
+    fr.set_coeff_panc(0.9)
+    fr.set_skew_angle(-numpy.pi/180.0*0.0)
+    fr.set_lat(numpy.pi/180.0*0.0)
+    fr.set_lon(numpy.pi/180.0*0.0)
+    fr.set_tilt(numpy.pi/180.0*0.0)
     fr.init_spline_axis0_s_phi()
 
     phi = numpy.linspace(-fr._half_width, fr._half_width, 500)
@@ -210,4 +223,6 @@ def test():
     ax = fig.add_subplot(223)
     ax.plot(phi, numpy.cos(-phi-(numpy.pi/2.0-t)), 
             phi, numpy.sin(-phi-(numpy.pi/2.0-t)))
+    ax = fig.add_subplot(224)
+    ax.plot(phi, 1.0-numpy.abs(t)/numpy.pi*2.0)
     fig.show()
