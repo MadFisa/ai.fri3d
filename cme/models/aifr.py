@@ -78,6 +78,9 @@ class AIFR:
         self._spline_axis0_s_phi = scipy.interpolate.interp1d(s, phi, 
                                                               kind='cubic')
 
+    def init_magnetic_field(self):
+
+
     def _axis0_r(self, phi):
         return numpy.nan_to_num(self._radius_tor* \
                numpy.cos(self._coeff_angle*phi)**self._coeff_flat)
