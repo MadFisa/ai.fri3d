@@ -24,9 +24,6 @@ class AIFR:
     _lon = 0.0
     _tilt = 0.0
     
-    
-    _coeff_panc = 0.1
-
     _spline_axis0_s_phi = None
 
     def set_b0(self, new_b0):
@@ -69,16 +66,13 @@ class AIFR:
     def set_skew_angle(self, new_skew_angle):
         self._skew_angle = new_skew_angle
 
-    def set_coeff_panc(self, new_coeff_panc):
-        self._coeff_panc = new_coeff_panc
-
     def init_spline_axis0_s_phi(self):
         phi = numpy.linspace(-self._half_width, self._half_width, 500)
         s = numpy.array(map(self._axis0_s, phi))
         self._spline_axis0_s_phi = scipy.interpolate.interp1d(s, phi, 
                                                               kind='cubic')
 
-    def init_magnetic_field(self):
+    # def init_magnetic_field(self):
 
 
     def _axis0_r(self, phi):
@@ -208,7 +202,6 @@ def test():
     fr.set_radius_pol(0.2)
     fr.set_half_width(numpy.pi/180.0*30.0)
     fr.set_coeff_flat(0.6)
-    fr.set_coeff_panc(0.9)
     fr.set_skew_angle(-numpy.pi/180.0*0.0)
     fr.set_lat(numpy.pi/180.0*0.0)
     fr.set_lon(numpy.pi/180.0*0.0)
