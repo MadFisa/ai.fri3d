@@ -165,9 +165,9 @@ def demo():
     fr.set_half_width(numpy.pi/180.0*30.0)
     fr.set_coeff_flat(0.6)
     fr.set_panc_angle(numpy.pi/180.0*30.0)
-    fr.set_skew_angle(-numpy.pi/180.0*0.0)
-    fr.set_lat(numpy.pi/180.0*0.0)
-    fr.set_lon(numpy.pi/180.0*0.0)
+    fr.set_skew_angle(-numpy.pi/180.0*10.0)
+    fr.set_lat(numpy.pi/180.0*10.0)
+    fr.set_lon(numpy.pi/180.0*-10.0)
     fr.set_tilt(numpy.pi/180.0*0.0)
     fr.init_spline_axis0_s_phi()
 
