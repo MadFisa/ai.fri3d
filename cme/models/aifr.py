@@ -2,6 +2,7 @@
 import numpy
 import cme.cs as cs
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d import proj3d
 import scipy.special
@@ -10,7 +11,6 @@ import scipy.integrate
 
 class AIFR:
     _b0 = 1.0
-    _h = 1.0
     _sigma = 2.05
     _twist = 1.0
     _radius_tor = 1.0
@@ -28,9 +28,6 @@ class AIFR:
 
     def set_b0(self, new_b0):
         self._b0 = new_b0
-
-    def set_h(self, new_h):
-        self._h = new_h
 
     def set_sigma(self, new_sigma):
         self._sigma = new_sigma
@@ -153,12 +150,202 @@ class AIFR:
         x = x8
         y = y8
         z = z8
+
+        x = numpy.insert(x, 0, 0.0)
+        x = numpy.append(x, 0.0)
+        y = numpy.insert(y, 0, 0.0)
+        y = numpy.append(y, 0.0)
+        z = numpy.insert(z, 0, 0.0)
+        z = numpy.append(z, 0.0)
         return (x, y, z, b)
 
 def demo():
     fr = AIFR()
     fr.set_b0(10.0)
-    fr.set_h(1.0)
+    fr.set_twist(2.0)
+    fr.set_radius_tor(1.0)
+    fr.set_radius_pol(0.05)
+    fr.set_half_width(numpy.pi/180.0*30.0)
+    fr.set_coeff_flat(0.5)
+    fr.set_panc_angle(numpy.pi/180.0*30.0)
+    fr.set_skew_angle(-numpy.pi/180.0*0.0)
+    fr.set_lat(numpy.pi/180.0*0.0)
+    fr.set_lon(numpy.pi/180.0*0.0)
+    fr.set_tilt(numpy.pi/180.0*0.0)
+    fr.init_spline_axis0_s_phi()
+
+    s = numpy.linspace(1.0e-6, 1.0-1.0e-6, 500)
+    
+    b_max = fr.btot_unit_cyl(0.0)
+    b_min = fr.btot_unit_cyl(1.0)
+
+    fig = plt.figure(figsize=(8, 8), dpi=72)
+    ax = fig.add_subplot(111, projection='3d', adjustable='box', aspect=1.0)
+    ax.set_xlim(0.0, 1.2)
+    ax.set_ylim(-0.6, 0.6)
+    ax.set_zlim(-0.6, 0.6)
+    ax.view_init(elev = 0.0, azim = -90.0)
+    ax.set_aspect('equal', 'datalim')
+    for r0 in numpy.arange(0.0, 1.1, 0.1):
+        for phi0 in numpy.arange(0.0, numpy.pi*2.0, numpy.pi/6.0):
+            x, y, z, b = fr.b_line(r0, phi0, s)
+            ax.plot(x, y, z, color=plt.cm.jet((b-b_min)/(b_max-b_min)))
+    fig.show()
+
+def demo_flattening():
+    fr = AIFR()
+    fr.set_b0(10.0)
+    fr.set_twist(2.0)
+    fr.set_radius_tor(1.0)
+    fr.set_radius_pol(0.1)
+    fr.set_half_width(numpy.pi/180.0*30.0)
+    fr.set_coeff_flat(0.9)
+    fr.set_panc_angle(numpy.pi/180.0*30.0)
+    fr.set_skew_angle(-numpy.pi/180.0*0.0)
+    fr.set_lat(numpy.pi/180.0*0.0)
+    fr.set_lon(numpy.pi/180.0*-0.0)
+    fr.set_tilt(numpy.pi/180.0*0.0)
+    fr.init_spline_axis0_s_phi()
+
+    s = numpy.linspace(1.0e-6, 1.0-1.0e-6, 500)
+    
+    b_max = fr.btot_unit_cyl(0.0)
+    b_min = fr.btot_unit_cyl(1.0)
+
+    fig = plt.figure(figsize=(8, 8), dpi=72)
+    ax = fig.add_subplot(111, projection='3d', adjustable='box', aspect=1.0)
+    ax.set_xlim(0.0, 1.2)
+    ax.set_ylim(-0.6, 0.6)
+    ax.set_zlim(-0.6, 0.6)
+    ax.view_init(elev = 90.0, azim = -90.0)
+    ax.set_aspect('equal', 'datalim')
+    for r0 in numpy.arange(0.0, 1.1, 0.1):
+        for phi0 in numpy.arange(0.0, numpy.pi*2.0, numpy.pi/6.0):
+            x, y, z, b = fr.b_line(r0, phi0, s)
+            ax.plot(x, y, z, color=plt.cm.jet((b-b_min)/(b_max-b_min)))
+    fig.show()
+
+def demo_skewing():
+    fr = AIFR()
+    fr.set_b0(10.0)
+    fr.set_twist(2.0)
+    fr.set_radius_tor(1.0)
+    fr.set_radius_pol(0.1)
+    fr.set_half_width(numpy.pi/180.0*30.0)
+    fr.set_coeff_flat(0.5)
+    fr.set_panc_angle(numpy.pi/180.0*30.0)
+    fr.set_skew_angle(-numpy.pi/180.0*35.0)
+    fr.set_lat(numpy.pi/180.0*0.0)
+    fr.set_lon(numpy.pi/180.0*35.0)
+    fr.set_tilt(numpy.pi/180.0*0.0)
+    fr.init_spline_axis0_s_phi()
+
+    s = numpy.linspace(1.0e-6, 1.0-1.0e-6, 500)
+    
+    b_max = fr.btot_unit_cyl(0.0)
+    b_min = fr.btot_unit_cyl(1.0)
+
+    fig = plt.figure(figsize=(8, 8), dpi=72)
+    ax = fig.add_subplot(111, projection='3d', adjustable='box', aspect=1.0)
+    ax.set_xlim(0.0, 1.2)
+    ax.set_ylim(-0.6, 0.6)
+    ax.set_zlim(-0.6, 0.6)
+    ax.view_init(elev = 90.0, azim = -90.0)
+    ax.set_aspect('equal', 'datalim')
+    for r0 in numpy.arange(0.0, 1.1, 0.1):
+        for phi0 in numpy.arange(0.0, numpy.pi*2.0, numpy.pi/6.0):
+            x, y, z, b = fr.b_line(r0, phi0, s)
+            ax.plot(x, y, z, color=plt.cm.jet((b-b_min)/(b_max-b_min)))
+    fig.show()
+
+def demo_pancaking():
+    fr = AIFR()
+    fr.set_b0(10.0)
+    fr.set_twist(2.0)
+    fr.set_radius_tor(1.0)
+    fr.set_radius_pol(0.05)
+    fr.set_half_width(numpy.pi/180.0*30.0)
+    fr.set_coeff_flat(0.5)
+    fr.set_panc_angle(numpy.pi/180.0*30.0)
+    fr.set_skew_angle(-numpy.pi/180.0*0.0)
+    fr.set_lat(numpy.pi/180.0*0.0)
+    fr.set_lon(numpy.pi/180.0*0.0)
+    fr.set_tilt(numpy.pi/180.0*0.0)
+    fr.init_spline_axis0_s_phi()
+
+    s = numpy.linspace(1.0e-6, 1.0-1.0e-6, 500)
+    
+    b_max = fr.btot_unit_cyl(0.0)
+    b_min = fr.btot_unit_cyl(1.0)
+
+    fig = plt.figure(figsize=(8, 8), dpi=72)
+    ax = fig.add_subplot(111, projection='3d', adjustable='box', aspect=1.0)
+    ax.set_xlim(0.0, 1.2)
+    ax.set_ylim(-0.6, 0.6)
+    ax.set_zlim(-0.6, 0.6)
+    ax.view_init(elev = 0.0, azim = -90.0)
+    ax.set_aspect('equal', 'datalim')
+    for r0 in numpy.arange(0.0, 1.1, 0.1):
+        for phi0 in numpy.arange(0.0, numpy.pi*2.0, numpy.pi/6.0):
+            x, y, z, b = fr.b_line(r0, phi0, s)
+            ax.plot(x, y, z, color=plt.cm.jet((b-b_min)/(b_max-b_min)))
+    fig.show()
+
+def demo_evolution():
+
+    nsteps = 50
+    radius_tor = numpy.linspace(0.1, 1.0, nsteps)
+    radius_pol = numpy.linspace(0.05, 0.1, nsteps)
+    coeff_flat = numpy.linspace(0.9, 0.5, nsteps)
+    skew_angle = numpy.linspace(-numpy.pi/180.0*0.0, -numpy.pi/180.0*15.0, nsteps)
+    lat = numpy.linspace(numpy.pi/180.0*20.0, numpy.pi/180.0*0.0, nsteps)
+    lon = numpy.linspace(numpy.pi/180.0*0.0, -numpy.pi/180.0*10.0, nsteps)-skew_angle
+    tilt = numpy.linspace(numpy.pi/180.0*30.0, numpy.pi/180.0*0.0, nsteps)
+
+    fr = AIFR()
+
+    for i in range(nsteps):
+        fr.set_b0(10.0)
+        fr.set_twist(2.0)
+        fr.set_radius_tor(radius_tor[i])
+        fr.set_radius_pol(radius_pol[i])
+        fr.set_half_width(numpy.pi/180.0*30.0)
+        fr.set_coeff_flat(coeff_flat[i])
+        fr.set_panc_angle(numpy.pi/180.0*20.0)
+        fr.set_skew_angle(skew_angle[i])
+        fr.set_lat(lat[i])
+        fr.set_lon(lon[i])
+        fr.set_tilt(tilt[i])
+        fr.init_spline_axis0_s_phi()
+
+        s = numpy.linspace(1.0e-6, 1.0-1.0e-6, 500)
+        
+        b_max = fr.btot_unit_cyl(0.0)
+        b_min = fr.btot_unit_cyl(1.0)
+
+        fig = plt.figure(figsize=(8, 8), dpi=72)
+        ax = fig.add_subplot(111, projection='3d', adjustable='box', aspect=1.0)
+        ax.set_xlim(0.0, 1.2)
+        ax.set_ylim(-0.6, 0.6)
+        ax.set_zlim(-0.6, 0.6)
+        ax.set_aspect('equal', 'datalim')
+        for r0 in numpy.arange(0.0, 1.1, 0.1):
+            for phi0 in numpy.arange(0.0, numpy.pi*2.0, numpy.pi/6.0):
+                x, y, z, b = fr.b_line(r0, phi0, s)
+                ax.plot(x, y, z, color=plt.cm.jet((b-b_min)/(b_max-b_min)))
+        # fig.show()
+        ax.view_init(elev = 0.0, azim = -90.0)
+        fig.savefig('/media/data/Documents/Lab seminars/2015-08-25/CFR/cfr_evolution_side'+`+1000+i`+'.png')
+        ax.view_init(elev = 90.0, azim = -90.0)
+        fig.savefig('/media/data/Documents/Lab seminars/2015-08-25/CFR/cfr_evolution_top'+`1000+i`+'.png')
+        ax.view_init(elev = 0.0, azim = 0.0)
+        fig.savefig('/media/data/Documents/Lab seminars/2015-08-25/CFR/cfr_evolution_front'+`1000+i`+'.png')
+        ax.view_init(elev = 45.0, azim = -45.0)
+        fig.savefig('/media/data/Documents/Lab seminars/2015-08-25/CFR/cfr_evolution_iso'+`1000+i`+'.png')
+
+def make_movie_3d(nframes=10):
+    fr = AIFR()
+    fr.set_b0(10.0)
     fr.set_twist(2.0)
     fr.set_radius_tor(1.0)
     fr.set_radius_pol(0.1)
@@ -176,22 +363,37 @@ def demo():
     b_max = fr.btot_unit_cyl(0.0)
     b_min = fr.btot_unit_cyl(1.0)
 
+    FFMpegWriter = animation.writers['ffmpeg']
+    metadata = dict(title='CFR expansion', artist='Matplotlib')
+    writer = FFMpegWriter(fps=1, metadata=metadata)
     fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    for r0 in numpy.arange(0.0, 1.1, 0.1):
-        for phi0 in numpy.arange(0.0, numpy.pi*2.0, numpy.pi/6.0):
-            x, y, z, b = fr.b_line(r0, phi0, s)
-            ax.plot(x, y, z, color=plt.cm.jet((b-b_min)/(b_max-b_min)))
-            max_range = numpy.array([x.max()-x.min(), 
-                                     y.max()-y.min(), 
-                                     z.max()-z.min()]).max()/2.0
-            mean_x = x.mean()
-            mean_y = y.mean()
-            mean_z = z.mean()
-            ax.set_xlim(0.0, mean_x+max_range)
-            ax.set_ylim(mean_y-max_range, mean_y+max_range)
-            ax.set_zlim(mean_z-max_range, mean_z+max_range)
-    fig.show()
+    axes_3d = fig.add_subplot(111, projection='3d', adjustable='box', aspect=1.0)
+    axes_3d.set_xlim(0.0, 1.2)
+    axes_3d.set_ylim(-0.6, 0.6)
+    axes_3d.set_zlim(-0.6, 0.6)
+    axes_3d.view_init(elev = 20.0, azim = -40.0)
+
+    height = numpy.linspace(0.1, 1.0, nframes)
+    with writer.saving(fig, "cfr_expansion.mp4", nframes):
+        for h in height:
+            fr.set_radius_tor(h)
+            fr.set_radius_pol(0.1*h)
+            fr.init_spline_axis0_s_phi()
+
+            fig.clf()
+
+            for r0 in numpy.arange(0.0, 1.1, 0.1):
+                for phi0 in numpy.arange(0.0, numpy.pi*2.0, numpy.pi/6.0):
+                    x, y, z, b = fr.b_line(r0, phi0, s)
+                    axes_3d.plot(x, y, z, color=plt.cm.jet((b-b_min)/(b_max-b_min)))
+            axes_3d = fig.add_subplot(111, projection='3d', adjustable='box', aspect=1.0)
+            axes_3d.set_xlim(0.0, 1.2)
+            axes_3d.set_ylim(-0.6, 0.6)
+            axes_3d.set_zlim(-0.6, 0.6)
+            axes_3d.view_init(elev = 20.0, azim = -40.0)
+            fig.set_size_inches(6.4, 4.8)
+
+            writer.grab_frame()
 
 def test():
     fr = AIFR()
@@ -222,3 +424,12 @@ def test():
     ax = fig.add_subplot(224)
     ax.plot(phi, 1.0-numpy.abs(t)/numpy.pi*2.0)
     fig.show()
+
+def orthogonal_proj(zfront, zback):
+    a = (zfront+zback)/(zfront-zback)
+    b = -2*(zfront*zback)/(zfront-zback)
+    return numpy.array([[1,0,0,0],
+                        [0,1,0,0],
+                        [0,0,a,b],
+                        [0,0,-0.0001,zback]])
+proj3d.persp_transformation = orthogonal_proj
