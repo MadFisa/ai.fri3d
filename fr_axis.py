@@ -25,7 +25,7 @@ def boundary_conditions(y_a, y_b, p):
     return condition_a, condition_b
 
 def guess(x):
-    return numpy.array([fr_height*numpy.cos(x/phi0*numpy.pi/2.0)**0.25,
+    return numpy.array([fr_height*numpy.cos(x/phi0*numpy.pi/2.0)**0.34,
                         -fr_height/phi0*numpy.pi/2.0*numpy.sin(x/phi0*numpy.pi/2.0)])
 
 problem = scikits.bvp_solver.ProblemDefinition(num_ODE = 2,
@@ -44,11 +44,11 @@ solution = scikits.bvp_solver.solve(problem,
                                     method = 6,
                                     trace = 2)
 
-print solution.parameters
+print(solution.parameters)
 
 axes = pylab.subplot(111, polar=True)
-#axes.plot(solution.mesh, solution.solution[0,:]/solution.solution[0,0]*1.0, color='r', linewidth=3)
-#axes.plot(-solution.mesh, solution.solution[0,:]/solution.solution[0,0]*1.0, color='r', linewidth=3)
+axes.plot(solution.mesh, solution.solution[0,:]/solution.solution[0,0]*1.0, color='r', linewidth=3)
+axes.plot(-solution.mesh, solution.solution[0,:]/solution.solution[0,0]*1.0, color='r', linewidth=3)
 guessed_r = map(lambda x: guess(x)[0]/guess(0.0)[0]*1.0, phi)
 axes.plot(phi, guessed_r, color='g', linewidth=3)
 guessed_r = map(lambda x: guess(x)[0]/guess(0.0)[0]*1.0, -phi)
