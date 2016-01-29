@@ -1,17 +1,130 @@
 
-import numpy
-import cme.cs as cs
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-from mpl_toolkits.mplot3d import Axes3D
-from mpl_toolkits.mplot3d import proj3d
+import numpy as np
+import cs
+
 import scipy.special
 import scipy.interpolate
 import scipy.integrate
 
-class AIFR:
+class FRi3D:
+    
+    def __init__(
+            self, twist = 1.0, toroidal_height = 1.0, poloidal_height = 0.1,
+            half_width = np.pi/6.0, flattening = 0.5, pancaking = np.pi/6.0,
+            skew = 0.0, latitude = 0.0, longitude = 0.0, tilt = 0.0):
+        self.twist = twist
+        self.toroidal_height = toroidal_height
+        self.poloidal_height = poloidal_height
+        self.half_width = half_width
+        self.flattening = flattening
+        self.pancaking = pancaking
+        self.skew = skew
+        self.latitude = latitude
+        self.longitude = longitude
+        self.tilt = tilt
+
+    @property
+    def twist(self):
+        return self.__twist
+    
+    @twist.setter
+    def twist(self, twist):
+        self.__twist = twist
+
+    @property
+    def toroidal_height(self):
+        return self.__toroidal_height
+    
+    @toroidal_height.setter
+    def toroidal_height(self, toroidal_height):
+        self.__toroidal_height = toroidal_height
+
+    @property
+    def poloidal_height(self):
+        return self.__poloidal_height
+    
+    @poloidal_height.setter
+    def poloidal_height(self, poloidal_height):
+        self.__poloidal_height = poloidal_height
+
+    @property
+    def half_width(self):
+        return self.__half_width
+    
+    @half_width.setter
+    def half_width(self, half_width):
+        self.__half_width = half_width
+
+    @property
+    def flattening(self):
+        return self.__flattening
+    
+    @flattening.setter
+    def flattening(self, flattening):
+        self.__flattening = flattening
+
+    @property
+    def pancaking(self):
+        return self.__pancaking
+    
+    @pancaking.setter
+    def pancaking(self, pancaking):
+        self.__pancaking = pancaking
+
+    @property
+    def skew(self):
+        return self.__skew
+    
+    @skew.setter
+    def skew(self, skew):
+        self.__skew = skew
+
+    @property
+    def latitude(self):
+        return self.__latitude
+    
+    @latitude.setter
+    def latitude(self, latitude):
+        self.__latitude = latitude
+
+    @property
+    def longitude(self):
+        return self.__longitude
+    
+    @longitude.setter
+    def longitude(self, longitude):
+        self.__longitude = longitude
+
+    @property
+    def tilt(self):
+        return self.__tilt
+    
+    @tilt.setter
+    def tilt(self, tilt):
+        self.__tilt = tilt    
+
+
+
+
+    __flux = 1.0
+    _sigma = 2.05
+    _twist = 2.0
+    _tor = 1.0
+    _pol = 0.1
+    _half_width = np.pi/6.0
+    _half_pancake = np.pi/6.0
+    _skew = 0.0
+    _flat = 0.5
+    _lat = 0.0
+    _lon = 0.0
+    _tilt = 0.0
+
+
+
+
     _b0 = 1.0
     _sigma = 2.05
+
     _twist = 1.0
     _radius_tor = 1.0
     _radius_pol = 0.1
@@ -26,42 +139,42 @@ class AIFR:
     
     _spline_axis0_s_phi = None
 
-    def set_b0(self, new_b0):
-        self._b0 = new_b0
+    def set_b0(self, b0):
+        self._b0 = b0
 
-    def set_sigma(self, new_sigma):
-        self._sigma = new_sigma
+    def set_sigma(self, sigma):
+        self._sigma = sigma
 
-    def set_twist(self, new_twist):
-        self._twist = new_twist
+    def set_twist(self, twist):
+        self._twist = twist
 
-    def set_radius_tor(self, new_radius_tor):
-        self._radius_tor = new_radius_tor
+    def set_radius_tor(self, radius_tor):
+        self._radius_tor = radius_tor
 
-    def set_radius_pol(self, new_radius_pol):
-        self._radius_pol = new_radius_pol
+    def set_radius_pol(self, radius_pol):
+        self._radius_pol = radius_pol
 
-    def set_half_width(self, new_half_width):
-        self._half_width = new_half_width
+    def set_half_width(self, half_width):
+        self._half_width = half_width
         self._coeff_angle = numpy.pi/2.0/self._half_width
 
-    def set_coeff_flat(self, new_coeff_flat):
-        self._coeff_flat = new_coeff_flat
+    def set_coeff_flat(self, coeff_flat):
+        self._coeff_flat = coeff_flat
 
-    def set_panc_angle(self, new_panc_angle):
-        self._panc_angle = new_panc_angle
+    def set_panc_angle(self, panc_angle):
+        self._panc_angle = panc_angle
 
-    def set_lat(self, new_lat):
-        self._lat = new_lat
+    def set_lat(self, lat):
+        self._lat = lat
 
-    def set_lon(self, new_lon):
-        self._lon = new_lon
+    def set_lon(self, lon):
+        self._lon = lon
 
-    def set_tilt(self, new_tilt):
-        self._tilt = new_tilt
+    def set_tilt(self, tilt):
+        self._tilt = tilt
 
-    def set_skew_angle(self, new_skew_angle):
-        self._skew_angle = new_skew_angle
+    def set_skew_angle(self, skew_angle):
+        self._skew_angle = skew_angle
 
     def init_spline_axis0_s_phi(self):
         phi = numpy.linspace(-self._half_width, self._half_width, 500)
