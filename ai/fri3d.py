@@ -25,101 +25,179 @@ class FRi3D:
 
     @property
     def twist(self):
-        return self.__twist
-    
+        return self._twist
+
     @twist.setter
     def twist(self, twist):
-        self.__twist = twist
+        self._twist = twist
 
     @property
     def toroidal_height(self):
-        return self.__toroidal_height
-    
+        return self._toroidal_height
+
     @toroidal_height.setter
     def toroidal_height(self, toroidal_height):
-        self.__toroidal_height = toroidal_height
+        self._toroidal_height = toroidal_height
 
     @property
     def poloidal_height(self):
-        return self.__poloidal_height
-    
+        return self._poloidal_height
+
     @poloidal_height.setter
     def poloidal_height(self, poloidal_height):
-        self.__poloidal_height = poloidal_height
+        self._poloidal_height = poloidal_height
 
     @property
     def half_width(self):
-        return self.__half_width
-    
+        return self._half_width
+
     @half_width.setter
     def half_width(self, half_width):
-        self.__half_width = half_width
+        self._half_width = half_width
+        self._coeff_angle = np.pi/2.0/self.half_width
+
+    @property
+    def coeff_angle(self):
+        return self._coeff_angle
 
     @property
     def flattening(self):
-        return self.__flattening
-    
+        return self._flattening
+
     @flattening.setter
     def flattening(self, flattening):
-        self.__flattening = flattening
+        self._flattening = flattening
 
     @property
     def pancaking(self):
-        return self.__pancaking
-    
+        return self._pancaking
+
     @pancaking.setter
     def pancaking(self, pancaking):
-        self.__pancaking = pancaking
+        self._pancaking = pancaking
 
     @property
     def skew(self):
-        return self.__skew
-    
+        return self._skew
+
     @skew.setter
     def skew(self, skew):
-        self.__skew = skew
+        self._skew = skew
 
     @property
     def latitude(self):
-        return self.__latitude
-    
+        return self._latitude
+
     @latitude.setter
     def latitude(self, latitude):
-        self.__latitude = latitude
+        self._latitude = latitude
 
     @property
     def longitude(self):
-        return self.__longitude
-    
+        return self._longitude
+
     @longitude.setter
     def longitude(self, longitude):
-        self.__longitude = longitude
+        self._longitude = longitude
 
     @property
     def tilt(self):
-        return self.__tilt
-    
+        return self._tilt
+
     @tilt.setter
     def tilt(self, tilt):
-        self.__tilt = tilt    
+        self._tilt = tilt    
 
 
+    def _axis0_r(self, phi):
+        return np.nan_to_num(
+            self._toroidal_height*
+            np.cos(self.coeff_angle*phi)**self.flattening
+        )
 
+    def _axis0_tan(self, phi):
+        return np.arctan(
+            -self.coeff_angle*self.flattening*np.tan(self.coeff_angle*phi)
+        )
 
-    __flux = 1.0
-    _sigma = 2.05
-    _twist = 2.0
-    _tor = 1.0
-    _pol = 0.1
-    _half_width = np.pi/6.0
-    _half_pancake = np.pi/6.0
-    _skew = 0.0
-    _flat = 0.5
-    _lat = 0.0
-    _lon = 0.0
-    _tilt = 0.0
+    def _axis0_ds(self, phi):
+        a = self.coeff_angle
+        n = self.flattening
+        
+        dr = (
+            self._axis0_r(phi)*np.sin(phi)/
+            np.sqrt(
+                4.0*np.cos(a*phi)**(2.0*n)-
+                4.0*np.cos(phi)*np.cos(a*phi)**n+1.0
+            )
+        )
+        
+        dp = (
+            2.0*np.cos(a*phi)**n*(2.0*np.cos(a*phi)**n-np.cos(phi))/
+            (4.0*np.cos(a*phi)**(2.0*n)-4.0*np.cos(phi)*np.cos(a*phi)**n+1.0))
+        
+        ds = np.sqrt(dr**2+(self._axis0_r(phi)*dp)**2)
+        return ds
 
+    def _axis0_s(self, phi):
+        s = scipy.integrate.quad(self._axis0_ds, -self.half_width, phi)
+        return s[0]
 
+    def field_line(self, r0, phi0, s):
+        # 0. no deformations
+        r = np.ones(len(s))*r0
+        phi = np.ones(len(s))*phi0
+        # 1. twist
+        # todo: add helicity and polarity
+        phi = phi+s*self.twist*np.pi*2.0
+        # 2. elongation
+        z = s*self._axis0_s(self.half_width)
+        # 3. taper
+        r = (
+            r*self._axis0_r(self._spline_axis0_s_phi(z))*
+            self.poloidal_height/self.toroidal_height
+        )
+        x3, y3, z3 = cs.cyl2cart(r, phi, z)
+        # 4. rotate Z to X
+        T = cs.mx_rot_y(-np.pi/2.0)
+        x4 = T[0,0]*x3+T[0,1]*y3+T[0,2]*z3
+        y4 = T[1,0]*x3+T[1,1]*y3+T[1,2]*z3
+        z4 = T[2,0]*x3+T[2,1]*y3+T[2,2]*z3
+        # 5. bend
+        phi = self._spline_axis0_s_phi(x4)
+        r = self._axis0_r(phi)
+        t = self._axis0_tan(phi)
+        x5 = r*np.cos(phi)+np.sin(t-phi-np.pi/2.0)*y4
+        y5 = r*np.sin(phi)+np.cos(t-phi-np.pi/2.0)*y4
+        z5 = z4
+        # 6. pancaking
+        r, theta, phi = cs.cart2sp(x5, y5, z5)
+        theta = (
+            theta/np.arctan2(self.poloidal_height, self.toroidal_height)*
+            self.pancaking
+        )
+        x6, y6, z6 = cs.sp2cart(r, theta, phi)
+        # 7. orientation
+        T = cs.mx_rot(self.latitude, -self.longitude, -self.tilt)
+        x7 = T[0,0]*x6+T[0,1]*y6+T[0,2]*z6
+        y7 = T[1,0]*x6+T[1,1]*y6+T[1,2]*z6
+        z7 = T[2,0]*x6+T[2,1]*y6+T[2,2]*z6
+        # 8. skew
+        r, phi, z = cs.cart2cyl(x7, y7, z7)
+        phi = phi+self.skew*r/r.max()
+        x8, y8, z8 = cs.cyl2cart(r, phi, z)
+        # finished
+        x = x8
+        y = y8
+        z = z8
+
+        x = numpy.insert(x, 0, 0.0)
+        x = numpy.append(x, 0.0)
+        y = numpy.insert(y, 0, 0.0)
+        y = numpy.append(y, 0.0)
+        z = numpy.insert(z, 0, 0.0)
+        z = numpy.append(z, 0.0)
+        return (x, y, z)
 
 
     _b0 = 1.0
