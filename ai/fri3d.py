@@ -9,6 +9,10 @@ import scipy.integrate
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import proj3d
 
+AU_KM = 1.496e11
+RS_KM = 6.957e5
+RS_AU = RS_KM/AU_KM
+
 class FRi3D:
     
     def __init__(
@@ -35,6 +39,7 @@ class FRi3D:
         self.skew = skew
         self.twist = twist
         self.flux = flux
+        self._init_spline_initial_axis_s_phi()
 
     @property
     def twist(self):
@@ -130,6 +135,15 @@ class FRi3D:
     def flux(self, flux):
         self._flux = flux
 
+    def _init_spline_initial_axis_s_phi(self):
+        phi = np.linspace(-self.half_width, self.half_width, 100)
+        s = np.array([self._initial_axis_s(p) for p in phi])
+        self._spline_initial_axis_s_phi = scipy.interpolate.interp1d(
+            s, phi, kind='cubic',
+            bounds_error=False,
+            fill_value=(-self.half_width, self.half_width)
+        )
+
     def _initial_axis_r(self, phi):
         return np.nan_to_num(
             self.toroidal_height*
@@ -165,10 +179,61 @@ class FRi3D:
         return s[0]
 
     def shell(self, 
-            s=np.linspace(0.0, 1.0, 20), 
-            phi=np.linspace(0.0, np.pi*2.0, 12, endpoint=False)):
+            s=np.linspace(0.0, 1.0, 40), 
+            phi=np.linspace(0.0, np.pi*2.0, 24)):
+        s = np.array(s, copy=False, ndmin=1)
+        phi = np.array(phi, copy=False, ndmin=1)
+
+        s_max = self._initial_axis_s(self.half_width)
+        s[s < RS_AU/s_max] = RS_AU/s_max
+        s[s > 1.0-RS_AU/s_max] = 1.0-RS_AU/s_max
+        s = np.unique(s)
+
+        s = np.transpose(np.tile(s, (phi.size, 1)))
+        phi = np.tile(phi, (s.shape[0], 1))
+
         r = np.ones(s.shape)
-        phi = np.ones(s.shape)*phi0
+        z = s*self._initial_axis_s(self.half_width)
+        
+        r = (
+            r*self._initial_axis_r(self._spline_initial_axis_s_phi(z))*
+            self.poloidal_height/self.toroidal_height
+        )
+        x_, y_, z_ = cs.cyl2cart(r, phi, z)
+
+        T = cs.mx_rot_y(-np.pi/2.0)
+        x = T[0,0]*x_+T[0,1]*y_+T[0,2]*z_
+        y = T[1,0]*x_+T[1,1]*y_+T[1,2]*z_
+        z = T[2,0]*x_+T[2,1]*y_+T[2,2]*z_
+
+        # bending
+        phi = self._spline_initial_axis_s_phi(x)
+        r = self._initial_axis_r(phi)
+        t = self._initial_axis_tan(phi)
+        x_ = r*np.cos(phi)+np.sin(t-phi-np.pi/2.0)*y
+        y_ = r*np.sin(phi)+np.cos(t-phi-np.pi/2.0)*y
+        z_ = z
+
+        # pancaking
+        r, theta, phi = cs.cart2sp(x_, y_, z_)
+        theta = (
+            theta/np.arctan2(self.poloidal_height, self.toroidal_height)*
+            self.pancaking
+        )
+        x_, y_, z_ = cs.sp2cart(r, theta, phi)
+
+        # orientation
+        T = cs.mx_rot(self.latitude, -self.longitude, -self.tilt)
+        x = T[0,0]*x_+T[0,1]*y_+T[0,2]*z_
+        y = T[1,0]*x_+T[1,1]*y_+T[1,2]*z_
+        z = T[2,0]*x_+T[2,1]*y_+T[2,2]*z_
+
+        # skew
+        r, phi, z = cs.cart2cyl(x, y, z)
+        phi += self.skew*r/r.max()
+        x, y, z = cs.cyl2cart(r, phi, z)
+        
+        return (x, y, z)
 
     def field_line(self, r0, phi0, s):
         # 0. no deformations
@@ -226,451 +291,23 @@ class FRi3D:
         z = np.append(z, 0.0)
         return (x, y, z)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    _b0 = 1.0
-    _sigma = 2.05
-
-    _twist = 1.0
-    _radius_tor = 1.0
-    _radius_pol = 0.1
-    _half_width = np.pi/6.0
-    _coeff_angle = 3.0
-    _coeff_flat = 0.5
-    _panc_angle = np.pi/6.0
-    _skew_angle = 0.0
-    _lat = 0.0
-    _lon = 0.0
-    _tilt = 0.0
-    
-    _spline_axis0_s_phi = None
-
-    def set_b0(self, b0):
-        self._b0 = b0
-
-    def set_sigma(self, sigma):
-        self._sigma = sigma
-
-    def set_twist(self, twist):
-        self._twist = twist
-
-    def set_radius_tor(self, radius_tor):
-        self._radius_tor = radius_tor
-
-    def set_radius_pol(self, radius_pol):
-        self._radius_pol = radius_pol
-
-    def set_half_width(self, half_width):
-        self._half_width = half_width
-        self._coeff_angle = np.pi/2.0/self._half_width
-
-    def set_coeff_flat(self, coeff_flat):
-        self._coeff_flat = coeff_flat
-
-    def set_panc_angle(self, panc_angle):
-        self._panc_angle = panc_angle
-
-    def set_lat(self, lat):
-        self._lat = lat
-
-    def set_lon(self, lon):
-        self._lon = lon
-
-    def set_tilt(self, tilt):
-        self._tilt = tilt
-
-    def set_skew_angle(self, skew_angle):
-        self._skew_angle = skew_angle
-
-    def init_spline_axis0_s_phi(self):
-        phi = np.linspace(-self._half_width, self._half_width, 500)
-        s = np.array([self._axis0_s(p) for p in phi])
-        self._spline_axis0_s_phi = scipy.interpolate.interp1d(s, phi, 
-                                                              kind='cubic')
-
-    # def init_magnetic_field(self):
-
-
-    def _axis0_r(self, phi):
-        return np.nan_to_num(self._radius_tor* \
-               np.cos(self._coeff_angle*phi)**self._coeff_flat)
-
-    def _axis0_tan(self, phi):
-        return np.arctan(-self._coeff_angle*
-                            self._coeff_flat*
-                            np.tan(self._coeff_angle*phi))
-
-    def _axis0_ds(self, phi):
-        a = self._coeff_angle
-        n = self._coeff_flat
-        
-        dr = self._axis0_r(phi)*np.sin(phi)/ \
-             np.sqrt(4.0*np.cos(a*phi)**(2.0*n)-
-                        4.0*np.cos(phi)*np.cos(a*phi)**n+1.0)
-        
-        dp = 2.0*np.cos(a*phi)**n*(2.0*np.cos(a*phi)**n-
-                                      np.cos(phi))/ \
-             (4.0*np.cos(a*phi)**(2.0*n)-
-              4.0*np.cos(phi)*np.cos(a*phi)**n+1.0)
-        
-        ds = np.sqrt(dr**2+(self._axis0_r(phi)*dp)**2)
-        return ds
-
-    def _axis0_s(self, phi):
-        s = scipy.integrate.quad(self._axis0_ds, -self._half_width, phi)
-        return s[0]
-
-    def btot_unit_cyl(self, r):
-        return 0.0 if r > 1.0 else self._b0* \
-                                   np.exp(-(r/self._sigma)**2/2.0)
-
-    def b_line(self, r0, phi0, s):
-        # 0. no deformations
-        r = np.ones(len(s))*r0
-        phi = np.ones(len(s))*phi0
-        # 1. twist
-        # todo: add helicity and polarity
-        phi = phi+s*self._twist*np.pi*2.0
-        # 2. elongation
-        z = s*self._axis0_s(self._half_width)
-        # 3. taper
-        r = r*self._axis0_r(self._spline_axis0_s_phi(z))* \
-            self._radius_pol/self._radius_tor
-        x3, y3, z3 = cs.cyl2cart(r, phi, z)
-        # 4. rotate Z to X
-        T = cs.mx_rot_y(-np.pi/2.0)
-        x4 = T[0,0]*x3+T[0,1]*y3+T[0,2]*z3
-        y4 = T[1,0]*x3+T[1,1]*y3+T[1,2]*z3
-        z4 = T[2,0]*x3+T[2,1]*y3+T[2,2]*z3
-        # 5. bend
-        phi = self._spline_axis0_s_phi(x4)
-        r = self._axis0_r(phi)
-        t = self._axis0_tan(phi)
-        x5 = r*np.cos(phi)+np.sin(t-phi-np.pi/2.0)*y4
-        y5 = r*np.sin(phi)+np.cos(t-phi-np.pi/2.0)*y4
-        z5 = z4
-        # 6. pancaking
-        r, theta, phi = cs.cart2sp(x5, y5, z5)
-        theta = theta/np.arctan2(self._radius_pol, self._radius_tor)* \
-                self._panc_angle
-        x6, y6, z6 = cs.sp2cart(r, theta, phi)
-        # calculate magnetic field here
-        b = self.btot_unit_cyl(r0)
-        # 7. orientation
-        T = cs.mx_rot(self._lat, -self._lon, -self._tilt)
-        x7 = T[0,0]*x6+T[0,1]*y6+T[0,2]*z6
-        y7 = T[1,0]*x6+T[1,1]*y6+T[1,2]*z6
-        z7 = T[2,0]*x6+T[2,1]*y6+T[2,2]*z6
-        # 8. scew
-        r, phi, z = cs.cart2cyl(x7, y7, z7)
-        phi = phi+self._skew_angle*r/r.max()
-        x8, y8, z8 = cs.cyl2cart(r, phi, z)
-        # finished
-        x = x8
-        y = y8
-        z = z8
-
-        x = np.insert(x, 0, 0.0)
-        x = np.append(x, 0.0)
-        y = np.insert(y, 0, 0.0)
-        y = np.append(y, 0.0)
-        z = np.insert(z, 0, 0.0)
-        z = np.append(z, 0.0)
-        return (x, y, z, b)
-
-def demo():
-    fr = FRi3D()
-    fr.set_b0(10.0)
-    fr.set_twist(2.0)
-    fr.set_radius_tor(1.0)
-    fr.set_radius_pol(0.05)
-    fr.set_half_width(np.pi/180.0*30.0)
-    fr.set_coeff_flat(0.5)
-    fr.set_panc_angle(np.pi/180.0*30.0)
-    fr.set_skew_angle(-np.pi/180.0*0.0)
-    fr.set_lat(np.pi/180.0*0.0)
-    fr.set_lon(np.pi/180.0*0.0)
-    fr.set_tilt(np.pi/180.0*0.0)
-    fr.init_spline_axis0_s_phi()
-
-    s = np.linspace(1.0e-6, 1.0-1.0e-6, 500)
-    
-    b_max = fr.btot_unit_cyl(0.0)
-    b_min = fr.btot_unit_cyl(1.0)
-
-    fig = plt.figure(figsize=(8, 8), dpi=72)
-    ax = fig.add_subplot(111, projection='3d', adjustable='box', aspect=1.0)
-    ax.set_xlim(0.0, 1.2)
-    ax.set_ylim(-0.6, 0.6)
-    ax.set_zlim(-0.6, 0.6)
-    ax.view_init(elev = 0.0, azim = -90.0)
-    ax.set_aspect('equal', 'datalim')
-    for r0 in np.arange(0.0, 1.1, 0.1):
-        for phi0 in np.arange(0.0, np.pi*2.0, np.pi/6.0):
-            x, y, z, b = fr.b_line(r0, phi0, s)
-            ax.plot(x, y, z, color=plt.cm.jet((b-b_min)/(b_max-b_min)))
-    fig.show()
-
-def demo_flattening():
-    fr = FRi3D()
-    fr.set_b0(10.0)
-    fr.set_twist(2.0)
-    fr.set_radius_tor(1.0)
-    fr.set_radius_pol(0.1)
-    fr.set_half_width(np.pi/180.0*30.0)
-    fr.set_coeff_flat(0.9)
-    fr.set_panc_angle(np.pi/180.0*30.0)
-    fr.set_skew_angle(-np.pi/180.0*0.0)
-    fr.set_lat(np.pi/180.0*0.0)
-    fr.set_lon(np.pi/180.0*-0.0)
-    fr.set_tilt(np.pi/180.0*0.0)
-    fr.init_spline_axis0_s_phi()
-
-    s = np.linspace(1.0e-6, 1.0-1.0e-6, 500)
-    
-    b_max = fr.btot_unit_cyl(0.0)
-    b_min = fr.btot_unit_cyl(1.0)
-
-    fig = plt.figure(figsize=(8, 8), dpi=72)
-    ax = fig.add_subplot(111, projection='3d', adjustable='box', aspect=1.0)
-    ax.set_xlim(0.0, 1.2)
-    ax.set_ylim(-0.6, 0.6)
-    ax.set_zlim(-0.6, 0.6)
-    ax.view_init(elev = 90.0, azim = -90.0)
-    ax.set_aspect('equal', 'datalim')
-    for r0 in np.arange(0.0, 1.1, 0.1):
-        for phi0 in np.arange(0.0, np.pi*2.0, np.pi/6.0):
-            x, y, z, b = fr.b_line(r0, phi0, s)
-            ax.plot(x, y, z, color=plt.cm.jet((b-b_min)/(b_max-b_min)))
-    fig.show()
-
-def demo_skewing():
-    fr = FRi3D()
-    fr.set_b0(10.0)
-    fr.set_twist(2.0)
-    fr.set_radius_tor(1.0)
-    fr.set_radius_pol(0.1)
-    fr.set_half_width(np.pi/180.0*30.0)
-    fr.set_coeff_flat(0.5)
-    fr.set_panc_angle(np.pi/180.0*30.0)
-    fr.set_skew_angle(-np.pi/180.0*35.0)
-    fr.set_lat(np.pi/180.0*0.0)
-    fr.set_lon(np.pi/180.0*35.0)
-    fr.set_tilt(np.pi/180.0*0.0)
-    fr.init_spline_axis0_s_phi()
-
-    s = np.linspace(1.0e-6, 1.0-1.0e-6, 500)
-    
-    b_max = fr.btot_unit_cyl(0.0)
-    b_min = fr.btot_unit_cyl(1.0)
-
-    fig = plt.figure(figsize=(8, 8), dpi=72)
-    ax = fig.add_subplot(111, projection='3d', adjustable='box', aspect=1.0)
-    ax.set_xlim(0.0, 1.2)
-    ax.set_ylim(-0.6, 0.6)
-    ax.set_zlim(-0.6, 0.6)
-    ax.view_init(elev = 90.0, azim = -90.0)
-    ax.set_aspect('equal', 'datalim')
-    for r0 in np.arange(0.0, 1.1, 0.1):
-        for phi0 in np.arange(0.0, np.pi*2.0, np.pi/6.0):
-            x, y, z, b = fr.b_line(r0, phi0, s)
-            ax.plot(x, y, z, color=plt.cm.jet((b-b_min)/(b_max-b_min)))
-    fig.show()
-
-def demo_pancaking():
-    fr = FRi3D()
-    fr.set_b0(10.0)
-    fr.set_twist(2.0)
-    fr.set_radius_tor(1.0)
-    fr.set_radius_pol(0.05)
-    fr.set_half_width(np.pi/180.0*30.0)
-    fr.set_coeff_flat(0.5)
-    fr.set_panc_angle(np.pi/180.0*30.0)
-    fr.set_skew_angle(-np.pi/180.0*0.0)
-    fr.set_lat(np.pi/180.0*0.0)
-    fr.set_lon(np.pi/180.0*0.0)
-    fr.set_tilt(np.pi/180.0*0.0)
-    fr.init_spline_axis0_s_phi()
-
-    s = np.linspace(1.0e-6, 1.0-1.0e-6, 500)
-    
-    b_max = fr.btot_unit_cyl(0.0)
-    b_min = fr.btot_unit_cyl(1.0)
-
-    fig = plt.figure(figsize=(8, 8), dpi=72)
-    ax = fig.add_subplot(111, projection='3d', adjustable='box', aspect=1.0)
-    ax.set_xlim(0.0, 1.2)
-    ax.set_ylim(-0.6, 0.6)
-    ax.set_zlim(-0.6, 0.6)
-    ax.view_init(elev = 0.0, azim = -90.0)
-    ax.set_aspect('equal', 'datalim')
-    for r0 in np.arange(0.0, 1.1, 0.1):
-        for phi0 in np.arange(0.0, np.pi*2.0, np.pi/6.0):
-            x, y, z, b = fr.b_line(r0, phi0, s)
-            ax.plot(x, y, z, color=plt.cm.jet((b-b_min)/(b_max-b_min)))
-    fig.show()
-
-def demo_evolution():
-
-    nsteps = 50
-    radius_tor = np.linspace(0.1, 1.0, nsteps)
-    radius_pol = np.linspace(0.05, 0.1, nsteps)
-    coeff_flat = np.linspace(0.9, 0.5, nsteps)
-    skew_angle = np.linspace(-np.pi/180.0*0.0, -np.pi/180.0*15.0, nsteps)
-    lat = np.linspace(np.pi/180.0*20.0, np.pi/180.0*0.0, nsteps)
-    lon = np.linspace(np.pi/180.0*0.0, -np.pi/180.0*10.0, nsteps)-skew_angle
-    tilt = np.linspace(np.pi/180.0*30.0, np.pi/180.0*0.0, nsteps)
-
-    fr = FRi3D()
-
-    for i in range(nsteps):
-        fr.set_b0(10.0)
-        fr.set_twist(2.0)
-        fr.set_radius_tor(radius_tor[i])
-        fr.set_radius_pol(radius_pol[i])
-        fr.set_half_width(np.pi/180.0*30.0)
-        fr.set_coeff_flat(coeff_flat[i])
-        fr.set_panc_angle(np.pi/180.0*20.0)
-        fr.set_skew_angle(skew_angle[i])
-        fr.set_lat(lat[i])
-        fr.set_lon(lon[i])
-        fr.set_tilt(tilt[i])
-        fr.init_spline_axis0_s_phi()
-
-        s = np.linspace(1.0e-6, 1.0-1.0e-6, 500)
-        
-        b_max = fr.btot_unit_cyl(0.0)
-        b_min = fr.btot_unit_cyl(1.0)
-
-        fig = plt.figure(figsize=(8, 8), dpi=72)
-        ax = fig.add_subplot(111, projection='3d', adjustable='box', aspect=1.0)
-        ax.set_xlim(0.0, 1.2)
-        ax.set_ylim(-0.6, 0.6)
-        ax.set_zlim(-0.6, 0.6)
-        ax.set_aspect('equal', 'datalim')
-        for r0 in np.arange(0.0, 1.1, 0.1):
-            for phi0 in np.arange(0.0, np.pi*2.0, np.pi/6.0):
-                x, y, z, b = fr.b_line(r0, phi0, s)
-                ax.plot(x, y, z, color=plt.cm.jet((b-b_min)/(b_max-b_min)))
-        # fig.show()
-        # ax.view_init(elev = 0.0, azim = -90.0)
-        # fig.savefig('/media/data/Documents/Lab seminars/2015-08-25/CFR/cfr_evolution_side'+`1000+i`+'.png')
-        # ax.view_init(elev = 90.0, azim = -90.0)
-        # fig.savefig('/media/data/Documents/Lab seminars/2015-08-25/CFR/cfr_evolution_top'+`1000+i`+'.png')
-        # ax.view_init(elev = 0.0, azim = 0.0)
-        # fig.savefig('/media/data/Documents/Lab seminars/2015-08-25/CFR/cfr_evolution_front'+`1000+i`+'.png')
-        # ax.view_init(elev = 45.0, azim = -45.0)
-        # fig.savefig('/media/data/Documents/Lab seminars/2015-08-25/CFR/cfr_evolution_iso'+`1000+i`+'.png')
-
-def make_movie_3d(nframes=10):
-    fr = FRi3D()
-    fr.set_b0(10.0)
-    fr.set_twist(2.0)
-    fr.set_radius_tor(1.0)
-    fr.set_radius_pol(0.1)
-    fr.set_half_width(np.pi/180.0*30.0)
-    fr.set_coeff_flat(0.6)
-    fr.set_panc_angle(np.pi/180.0*30.0)
-    fr.set_skew_angle(-np.pi/180.0*10.0)
-    fr.set_lat(np.pi/180.0*10.0)
-    fr.set_lon(np.pi/180.0*-10.0)
-    fr.set_tilt(np.pi/180.0*0.0)
-    fr.init_spline_axis0_s_phi()
-
-    s = np.linspace(1.0e-6, 1.0-1.0e-6, 500)
-    
-    b_max = fr.btot_unit_cyl(0.0)
-    b_min = fr.btot_unit_cyl(1.0)
-
-    FFMpegWriter = animation.writers['ffmpeg']
-    metadata = dict(title='CFR expansion', artist='Matplotlib')
-    writer = FFMpegWriter(fps=1, metadata=metadata)
-    fig = plt.figure()
-    axes_3d = fig.add_subplot(111, projection='3d', adjustable='box', aspect=1.0)
-    axes_3d.set_xlim(0.0, 1.2)
-    axes_3d.set_ylim(-0.6, 0.6)
-    axes_3d.set_zlim(-0.6, 0.6)
-    axes_3d.view_init(elev = 20.0, azim = -40.0)
-
-    height = np.linspace(0.1, 1.0, nframes)
-    with writer.saving(fig, "cfr_expansion.mp4", nframes):
-        for h in height:
-            fr.set_radius_tor(h)
-            fr.set_radius_pol(0.1*h)
-            fr.init_spline_axis0_s_phi()
-
-            fig.clf()
-
-            for r0 in np.arange(0.0, 1.1, 0.1):
-                for phi0 in np.arange(0.0, np.pi*2.0, np.pi/6.0):
-                    x, y, z, b = fr.b_line(r0, phi0, s)
-                    axes_3d.plot(x, y, z, color=plt.cm.jet((b-b_min)/(b_max-b_min)))
-            axes_3d = fig.add_subplot(111, projection='3d', adjustable='box', aspect=1.0)
-            axes_3d.set_xlim(0.0, 1.2)
-            axes_3d.set_ylim(-0.6, 0.6)
-            axes_3d.set_zlim(-0.6, 0.6)
-            axes_3d.view_init(elev = 20.0, azim = -40.0)
-            fig.set_size_inches(6.4, 4.8)
-
-            writer.grab_frame()
-
 def test():
     fr = FRi3D()
-    fr.set_b0(10.0)
-    fr.set_h(1.0)
-    fr.set_twist(2.0)
-    fr.set_radius_tor(1.0)
-    fr.set_radius_pol(0.2)
-    fr.set_half_width(np.pi/180.0*30.0)
-    fr.set_coeff_flat(0.6)
-    fr.set_skew_angle(-np.pi/180.0*0.0)
-    fr.set_lat(np.pi/180.0*0.0)
-    fr.set_lon(np.pi/180.0*0.0)
-    fr.set_tilt(np.pi/180.0*0.0)
-    fr.init_spline_axis0_s_phi()
 
-    phi = np.linspace(-fr._half_width, fr._half_width, 500)
-    t = fr._axis0_tan(phi)
-    
-    fig = plt.figure()
-    ax = fig.add_subplot(221)
-    ax.plot(phi, np.pi/2.0-t)
-    ax = fig.add_subplot(222)
-    ax.plot(phi, -phi-(np.pi/2.0-t))
-    ax = fig.add_subplot(223)
-    ax.plot(phi, np.cos(-phi-(np.pi/2.0-t)), 
-            phi, np.sin(-phi-(np.pi/2.0-t)))
-    ax = fig.add_subplot(224)
-    ax.plot(phi, 1.0-np.abs(t)/np.pi*2.0)
-    fig.show()
+    x, y, z = fr.shell()
+    fig = plt.figure(figsize=(8, 8), dpi=72)
+    ax = fig.add_subplot(111, projection='3d', adjustable='box', aspect=1.0)
+    ax.plot_wireframe(x, y, z)
+    ax.set_xlim(0.0, 1.2)
+    ax.set_ylim(-0.6, 0.6)
+    ax.set_zlim(-0.6, 0.6)
+    plt.show()
 
 def orthogonal_proj(zfront, zback):
     a = (zfront+zback)/(zfront-zback)
     b = -2*(zfront*zback)/(zfront-zback)
     return np.array([[1,0,0,0],
-                        [0,1,0,0],
-                        [0,0,a,b],
-                        [0,0,-0.0001,zback]])
+                     [0,1,0,0],
+                     [0,0,a,b],
+                     [0,0,-0.0001,zback]])
 proj3d.persp_transformation = orthogonal_proj
