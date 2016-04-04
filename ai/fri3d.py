@@ -247,6 +247,12 @@ class FRi3D:
         
         return (x, y, z)
 
+    def field(self, r, phi, s):
+        z = s*self._initial_axis_s(self.half_width)
+        R = self._initial_axis_r(self._spline_initial_axis_s_phi(z))
+        r1 = R*self.poloidal_height/self.toroidal_height
+        r2 = R*self.pancaking
+
     def line(self, r=0.0, phi=0.0, s=np.linspace(0.0, 1.0, 50)):
         s = np.array(s, copy=False, ndmin=1)
         
