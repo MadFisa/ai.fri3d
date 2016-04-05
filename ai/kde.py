@@ -12,15 +12,17 @@ def measure(n):
     return m1+m2, m1-m2
 
 m1, m2 = measure(COUNT)
-m1 += 10
+# m1 += 10
 
-r = np.sqrt(m1**2+m2**2)
-phi = np.arctan2(m2, m1)
+# r = np.sqrt(m1**2+m2**2)
+# phi = np.arctan2(m2, m1)
 
-phi *= 4.0
+# phi *= 4.0
 
-m1 = r*np.cos(phi)
-m2 = r*np.sin(phi)
+# m1 = r*np.cos(phi)
+# m2 = r*np.sin(phi)
+
+m2 *= 100
 
 xmin = m1.min()
 xmax = m1.max()

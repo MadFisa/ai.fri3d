@@ -8,8 +8,11 @@ import scipy.integrate
 
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import proj3d
+from mpl_toolkits.mplot3d.art3d import Line3DCollection
+import matplotlib.path as mpath
+import matplotlib.colors as colors
 
-AU_KM = 1.496e11
+AU_KM = 1.496e8
 RS_KM = 6.957e5
 RS_AU = RS_KM/AU_KM
 
@@ -27,7 +30,7 @@ class FRi3D:
             pancaking = np.pi/6.0, 
             skew = 0.0, 
             twist = 1.0, 
-            flux = 1.0):
+            flux = 1e13):
         self.latitude = latitude
         self.longitude = longitude
         self.toroidal_height = toroidal_height
@@ -134,6 +137,7 @@ class FRi3D:
     @flux.setter
     def flux(self, flux):
         self._flux = flux
+        self._unit_b = flux/(2.0*np.pi*2.05**2)
 
     def _init_spline_initial_axis_s_phi(self):
         phi = np.linspace(-self.half_width, self.half_width, 100)
@@ -247,11 +251,21 @@ class FRi3D:
         
         return (x, y, z)
 
-    def field(self, r, phi, s):
+    def field(self, 
+            r=np.linspace(0.0, 1.0, 10), 
+            phi=np.linspace(0.0, np.pi*2.0, 24), 
+            s=0.5):
+
         z = s*self._initial_axis_s(self.half_width)
         R = self._initial_axis_r(self._spline_initial_axis_s_phi(z))
         r1 = R*self.poloidal_height/self.toroidal_height
         r2 = R*self.pancaking
+        B0 = self._unit_b/r1/r2/(AU_KM*1e3)**2
+        print(B0)
+        print(r1, r2)
+
+
+
 
     def line(self, r=0.0, phi=0.0, s=np.linspace(0.0, 1.0, 50)):
         s = np.array(s, copy=False, ndmin=1)
@@ -268,11 +282,23 @@ class FRi3D:
         phi += s*self.twist*np.pi*2.0
         # elongation
         z = s*self._initial_axis_s(self.half_width)
+        # magnetic field
+        R = self._initial_axis_r(self._spline_initial_axis_s_phi(z))
+        rx = R*self.poloidal_height/self.toroidal_height
+        ry = R*self.pancaking
+        kappa = rx*ry*(AU_KM*1e3)**2
         # taper
-        r = (
-            r*self._initial_axis_r(self._spline_initial_axis_s_phi(z))*
-            self.poloidal_height/self.toroidal_height
+        r *= rx
+        # magnetic field
+        x = r*np.cos(phi)
+        y = r*np.sin(phi)
+        b = self._unit_b/kappa*np.exp(
+            -((x/rx)**2+(y/rx)**2)/2.0/2.05**2
         )
+        # r = (
+        #     r*self._initial_axis_r(self._spline_initial_axis_s_phi(z))*
+        #     self.poloidal_height/self.toroidal_height
+        # )
         x_, y_, z_ = cs.cyl2cart(r, phi, z)
 
         T = cs.mx_rot_y(-np.pi/2.0)
@@ -307,7 +333,7 @@ class FRi3D:
         phi += self.skew*r/r.max()
         x, y, z = cs.cyl2cart(r, phi, z)
         
-        return (x, y, z)
+        return (x, y, z, b)
 
 def test():
     fr = FRi3D(
@@ -318,16 +344,41 @@ def test():
         flattening=0.8
     )
 
+    fr.field()
+
     fig = plt.figure(figsize=(8, 8), dpi=72)
     ax = fig.add_subplot(111, projection='3d', adjustable='box', aspect=1.0)
     x, y, z = fr.shell()
     ax.plot_wireframe(x, y, z, alpha=0.1)
     
+    _, _, _, b = fr.line(0.0, 0.0, s=0.5)
+    print(b)
+    _, _, _, b = fr.line(1.0, 0.0, s=0.5)
+    print(b)
+    bmin = b
+    _, _, _, b = fr.line(0.0, 0.0, s=0.4)
+    print(b)
+    bmax = b
+    _, _, _, b = fr.line(1.0, 0.0, s=0.4)
+    print(b)
+
     for i in range(100):
         r = np.random.uniform(0.0, 1.0)
         phi = np.random.uniform(0.0, np.pi*2.0)
-        x, y, z = fr.line(r, phi)
-        ax.plot(x, y, z, color=plt.cm.plasma(r))
+        x, y, z, b = fr.line(r, phi, s=np.linspace(0.4, 0.6, 50))
+        points = np.array([x, y, z]).T.reshape(-1, 1, 3)
+        segments = np.concatenate([points[:-1], points[1:]], axis=1)
+        # print((b-bmin)/(bmax-bmin))
+        c = (b-bmin)/(bmax-bmin)
+        lc = Line3DCollection(
+            segments, 
+            colors=plt.cm.plasma(c)
+        )
+        ax.add_collection3d(lc)
+
+        # print(b)
+        # colorline(x, y, z, cmap=plt.get_cmap('plasma'))
+        # ax.plot(x, y, z, color=plt.cm.plasma(b))
 
     ax.set_xlim(0.0, 1.2)
     ax.set_ylim(-0.6, 0.6)
