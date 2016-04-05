@@ -11,6 +11,7 @@ from mpl_toolkits.mplot3d import proj3d
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
 import matplotlib.path as mpath
 import matplotlib.colors as colors
+from matplotlib.colorbar import ColorbarBase
 
 AU_KM = 1.496e8
 RS_KM = 6.957e5
@@ -30,7 +31,7 @@ class FRi3D:
             pancaking = np.pi/6.0, 
             skew = 0.0, 
             twist = 1.0, 
-            flux = 1e13):
+            flux = 1e15):
         self.latitude = latitude
         self.longitude = longitude
         self.toroidal_height = toroidal_height
@@ -293,7 +294,7 @@ class FRi3D:
         x = r*np.cos(phi)
         y = r*np.sin(phi)
         b = self._unit_b/kappa*np.exp(
-            -((x/rx)**2+(y/rx)**2)/2.0/2.05**2
+            -((r/rx)**2)/2.0/2.05**2
         )
         # r = (
         #     r*self._initial_axis_r(self._spline_initial_axis_s_phi(z))*
@@ -332,6 +333,8 @@ class FRi3D:
         r, phi, z = cs.cart2cyl(x, y, z)
         phi += self.skew*r/r.max()
         x, y, z = cs.cyl2cart(r, phi, z)
+
+        b *= 1e9
         
         return (x, y, z, b)
 
@@ -356,33 +359,39 @@ def test():
     _, _, _, b = fr.line(1.0, 0.0, s=0.5)
     print(b)
     bmin = b
-    _, _, _, b = fr.line(0.0, 0.0, s=0.4)
+    _, _, _, b = fr.line(0.0, 0.0, s=0.1)
     print(b)
     bmax = b
-    _, _, _, b = fr.line(1.0, 0.0, s=0.4)
+    _, _, _, b = fr.line(1.0, 0.0, s=0.9)
     print(b)
 
-    for i in range(100):
+    for i in range(50):
         r = np.random.uniform(0.0, 1.0)
         phi = np.random.uniform(0.0, np.pi*2.0)
-        x, y, z, b = fr.line(r, phi, s=np.linspace(0.4, 0.6, 50))
+        x, y, z, b = fr.line(r, phi, s=np.linspace(0.1, 0.9, 200))
         points = np.array([x, y, z]).T.reshape(-1, 1, 3)
         segments = np.concatenate([points[:-1], points[1:]], axis=1)
         # print((b-bmin)/(bmax-bmin))
         c = (b-bmin)/(bmax-bmin)
+        # print(b, c)
         lc = Line3DCollection(
             segments, 
-            colors=plt.cm.plasma(c)
+            colors=plt.cm.magma(c)
         )
         ax.add_collection3d(lc)
-
-        # print(b)
-        # colorline(x, y, z, cmap=plt.get_cmap('plasma'))
-        # ax.plot(x, y, z, color=plt.cm.plasma(b))
 
     ax.set_xlim(0.0, 1.2)
     ax.set_ylim(-0.6, 0.6)
     ax.set_zlim(-0.6, 0.6)
+
+    sm = plt.cm.ScalarMappable(
+        cmap=plt.cm.get_cmap('magma'), 
+        norm=plt.Normalize(vmin=bmin, vmax=bmax)
+    )
+    # fake up the array of the scalar mappable. Urgh...
+    sm._A = []
+    plt.colorbar(sm)
+    
     plt.show()
 
 def orthogonal_proj(zfront, zback):
@@ -392,4 +401,4 @@ def orthogonal_proj(zfront, zback):
                      [0,1,0,0],
                      [0,0,a,b],
                      [0,0,-0.0001,zback]])
-# proj3d.persp_transformation = orthogonal_proj
+proj3d.persp_transformation = orthogonal_proj
