@@ -5,6 +5,7 @@ from ai import cs
 import scipy.special
 import scipy.interpolate
 import scipy.integrate
+import scipy.optimize
 
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import proj3d
@@ -338,6 +339,43 @@ class FRi3D:
         
         return (x, y, z, b)
 
+    def cut(self, x, y, z):
+        x = np.array(x, copy=False, ndmin=1)
+        y = np.array(y, copy=False, ndmin=1)
+        z = np.array(z, copy=False, ndmin=1)
+
+        b = []
+
+        for i in range(x.size):
+            def F(p):
+                x_, y_, z_, _ = self.line(p[0], p[1]*np.pi*2.0, p[2])
+                return np.sqrt(
+                    (x[i]-x_[0])**2+
+                    (y[i]-y_[0])**2+
+                    (z[i]-z_[0])**2
+                )
+            out = scipy.optimize.fmin_slsqp(
+                F, 
+                np.array([0.5,0.5,0.5]),
+                bounds=[(0.0,1.0),(0.0,1.0),(0.0,1.0)],
+                acc=1e-6
+            )
+            
+            x_, y_, z_, b_ = self.line(
+                out[0],
+                out[1]*np.pi*2.0,
+                [out[2]-0.0001, out[2]+0.0001]
+            )
+            r = np.array([
+                x_[1]-x_[0],
+                y_[1]-y_[0],
+                z_[1]-z_[0]
+            ])
+            r /= np.linalg.norm(r)
+            b.append(r*np.mean(b_))
+
+        return np.array(b)
+
 def test():
     fr = FRi3D(
         twist=2.0,
@@ -347,7 +385,14 @@ def test():
         flattening=0.8
     )
 
-    fr.field()
+    b = fr.cut(np.linspace(0.7,1.3,30), np.zeros(30), np.zeros(30))
+    plt.plot(b[:,0], 'r')
+    plt.plot(b[:,1], 'g')
+    plt.plot(b[:,2], 'b')
+    plt.show()
+    return
+
+    # fr.field()
 
     fig = plt.figure(figsize=(8, 8), dpi=72)
     ax = fig.add_subplot(111, projection='3d', adjustable='box', aspect=1.0)
