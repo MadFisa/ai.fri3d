@@ -163,34 +163,30 @@ class FRi3D:
             np.sin(self.coeff_angle*phi)
         )
 
+    def _initial_axis_l(self, phi, r0, phi0):
+        return (
+            (self._initial_axis_r(phi)*np.cos(phi)-r0*np.cos(phi0))**2+
+            (self._initial_axis_r(phi)*np.sin(phi)-r0*np.sin(phi0))**2
+        )
+
+    def _initial_axis_min_l_phi(self, r0, phi0):
+        res = scipy.optimize.minimize_scalar(
+            lambda phi: self._initial_axis_l(phi, r0, phi0),
+            bounds=[-self.half_width, self.half_width],
+            method='Brent'
+        )
+        return res.x
+
     def _initial_axis_tan(self, phi):
         return np.arctan(
             -self.coeff_angle*self.flattening*np.tan(self.coeff_angle*phi)
         )
 
     def _initial_axis_ds(self, phi):
-        # a = self.coeff_angle
-        # n = self.flattening
-        
-        # dr = (
-        #     self._initial_axis_r(phi)*np.sin(phi)/
-        #     np.sqrt(
-        #         4.0*np.cos(a*phi)**(2.0*n)-
-        #         4.0*np.cos(phi)*np.cos(a*phi)**n+1.0
-        #     )
-        # )
-        
-        # dp = (
-        #     2.0*np.cos(a*phi)**n*(2.0*np.cos(a*phi)**n-np.cos(phi))/
-        #     (4.0*np.cos(a*phi)**(2.0*n)-4.0*np.cos(phi)*np.cos(a*phi)**n+1.0)
-        # )
-        
-        # ds = np.sqrt(dr**2+(self._initial_axis_r(phi)*dp)**2)
-        ds = np.sqrt(
+        return np.sqrt(
             self._initial_axis_r(phi)**2+
             self._initial_axis_dr(phi)**2
         )
-        return ds
 
     def _initial_axis_s(self, phi):
         s = scipy.integrate.quad(self._initial_axis_ds, -self.half_width, phi)
@@ -248,26 +244,10 @@ class FRi3D:
 
         # skew
         r, phi, z = cs.cart2cyl(x, y, z)
-        phi += self.skew*r/r.max()
+        phi += self.skew*(1.0-r/self.toroidal_height)
         x, y, z = cs.cyl2cart(r, phi, z)
         
         return (x, y, z)
-
-    def field(self, 
-            r=np.linspace(0.0, 1.0, 10), 
-            phi=np.linspace(0.0, np.pi*2.0, 24), 
-            s=0.5):
-
-        z = s*self._initial_axis_s(self.half_width)
-        R = self._initial_axis_r(self._spline_initial_axis_s_phi(z))
-        r1 = R*self.poloidal_height/self.toroidal_height
-        r2 = R*self.pancaking
-        B0 = self._unit_b/r1/r2/(AU_KM*1e3)**2
-        print(B0)
-        print(r1, r2)
-
-
-
 
     def line(self, r=0.0, phi=0.0, s=np.linspace(0.0, 1.0, 50)):
         s = np.array(s, copy=False, ndmin=1)
@@ -332,7 +312,7 @@ class FRi3D:
 
         # skew
         r, phi, z = cs.cart2cyl(x, y, z)
-        phi += self.skew*r/r.max()
+        phi += self.skew*(1.0-r/self.toroidal_height)
         x, y, z = cs.cyl2cart(r, phi, z)
 
         b *= 1e9
@@ -344,35 +324,68 @@ class FRi3D:
         y = np.array(y, copy=False, ndmin=1)
         z = np.array(z, copy=False, ndmin=1)
 
+        r, theta, phi = cs.cart2sp(x, y, z)
+        phi -= self.skew*(1.0-r/self.toroidal_height)
+        x, y, z = cs.sp2cart(r, theta, phi)
+
+        # reverse orientation
+        T = cs.mx_rot(-self.latitude, self.longitude, self.tilt)
+        x_ = T[0,0]*x+T[0,1]*y+T[0,2]*z
+        y_ = T[1,0]*x+T[1,1]*y+T[1,2]*z
+        z_ = T[2,0]*x+T[2,1]*y+T[2,2]*z
+
+        # reverse pancake
+        r, theta, phi = cs.cart2sp(x_, y_, z_)
+        theta = (
+            theta/self.pancaking*
+            np.arctan2(self.poloidal_height, self.toroidal_height)
+        )
+        x, y, z = cs.sp2cart(r, theta, phi)
+
+        p_in = self._initial_axis_r(phi) >= r*np.cos(theta)
+        p_out = np.logical_not(p_in)
+        # get r_ax and phi_ax of the closest point on axis
+        v_initial_axis_min_l_phi = np.vectorize(self._initial_axis_min_l_phi)
+        phi_ax = v_initial_axis_min_l_phi(r*np.cos(theta), phi)
+        r_ax = self._initial_axis_r(phi_ax)
+        # get s
+        v_initial_axis_s = np.vectorize(self._initial_axis_s)
+        s = v_initial_axis_s(phi_ax)/self._initial_axis_s(self.half_width)
+        # get r and phi params
+        x_ax, y_ax, z_ax = cs.sp2cart(r_ax, np.zeros(r_ax.size), phi_ax)
+        dx = x-x_ax
+        dy = y-y_ax
+        dz = z-z_ax
+        r_abs = np.sqrt(dx**2+dy**2+dz**2)
+        r = r_abs/(r_ax*self.poloidal_height/self.toroidal_height)
+
+        phi = np.piecewise(dz, [dz < 0, dz >= 0], [-1, 1])*np.arccos(np.sqrt(dx**2+dy**2)/r_abs)
+        phi[p_in] = np.pi-phi[p_in]
+        # reverse twist
+        phi -= s*self.twist*np.pi*2.0
+        phi -= np.pi/2.0
+        
+        mask = r <= 1.0
+        r = r[mask]
+        phi = phi[mask]
+        s = s[mask]
+        # print(r,phi*180.0/np.pi,s)
+
         b = []
 
-        for i in range(x.size):
-            def F(p):
-                x_, y_, z_, _ = self.line(p[0], p[1]*np.pi*2.0, p[2])
-                return np.sqrt(
-                    (x[i]-x_[0])**2+
-                    (y[i]-y_[0])**2+
-                    (z[i]-z_[0])**2
-                )
-            out = scipy.optimize.fmin_slsqp(
-                F, 
-                np.array([0.5,0.5,0.5]),
-                bounds=[(0.0,1.0),(0.0,1.0),(0.0,1.0)],
-                acc=1e-6
-            )
-            
+        for i in range(r.size):
             x_, y_, z_, b_ = self.line(
-                out[0],
-                out[1]*np.pi*2.0,
-                [out[2]-0.0001, out[2]+0.0001]
+                r[i],
+                phi[i],
+                [s[i]-0.0001, s[i]+0.0001]
             )
-            r = np.array([
+            dr = np.array([
                 x_[1]-x_[0],
                 y_[1]-y_[0],
                 z_[1]-z_[0]
             ])
-            r /= np.linalg.norm(r)
-            b.append(r*np.mean(b_))
+            dr /= np.linalg.norm(dr)
+            b.append(np.insert(dr*np.mean(b_), 0, np.mean(b_)))
 
         return np.array(b)
 
@@ -380,17 +393,29 @@ def test():
     fr = FRi3D(
         twist=2.0,
         half_width=np.pi/4.0, 
-        pancaking=np.pi/6.0, 
+        pancaking=np.pi/4.0, 
         poloidal_height=0.2,
-        flattening=0.8
+        flattening=0.5,
+        tilt=np.pi/180.0*0.0,
+        skew=np.pi/180.0*0.0,
+        longitude=-np.pi/180.0*0.0
     )
 
-    b = fr.cut(np.linspace(0.7,1.3,30), np.zeros(30), np.zeros(30))
-    plt.plot(b[:,0], 'r')
-    plt.plot(b[:,1], 'g')
-    plt.plot(b[:,2], 'b')
-    plt.show()
-    return
+    n = 100
+
+    r = np.linspace(1.5, 0.4, n)
+    theta = np.ones(n)*np.pi/180.0*0.0
+    phi = np.ones(n)*np.pi/180.0*20.0
+    x, y, z = cs.sp2cart(r, theta, phi)
+
+    b = fr.cut(x, y, z)
+    fig = plt.figure()
+    plt.plot(b[:,0], 'k')
+    plt.plot(b[:,1], 'r')
+    plt.plot(b[:,2], 'g')
+    plt.plot(b[:,3], 'b')
+    # plt.show()
+    # return
 
     # fr.field()
 
