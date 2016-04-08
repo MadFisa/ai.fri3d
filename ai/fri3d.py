@@ -45,6 +45,7 @@ class FRi3D:
         self.twist = twist
         self.flux = flux
         self._init_spline_initial_axis_s_phi()
+    _sigma = 1.05
 
     @property
     def twist(self):
@@ -139,7 +140,7 @@ class FRi3D:
     @flux.setter
     def flux(self, flux):
         self._flux = flux
-        self._unit_b = flux/(2.0*np.pi*2.05**2)
+        self._unit_b = flux/(2.0*np.pi*self._sigma**2)
 
     def _init_spline_initial_axis_s_phi(self):
         phi = np.linspace(-self.half_width, self.half_width, 100)
@@ -275,7 +276,7 @@ class FRi3D:
         x = r*np.cos(phi)
         y = r*np.sin(phi)
         b = self._unit_b/kappa*np.exp(
-            -((r/rx)**2)/2.0/2.05**2
+            -((r/rx)**2)/2.0/self._sigma**2
         )
         # r = (
         #     r*self._initial_axis_r(self._spline_initial_axis_s_phi(z))*
@@ -389,6 +390,18 @@ class FRi3D:
 
         return np.array(b)
 
+    def evocut(self, x, y, z, 
+            toroidal_height=np.linspace(0.8, 1.5, 100)):
+        b = []
+        for i in range(toroidal_height.size):
+            self.toroidal_height = toroidal_height[i]
+            self._init_spline_initial_axis_s_phi()
+            b_ = self.cut(x, y, z)
+            print(b_)
+            if b_.size > 0:
+                b.append(b_.ravel())
+        return np.array(b)
+
 def test():
     fr = FRi3D(
         twist=2.0,
@@ -400,6 +413,16 @@ def test():
         skew=np.pi/180.0*10.0,
         longitude=-np.pi/180.0*0.0
     )
+
+    b = fr.evocut(1.0, 0.0, 0.0)
+    print(b)
+    fig = plt.figure()
+    plt.plot(b[:,0], 'k')
+    plt.plot(b[:,1], 'r')
+    plt.plot(b[:,2], 'g')
+    plt.plot(b[:,3], 'b')
+
+    fr.toroidal_height = 1.0
 
     n = 103
 
