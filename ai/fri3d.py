@@ -393,19 +393,19 @@ def test():
     fr = FRi3D(
         twist=2.0,
         half_width=np.pi/4.0, 
-        pancaking=np.pi/4.0, 
+        pancaking=np.pi/6.0, 
         poloidal_height=0.2,
-        flattening=0.5,
+        flattening=0.6,
         tilt=np.pi/180.0*0.0,
-        skew=np.pi/180.0*0.0,
+        skew=np.pi/180.0*10.0,
         longitude=-np.pi/180.0*0.0
     )
 
-    n = 100
+    n = 103
 
     r = np.linspace(1.5, 0.4, n)
     theta = np.ones(n)*np.pi/180.0*0.0
-    phi = np.ones(n)*np.pi/180.0*20.0
+    phi = np.ones(n)*np.pi/180.0*0.0
     x, y, z = cs.sp2cart(r, theta, phi)
 
     b = fr.cut(x, y, z)
@@ -429,7 +429,7 @@ def test():
     _, _, _, b = fr.line(1.0, 0.0, s=0.5)
     print(b)
     bmin = b
-    _, _, _, b = fr.line(0.0, 0.0, s=0.1)
+    _, _, _, b = fr.line(0.0, 0.0, s=0.9)
     print(b)
     bmax = b
     _, _, _, b = fr.line(1.0, 0.0, s=0.9)
