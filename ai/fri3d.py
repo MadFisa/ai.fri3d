@@ -32,7 +32,7 @@ class FRi3D:
             pancaking = np.pi/6.0, 
             skew = 0.0, 
             twist = 1.0, 
-            flux = 1e15):
+            flux = 5e14):
         self.latitude = latitude
         self.longitude = longitude
         self.toroidal_height = toroidal_height
@@ -391,16 +391,81 @@ class FRi3D:
         return np.array(b)
 
     def evocut(self, x, y, z, 
-            toroidal_height=np.linspace(0.8, 1.5, 100)):
+            toroidal_height=np.linspace(0.8, 2.0, 100),
+            poloidal_height=np.linspace(0.2, 0.4, 100)):
         b = []
         for i in range(toroidal_height.size):
             self.toroidal_height = toroidal_height[i]
+            self.poloidal_height = poloidal_height[i]
             self._init_spline_initial_axis_s_phi()
             b_ = self.cut(x, y, z)
             print(b_)
             if b_.size > 0:
                 b.append(b_.ravel())
         return np.array(b)
+
+def demo():
+    fr = FRi3D(
+        twist=2.0,
+        half_width=np.pi/4.0, 
+        pancaking=np.pi/6.0, 
+        poloidal_height=0.1,
+        flattening=0.6,
+        tilt=np.pi/180.0*0.0,
+        skew=np.pi/180.0*10.0,
+        longitude=-np.pi/180.0*0.0
+    )
+
+    fig = plt.figure(figsize=(8, 8), dpi=72)
+    ax = fig.add_subplot(111, projection='3d', adjustable='box', aspect=1.0)
+    x, y, z = fr.shell()
+    ax.plot_wireframe(x, y, z, alpha=0.1)
+    
+    _, _, _, b = fr.line(1.0, 0.0, s=0.5)
+    bmin = b
+    _, _, _, b = fr.line(0.0, 0.0, s=0.9)
+    bmax = b
+    
+    for i in range(50):
+        r = np.random.uniform(0.0, 1.0)
+        phi = np.random.uniform(0.0, np.pi*2.0)
+        x, y, z, b = fr.line(r, phi, s=np.linspace(0.1, 0.9, 200))
+        points = np.array([x, y, z]).T.reshape(-1, 1, 3)
+        segments = np.concatenate([points[:-1], points[1:]], axis=1)
+        # print((b-bmin)/(bmax-bmin))
+        c = (b-bmin)/(bmax-bmin)
+        # print(b, c)
+        lc = Line3DCollection(
+            segments, 
+            colors=plt.cm.magma(c)
+        )
+        ax.add_collection3d(lc)
+
+    ax.set_xlim(0.0, 1.2)
+    ax.set_ylim(-0.6, 0.6)
+    ax.set_zlim(-0.6, 0.6)
+
+    ax.set_xlabel('X [AU]')
+    ax.set_ylabel('Y [AU]')
+    ax.set_zlabel('Z [AU]]')
+
+    ax.view_init(elev=0.0, azim=-90.0)
+    # ax.view_init(elev=90.0, azim=-90.0)
+    # ax.view_init(elev=0.0, azim=0.0)
+    # ax.view_init(elev=45.0, azim=-45.0)
+
+    sm = plt.cm.ScalarMappable(
+        cmap=plt.cm.get_cmap('magma'), 
+        norm=plt.Normalize(vmin=bmin, vmax=bmax)
+    )
+    # fake up the array of the scalar mappable. Urgh...
+    sm._A = []
+    cb = plt.colorbar(sm)
+    cb.set_label('B [nT]')
+    
+    plt.show()
+
+
 
 def test():
     fr = FRi3D(
@@ -410,33 +475,45 @@ def test():
         poloidal_height=0.2,
         flattening=0.6,
         tilt=np.pi/180.0*0.0,
-        skew=np.pi/180.0*10.0,
-        longitude=-np.pi/180.0*0.0
+        skew=np.pi/180.0*0.0,
+        longitude=-np.pi/180.0*0.0,
+        latitude=np.pi/180.0*0.0
     )
 
-    b = fr.evocut(1.0, 0.0, 0.0)
-    print(b)
+    b = fr.evocut(1.0, 0.0, 0.0, toroidal_height=np.linspace(0.8, 1.3, 100), 
+        poloidal_height=np.linspace(0.2, 0.3, 100)
+        # poloidal_height=np.ones(10)*0.3
+    )
+    
     fig = plt.figure()
-    plt.plot(b[:,0], 'k')
-    plt.plot(b[:,1], 'r')
-    plt.plot(b[:,2], 'g')
-    plt.plot(b[:,3], 'b')
+    plt.plot(b[:,0], 'k', linewidth=2, label='B')
+    plt.plot(b[:,1], 'r', linewidth=2, label='Bx')
+    plt.plot(b[:,2], 'g', linewidth=2, label='By')
+    plt.plot(b[:,3], 'b', linewidth=2, label='Bz')
+    plt.xlabel('time [arb. units]')
+    plt.ylabel('B [nT]')
+    plt.legend()
 
     fr.toroidal_height = 1.0
+    fr.poloidal_height = 0.2
+    fr._init_spline_initial_axis_s_phi()
 
     n = 103
 
-    r = np.linspace(1.5, 0.4, n)
+    r = np.linspace(1.0, 0.4, n)
     theta = np.ones(n)*np.pi/180.0*0.0
-    phi = np.ones(n)*np.pi/180.0*0.0
+    phi = np.ones(n)*np.pi/180.0*40.0
     x, y, z = cs.sp2cart(r, theta, phi)
 
     b = fr.cut(x, y, z)
     fig = plt.figure()
-    plt.plot(b[:,0], 'k')
-    plt.plot(b[:,1], 'r')
-    plt.plot(b[:,2], 'g')
-    plt.plot(b[:,3], 'b')
+    plt.plot(b[:,0], 'k', linewidth=2, label='B')
+    plt.plot(b[:,1], 'r', linewidth=2, label='Bx')
+    plt.plot(b[:,2], 'g', linewidth=2, label='By')
+    plt.plot(b[:,3], 'b', linewidth=2, label='Bz')
+    plt.xlabel('time [arb. units]')
+    plt.ylabel('B [nT]')
+    plt.legend()
     # plt.show()
     # return
 
