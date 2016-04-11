@@ -404,16 +404,23 @@ class FRi3D:
                 b.append(b_.ravel())
         return np.array(b)
 
+
+
+
+
+
+
 def demo():
     fr = FRi3D(
         twist=2.0,
         half_width=np.pi/4.0, 
         pancaking=np.pi/6.0, 
-        poloidal_height=0.1,
+        poloidal_height=0.2,
         flattening=0.6,
         tilt=np.pi/180.0*0.0,
         skew=np.pi/180.0*10.0,
-        longitude=-np.pi/180.0*0.0
+        longitude=-np.pi/180.0*0.0,
+        toroidal_height=1.0
     )
 
     fig = plt.figure(figsize=(8, 8), dpi=72)
