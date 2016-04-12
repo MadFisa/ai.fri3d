@@ -370,7 +370,10 @@ class FRi3D:
         r_abs = np.sqrt(dx**2+dy**2+dz**2)
         r = r_abs/(r_ax*self.poloidal_height/self.toroidal_height)
 
-        phi = np.piecewise(dz, [dz < 0, dz >= 0], [-1, 1])*np.arccos(np.sqrt(dx**2+dy**2)/r_abs)
+        phi = (
+            np.piecewise(dz, [dz < 0, dz >= 0], [-1, 1])*
+            np.arccos(np.sqrt(dx**2+dy**2)/r_abs)
+        )
         phi[p_in] = np.pi-phi[p_in]
         # reverse twist
         phi -= s*self.twist*np.pi*2.0
