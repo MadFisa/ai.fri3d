@@ -7,19 +7,11 @@ import scipy.interpolate
 import scipy.integrate
 import scipy.optimize
 
-from matplotlib import pyplot as plt
-from mpl_toolkits.mplot3d import proj3d
-from mpl_toolkits.mplot3d.art3d import Line3DCollection
-import matplotlib.path as mpath
-import matplotlib.colors as colors
-from matplotlib.colorbar import ColorbarBase
-
-AU_KM = 1.496e8
+AU_KM = 149597870.7
 RS_KM = 6.957e5
 RS_AU = RS_KM/AU_KM
 
 class FRi3D:
-    
     def __init__(
             self,
             latitude=0.0, 
@@ -33,7 +25,9 @@ class FRi3D:
             skew=0.0, 
             twist=1.0, 
             flux=5e14,
-            sigma=1.05):
+            sigma=2.05,
+            polarity=1.0,
+            chirality=1.0):
         self.latitude = latitude
         self.longitude = longitude
         self.toroidal_height = toroidal_height
@@ -44,9 +38,10 @@ class FRi3D:
         self.pancaking = pancaking
         self.skew = skew
         self.twist = twist
-        self.sigma = sigma
         self.flux = flux
-        self._init_spline_initial_axis_s_phi()
+        self.sigma = sigma
+        self.polarity = polarity
+        self.chirality = chirality
 
     @property
     def twist(self):
@@ -63,7 +58,8 @@ class FRi3D:
 
     @toroidal_height.setter
     def toroidal_height(self, toroidal_height):
-        self._toroidal_height = toroidal_height
+        if toroidal_height > 0.0:
+            self._toroidal_height = toroidal_height
 
     @property
     def poloidal_height(self):
@@ -71,7 +67,8 @@ class FRi3D:
 
     @poloidal_height.setter
     def poloidal_height(self, poloidal_height):
-        self._poloidal_height = poloidal_height
+        if poloidal_height > 0.0:
+            self._poloidal_height = poloidal_height
 
     @property
     def half_width(self):
@@ -79,8 +76,8 @@ class FRi3D:
 
     @half_width.setter
     def half_width(self, half_width):
-        self._half_width = half_width
-        self._coeff_angle = np.pi/2.0/self.half_width
+        if half_width > 0.0 and half_width < np.pi*2.0:
+            self._half_width = half_width
 
     @property
     def coeff_angle(self):
@@ -92,7 +89,8 @@ class FRi3D:
 
     @flattening.setter
     def flattening(self, flattening):
-        self._flattening = flattening
+        if flattening >= 0.0:
+            self._flattening = flattening
 
     @property
     def pancaking(self):
@@ -100,7 +98,8 @@ class FRi3D:
 
     @pancaking.setter
     def pancaking(self, pancaking):
-        self._pancaking = pancaking
+        if pancaking > 0.0 and pancaking < np.pi:
+            self._pancaking = pancaking
 
     @property
     def skew(self):
@@ -108,7 +107,8 @@ class FRi3D:
 
     @skew.setter
     def skew(self, skew):
-        self._skew = skew
+        if skew >= 0.0:
+            self._skew = skew
 
     @property
     def latitude(self):
@@ -140,8 +140,8 @@ class FRi3D:
 
     @flux.setter
     def flux(self, flux):
-        self._flux = flux
-        self._unit_b = flux/(2.0*np.pi*self.sigma**2)
+        if flux > 0.0:
+            self._flux = flux
 
     @property
     def sigma(self):
@@ -149,9 +149,33 @@ class FRi3D:
 
     @sigma.setter
     def sigma(self, sigma):
-        self._sigma = sigma
+        if sigma > 0.0:
+            self._sigma = sigma
 
+    @property
+    def polarity(self):
+        return self._polarity
 
+    @polarity.setter
+    def polarity(self, polarity):
+        if polarity == 1.0 or polarity == -1.0:
+            self._polarity = polarity
+
+    @property
+    def chirality(self):
+        return self._chirality
+
+    @chirality.setter
+    def chirality(self, chirality):
+        if chirality == 1.0 or chirality == -1.0:
+            self._chirality = chirality
+
+    def init(self):
+        self._coeff_angle = np.pi/2.0/self.half_width
+        self._unit_b = self.flux/(2.0*np.pi*self.sigma**2)
+        self._init_spline_initial_axis_s_phi()
+
+    # initilize spline phi(s)
     def _init_spline_initial_axis_s_phi(self):
         phi = np.linspace(-self.half_width, self.half_width, 100)
         s = np.array([self._initial_axis_s(p) for p in phi])
@@ -161,12 +185,14 @@ class FRi3D:
             fill_value=(-self.half_width, self.half_width)
         )
 
+    # r(phi) for undeformed axis
     def _initial_axis_r(self, phi):
         return np.nan_to_num(
             self.toroidal_height*
             np.cos(self.coeff_angle*phi)**self.flattening
         )
 
+    #dr/dphi for undeformed axis
     def _initial_axis_dr(self, phi):
         return (
             -self.coeff_angle*self.toroidal_height*self.flattening*
@@ -174,12 +200,14 @@ class FRi3D:
             np.sin(self.coeff_angle*phi)
         )
 
+    # distance to undeformed axis from (r0,phi0)
     def _initial_axis_l(self, phi, r0, phi0):
         return (
             (self._initial_axis_r(phi)*np.cos(phi)-r0*np.cos(phi0))**2+
             (self._initial_axis_r(phi)*np.sin(phi)-r0*np.sin(phi0))**2
         )
 
+    # find phi which gives the minimum distance to undeformed axis
     def _initial_axis_min_l_phi(self, r0, phi0):
         res = scipy.optimize.minimize_scalar(
             lambda phi: self._initial_axis_l(phi, r0, phi0),
@@ -188,27 +216,33 @@ class FRi3D:
         )
         return res.x
 
+    # tangent to undeformed axis at a given phi
     def _initial_axis_tan(self, phi):
         return np.arctan(
             -self.coeff_angle*self.flattening*np.tan(self.coeff_angle*phi)
         )
 
+    # ds/dphi of of underformed axis at a given phi
     def _initial_axis_ds(self, phi):
         return np.sqrt(
             self._initial_axis_r(phi)**2+
             self._initial_axis_dr(phi)**2
         )
 
+    # length of axis at a given phi
     def _initial_axis_s(self, phi):
         s = scipy.integrate.quad(self._initial_axis_ds, -self.half_width, phi)
         return s[0]
 
+    # model shell
     def shell(self, 
-            s=np.linspace(0.0, 1.0, 50), 
-            phi=np.linspace(0.0, np.pi*2.0, 24)):
+        s=np.linspace(0.0, 1.0, 50), 
+        phi=np.linspace(0.0, np.pi*2.0, 24)):
+        
         s = np.array(s, copy=False, ndmin=1)
         phi = np.array(phi, copy=False, ndmin=1)
 
+        # start the FR from the solar surface
         s_max = self._initial_axis_s(self.half_width)
         s[s < RS_AU/s_max] = RS_AU/s_max
         s[s > 1.0-RS_AU/s_max] = 1.0-RS_AU/s_max
@@ -217,15 +251,18 @@ class FRi3D:
         s = np.transpose(np.tile(s, (phi.size, 1)))
         phi = np.tile(phi, (s.shape[0], 1))
 
+        # extension to full axis length
         r = np.ones(s.shape)
         z = s*self._initial_axis_s(self.half_width)
         
+        # tapering
         r = (
             r*self._initial_axis_r(self._spline_initial_axis_s_phi(z))*
             self.poloidal_height/self.toroidal_height
         )
         x_, y_, z_ = cs.cyl2cart(r, phi, z)
 
+        # rotation to x axis
         T = cs.mx_rot_y(-np.pi/2.0)
         x = T[0,0]*x_+T[0,1]*y_+T[0,2]*z_
         y = T[1,0]*x_+T[1,1]*y_+T[1,2]*z_
@@ -268,32 +305,30 @@ class FRi3D:
         s[s > 1.0-RS_AU/s_max] = 1.0-RS_AU/s_max
         s = np.unique(s)
         
-        r = np.ones(s.size)*r
         phi = np.ones(s.size)*phi
 
         # twist
-        phi += s*self.twist*np.pi*2.0
+        phi += s*self.twist*np.pi*2.0*self.chirality
         # elongation
         z = s*self._initial_axis_s(self.half_width)
-        # magnetic field
+
+        # distance to axis
         R = self._initial_axis_r(self._spline_initial_axis_s_phi(z))
+        # cross-section radial size in the FR plane
         rx = R*self.poloidal_height/self.toroidal_height
+        # cross-section radial size perp to FR plane
         ry = R*self.pancaking
+        # coefficient of flux decay
         kappa = rx*ry*(AU_KM*1e3)**2
         # taper
         r *= rx
         # magnetic field
-        x = r*np.cos(phi)
-        y = r*np.sin(phi)
         b = self._unit_b/kappa*np.exp(
             -((r/rx)**2)/2.0/self.sigma**2
         )
-        # r = (
-        #     r*self._initial_axis_r(self._spline_initial_axis_s_phi(z))*
-        #     self.poloidal_height/self.toroidal_height
-        # )
         x_, y_, z_ = cs.cyl2cart(r, phi, z)
 
+        # rotation to x
         T = cs.mx_rot_y(-np.pi/2.0)
         x = T[0,0]*x_+T[0,1]*y_+T[0,2]*z_
         y = T[1,0]*x_+T[1,1]*y_+T[1,2]*z_
@@ -326,15 +361,17 @@ class FRi3D:
         phi += self.skew*(1.0-r/self.toroidal_height)
         x, y, z = cs.cyl2cart(r, phi, z)
 
+        # convert to nT
         b *= 1e9
-        
+
         return (x, y, z, b)
 
-    def cut(self, x, y, z):
+    def cut1d(self, x, y, z):
         x = np.array(x, copy=False, ndmin=1)
         y = np.array(y, copy=False, ndmin=1)
         z = np.array(z, copy=False, ndmin=1)
 
+        # reverse skew
         r, theta, phi = cs.cart2sp(x, y, z)
         phi -= self.skew*(1.0-r/self.toroidal_height)
         x, y, z = cs.sp2cart(r, theta, phi)
@@ -345,7 +382,7 @@ class FRi3D:
         y_ = T[1,0]*x+T[1,1]*y+T[1,2]*z
         z_ = T[2,0]*x+T[2,1]*y+T[2,2]*z
 
-        # reverse pancake
+        # reverse pancaking
         r, theta, phi = cs.cart2sp(x_, y_, z_)
         theta = (
             theta/self.pancaking*
@@ -353,7 +390,9 @@ class FRi3D:
         )
         x, y, z = cs.sp2cart(r, theta, phi)
 
+        # inside axis loop mask
         p_in = self._initial_axis_r(phi) >= r*np.cos(theta)
+        # outside axis loop mask
         p_out = np.logical_not(p_in)
         # get r_ax and phi_ax of the closest point on axis
         v_initial_axis_min_l_phi = np.vectorize(self._initial_axis_min_l_phi)
@@ -362,35 +401,35 @@ class FRi3D:
         # get s
         v_initial_axis_s = np.vectorize(self._initial_axis_s)
         s = v_initial_axis_s(phi_ax)/self._initial_axis_s(self.half_width)
-        # get r and phi params
+        # get r[0,1] and phi[0,2pi] params
         x_ax, y_ax, z_ax = cs.sp2cart(r_ax, np.zeros(r_ax.size), phi_ax)
         dx = x-x_ax
         dy = y-y_ax
         dz = z-z_ax
         r_abs = np.sqrt(dx**2+dy**2+dz**2)
         r = r_abs/(r_ax*self.poloidal_height/self.toroidal_height)
-
         phi = (
             np.piecewise(dz, [dz < 0, dz >= 0], [-1, 1])*
             np.arccos(np.sqrt(dx**2+dy**2)/r_abs)
         )
         phi[p_in] = np.pi-phi[p_in]
         # reverse twist
-        phi -= s*self.twist*np.pi*2.0
+        phi -= s*self.twist*np.pi*2.0*self.chirality
+        # reverse rotation to x
         phi -= np.pi/2.0
-        
+        # only inside FR
         mask = r <= 1.0
         r = r[mask]
         phi = phi[mask]
         s = s[mask]
         
+        # get magnetic field along sc trajectory
         b = []
-
         for i in range(r.size):
             x_, y_, z_, b_ = self.line(
                 r[i],
                 phi[i],
-                [s[i]-0.0001, s[i]+0.0001]
+                [s[i]-1e-5, s[i]+1e-5]
             )
             dr = np.array([
                 x_[1]-x_[0],
@@ -398,479 +437,32 @@ class FRi3D:
                 z_[1]-z_[0]
             ])
             dr /= np.linalg.norm(dr)
-            b.append(np.insert(dr*np.mean(b_), 0, np.mean(b_)))
+            b.append(np.insert(dr*np.mean(b_)*self.polarity, 0, np.mean(b_)))
 
         return np.array(b)
 
-    def evocut(self, x, y, z, 
-            toroidal_height=np.linspace(0.8, 2.0, 100),
-            poloidal_height=np.linspace(0.2, 0.4, 100)):
+    def evocut1d(self, x, y, z, 
+        toroidal_height=[0.8, 2.0],
+        poloidal_height=[0.2, 0.4],
+        n=100):
+
+        toroidal_height = np.linspace(
+            toroidal_height[0],
+            toroidal_height[1],
+            n
+        )
+        poloidal_height = np.linspace(
+            poloidal_height[0],
+            poloidal_height[1],
+            n
+        )
+        
         b = []
         for i in range(toroidal_height.size):
             self.toroidal_height = toroidal_height[i]
             self.poloidal_height = poloidal_height[i]
-            self._init_spline_initial_axis_s_phi()
-            b_ = self.cut(x, y, z)
-            print(b_)
+            self.init()
+            b_ = self.cut1d(x, y, z)
             if b_.size > 0:
                 b.append(b_.ravel())
         return np.array(b)
-
-def test_shell(
-    latitude=0.0, 
-    longitude=0.0, 
-    toroidal_height=1.0, 
-    poloidal_height=0.2, 
-    half_width=np.pi/180.0*45.0, 
-    tilt=np.pi/180.0*0.0, 
-    flattening=0.5, 
-    pancaking=np.pi/180.0*30.0, 
-    skew=np.pi/180.0*0.0):
-    
-    fr = FRi3D(
-        latitude=latitude, 
-        longitude=longitude, 
-        toroidal_height=toroidal_height, 
-        poloidal_height=poloidal_height, 
-        half_width=half_width, 
-        tilt=tilt, 
-        flattening=flattening, 
-        pancaking=pancaking, 
-        skew=skew
-    )
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d', adjustable='box', aspect=1.0)
-    x, y, z = fr.shell()
-    ax.plot_wireframe(x, y, z, alpha=0.1)
-
-    ax.set_xlabel('X [AU]')
-    ax.set_ylabel('Y [AU]')
-    ax.set_zlabel('Z [AU]]')
-
-    plt.show()
-
-def test_mf(
-    latitude=0.0, 
-    longitude=0.0, 
-    toroidal_height=1.0, 
-    poloidal_height=0.2, 
-    half_width=np.pi/180.0*45.0, 
-    tilt=np.pi/180.0*0.0, 
-    flattening=0.5, 
-    pancaking=np.pi/180.0*30.0, 
-    skew=np.pi/180.0*0.0, 
-    twist=2.0, 
-    flux=5e14,
-    sigma=1.05):
-    
-    fr = FRi3D(
-        latitude=latitude, 
-        longitude=longitude, 
-        toroidal_height=toroidal_height, 
-        poloidal_height=poloidal_height, 
-        half_width=half_width, 
-        tilt=tilt, 
-        flattening=flattening, 
-        pancaking=pancaking, 
-        skew=skew, 
-        twist=twist, 
-        flux=flux,
-        sigma=1.05
-    )
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d', adjustable='box', aspect=1.0)
-    x, y, z = fr.shell()
-    ax.plot_wireframe(x, y, z, alpha=0.1)
-
-    _, _, _, b = fr.line(1.0, 0.0, s=0.5)
-    bmin = b
-    _, _, _, b = fr.line(0.0, 0.0, s=0.9)
-    bmax = b
-
-    for i in range(50):
-        r = np.random.uniform(0.0, 1.0)
-        phi = np.random.uniform(0.0, np.pi*2.0)
-        x, y, z, b = fr.line(r, phi, s=np.linspace(0.1, 0.9, 200))
-        points = np.array([x, y, z]).T.reshape(-1, 1, 3)
-        segments = np.concatenate([points[:-1], points[1:]], axis=1)
-        c = (b-bmin)/(bmax-bmin)
-        lc = Line3DCollection(
-            segments, 
-            colors=plt.cm.magma(c)
-        )
-        ax.add_collection3d(lc)
-
-    ax.set_xlabel('X [AU]')
-    ax.set_ylabel('Y [AU]')
-    ax.set_zlabel('Z [AU]]')
-
-    sm = plt.cm.ScalarMappable(
-        cmap=plt.cm.get_cmap('magma'), 
-        norm=plt.Normalize(vmin=bmin, vmax=bmax)
-    )
-    # fake up the array of the scalar mappable. Urgh...
-    sm._A = []
-    cb = plt.colorbar(sm)
-    cb.set_label('B [nT]')
-
-    plt.show()
-
-def test_mf_cs(
-    latitude=0.0, 
-    longitude=0.0, 
-    toroidal_height=1.0, 
-    poloidal_height=0.2, 
-    half_width=np.pi/180.0*45.0, 
-    tilt=np.pi/180.0*0.0, 
-    flattening=0.5, 
-    pancaking=np.pi/180.0*30.0, 
-    skew=np.pi/180.0*0.0, 
-    twist=2.0, 
-    flux=5e14,
-    sigma=1.05):
-    
-    fr = FRi3D(
-        latitude=latitude, 
-        longitude=longitude, 
-        toroidal_height=toroidal_height, 
-        poloidal_height=poloidal_height, 
-        half_width=half_width, 
-        tilt=tilt, 
-        flattening=flattening, 
-        pancaking=pancaking, 
-        skew=skew, 
-        twist=twist, 
-        flux=flux,
-        sigma=sigma
-    )
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d', adjustable='box', aspect=1.0)
-    x, y, z = fr.shell()
-    ax.plot_wireframe(x, y, z, alpha=0.1)
-
-    _, _, _, b = fr.line(1.0, 0.0, s=0.5)
-    bmin = b
-    _, _, _, b = fr.line(0.0, 0.0, s=0.49)
-    bmax = b
-
-    for i in range(500):
-        r = np.random.uniform(0.0, 1.0)
-        phi = np.random.uniform(0.0, np.pi*2.0)
-        x, y, z, b = fr.line(r, phi, s=np.linspace(0.49, 0.51, 10))
-        points = np.array([x, y, z]).T.reshape(-1, 1, 3)
-        segments = np.concatenate([points[:-1], points[1:]], axis=1)
-        c = (b-bmin)/(bmax-bmin)
-        lc = Line3DCollection(
-            segments, 
-            colors=plt.cm.magma(c)
-        )
-        ax.add_collection3d(lc)
-
-    ax.set_xlabel('X [AU]')
-    ax.set_ylabel('Y [AU]')
-    ax.set_zlabel('Z [AU]]')
-
-    ax.view_init(elev=0.0, azim=-90.0)
-
-    sm = plt.cm.ScalarMappable(
-        cmap=plt.cm.get_cmap('magma'), 
-        norm=plt.Normalize(vmin=bmin, vmax=bmax)
-    )
-    # fake up the array of the scalar mappable. Urgh...
-    sm._A = []
-    cb = plt.colorbar(sm)
-    cb.set_label('B [nT]')
-
-    plt.show()
-
-def test_insitu_static(
-    latitude=0.0, 
-    longitude=0.0, 
-    toroidal_height=1.0, 
-    poloidal_height=0.2, 
-    half_width=np.pi/180.0*45.0, 
-    tilt=np.pi/180.0*0.0, 
-    flattening=0.5, 
-    pancaking=np.pi/180.0*30.0, 
-    skew=np.pi/180.0*0.0, 
-    twist=2.0, 
-    flux=5e14,
-    sigma=1.05,
-    x=np.linspace(1.2, 0.8, 100),
-    y=np.zeros(100),
-    z=np.zeros(100),
-    r=None,
-    theta=None,
-    phi=None):
-
-    fr = FRi3D(
-        latitude=latitude, 
-        longitude=longitude, 
-        toroidal_height=toroidal_height, 
-        poloidal_height=poloidal_height, 
-        half_width=half_width, 
-        tilt=tilt, 
-        flattening=flattening, 
-        pancaking=pancaking, 
-        skew=skew, 
-        twist=twist, 
-        flux=flux,
-        sigma=sigma
-    )
-
-    if r is not None and theta is not None and phi is not None:
-        x, y, z = cs.sp2cart(r, theta, phi)
-
-    b = fr.cut(x, y, z)
-    
-    fig = plt.figure()
-    plt.plot(b[:,0], 'k', linewidth=2, label='B')
-    plt.plot(b[:,1], 'r', linewidth=2, label='Bx')
-    plt.plot(b[:,2], 'g', linewidth=2, label='By')
-    plt.plot(b[:,3], 'b', linewidth=2, label='Bz')
-    plt.xlabel('time [arb. units]')
-    plt.ylabel('B [nT]')
-    plt.legend()
-
-    plt.show()
-
-def test_insitu_evo(
-    latitude=0.0, 
-    longitude=0.0, 
-    toroidal_height=1.0, 
-    poloidal_height=0.2, 
-    half_width=np.pi/180.0*45.0, 
-    tilt=np.pi/180.0*0.0, 
-    flattening=0.5, 
-    pancaking=np.pi/180.0*30.0, 
-    skew=np.pi/180.0*0.0, 
-    twist=2.0, 
-    flux=5e14,
-    sigma=1.05,
-    x=1.0,
-    y=0.0,
-    z=0.0,
-    r=None,
-    theta=None,
-    phi=None,
-    toroidal_height_evo=np.linspace(0.8, 1.3, 100),
-    poloidal_height_evo=np.linspace(0.2, 0.3, 100)):
-
-    fr = FRi3D(
-        latitude=latitude, 
-        longitude=longitude, 
-        toroidal_height=toroidal_height, 
-        poloidal_height=poloidal_height, 
-        half_width=half_width, 
-        tilt=tilt, 
-        flattening=flattening, 
-        pancaking=pancaking, 
-        skew=skew, 
-        twist=twist, 
-        flux=flux,
-        sigma=sigma
-    )
-
-    if r is not None and theta is not None and phi is not None:
-        r = np.array(r, copy=False, ndmin=1)
-        theta = np.array(theta, copy=False, ndmin=1)
-        phi = np.array(phi, copy=False, ndmin=1)
-        x, y, z = cs.sp2cart(r, theta, phi)
-        x = x[0]
-        y = y[0]
-        z = z[0]
-
-    b = fr.evocut(x, y, z, 
-        toroidal_height=toroidal_height_evo, 
-        poloidal_height=poloidal_height_evo
-    )
-    
-    fig = plt.figure()
-    plt.plot(b[:,0], 'k', linewidth=2, label='B')
-    plt.plot(b[:,1], 'r', linewidth=2, label='Bx')
-    plt.plot(b[:,2], 'g', linewidth=2, label='By')
-    plt.plot(b[:,3], 'b', linewidth=2, label='Bz')
-    plt.xlabel('time [arb. units]')
-    plt.ylabel('B [nT]')
-    plt.legend()
-
-    plt.show()
-
-
-
-
-
-
-
-
-def demo():
-    fr = FRi3D(
-        twist=2.0,
-        half_width=np.pi/4.0, 
-        pancaking=np.pi/6.0, 
-        poloidal_height=0.2,
-        flattening=0.6,
-        tilt=np.pi/180.0*0.0,
-        skew=np.pi/180.0*10.0,
-        longitude=-np.pi/180.0*0.0,
-        toroidal_height=1.0
-    )
-
-    fig = plt.figure(figsize=(8, 8), dpi=72)
-    ax = fig.add_subplot(111, projection='3d', adjustable='box', aspect=1.0)
-    x, y, z = fr.shell()
-    ax.plot_wireframe(x, y, z, alpha=0.1)
-    
-    _, _, _, b = fr.line(1.0, 0.0, s=0.5)
-    bmin = b
-    _, _, _, b = fr.line(0.0, 0.0, s=0.9)
-    bmax = b
-    
-    for i in range(50):
-        r = np.random.uniform(0.0, 1.0)
-        phi = np.random.uniform(0.0, np.pi*2.0)
-        x, y, z, b = fr.line(r, phi, s=np.linspace(0.1, 0.9, 200))
-        points = np.array([x, y, z]).T.reshape(-1, 1, 3)
-        segments = np.concatenate([points[:-1], points[1:]], axis=1)
-        # print((b-bmin)/(bmax-bmin))
-        c = (b-bmin)/(bmax-bmin)
-        # print(b, c)
-        lc = Line3DCollection(
-            segments, 
-            colors=plt.cm.magma(c)
-        )
-        ax.add_collection3d(lc)
-
-    ax.set_xlim(0.0, 1.2)
-    ax.set_ylim(-0.6, 0.6)
-    ax.set_zlim(-0.6, 0.6)
-
-    ax.set_xlabel('X [AU]')
-    ax.set_ylabel('Y [AU]')
-    ax.set_zlabel('Z [AU]]')
-
-    ax.view_init(elev=0.0, azim=-90.0)
-    # ax.view_init(elev=90.0, azim=-90.0)
-    # ax.view_init(elev=0.0, azim=0.0)
-    # ax.view_init(elev=45.0, azim=-45.0)
-
-    sm = plt.cm.ScalarMappable(
-        cmap=plt.cm.get_cmap('magma'), 
-        norm=plt.Normalize(vmin=bmin, vmax=bmax)
-    )
-    # fake up the array of the scalar mappable. Urgh...
-    sm._A = []
-    cb = plt.colorbar(sm)
-    cb.set_label('B [nT]')
-    
-    plt.show()
-
-def test_():
-    fr = FRi3D(
-        twist=2.0,
-        half_width=np.pi/4.0, 
-        pancaking=np.pi/6.0, 
-        poloidal_height=0.2,
-        flattening=0.6,
-        tilt=np.pi/180.0*0.0,
-        skew=np.pi/180.0*0.0,
-        longitude=-np.pi/180.0*0.0,
-        latitude=np.pi/180.0*0.0
-    )
-
-    b = fr.evocut(1.0, -0.8, 0.0, 
-        toroidal_height=np.linspace(1.0, 8.0, 100), 
-        poloidal_height=np.linspace(0.2, 1.6, 100)
-        # poloidal_height=np.ones(10)*0.3
-    )
-    
-    fig = plt.figure()
-    plt.plot(b[:,0], 'k', linewidth=2, label='B')
-    plt.plot(b[:,1], 'r', linewidth=2, label='Bx')
-    plt.plot(b[:,2], 'g', linewidth=2, label='By')
-    plt.plot(b[:,3], 'b', linewidth=2, label='Bz')
-    plt.xlabel('time [arb. units]')
-    plt.ylabel('B [nT]')
-    plt.legend()
-
-    fr.toroidal_height = 1.0
-    fr.poloidal_height = 0.2
-    fr._init_spline_initial_axis_s_phi()
-
-    n = 103
-
-    r = np.linspace(1.0, 0.4, n)
-    theta = np.ones(n)*np.pi/180.0*0.0
-    phi = np.ones(n)*np.pi/180.0*40.0
-    x, y, z = cs.sp2cart(r, theta, phi)
-
-    b = fr.cut(x, y, z)
-    fig = plt.figure()
-    plt.plot(b[:,0], 'k', linewidth=2, label='B')
-    plt.plot(b[:,1], 'r', linewidth=2, label='Bx')
-    plt.plot(b[:,2], 'g', linewidth=2, label='By')
-    plt.plot(b[:,3], 'b', linewidth=2, label='Bz')
-    plt.xlabel('time [arb. units]')
-    plt.ylabel('B [nT]')
-    plt.legend()
-    # plt.show()
-    # return
-
-    # fr.field()
-
-    fig = plt.figure(figsize=(8, 8), dpi=72)
-    ax = fig.add_subplot(111, projection='3d', adjustable='box', aspect=1.0)
-    x, y, z = fr.shell()
-    ax.plot_wireframe(x, y, z, alpha=0.1)
-    
-    _, _, _, b = fr.line(0.0, 0.0, s=0.5)
-    print(b)
-    _, _, _, b = fr.line(1.0, 0.0, s=0.5)
-    print(b)
-    bmin = b
-    _, _, _, b = fr.line(0.0, 0.0, s=0.9)
-    print(b)
-    bmax = b
-    _, _, _, b = fr.line(1.0, 0.0, s=0.9)
-    print(b)
-
-    for i in range(50):
-        r = np.random.uniform(0.0, 1.0)
-        phi = np.random.uniform(0.0, np.pi*2.0)
-        x, y, z, b = fr.line(r, phi, s=np.linspace(0.1, 0.9, 200))
-        points = np.array([x, y, z]).T.reshape(-1, 1, 3)
-        segments = np.concatenate([points[:-1], points[1:]], axis=1)
-        # print((b-bmin)/(bmax-bmin))
-        c = (b-bmin)/(bmax-bmin)
-        # print(b, c)
-        lc = Line3DCollection(
-            segments, 
-            colors=plt.cm.magma(c)
-        )
-        ax.add_collection3d(lc)
-
-    ax.set_xlim(0.0, 1.2)
-    ax.set_ylim(-0.6, 0.6)
-    ax.set_zlim(-0.6, 0.6)
-
-    sm = plt.cm.ScalarMappable(
-        cmap=plt.cm.get_cmap('magma'), 
-        norm=plt.Normalize(vmin=bmin, vmax=bmax)
-    )
-    # fake up the array of the scalar mappable. Urgh...
-    sm._A = []
-    plt.colorbar(sm)
-    
-    plt.show()
-
-def orthogonal_proj(zfront, zback):
-    a = (zfront+zback)/(zfront-zback)
-    b = -2*(zfront*zback)/(zfront-zback)
-    return np.array([[1,0,0,0],
-                     [0,1,0,0],
-                     [0,0,a,b],
-                     [0,0,-0.0001,zback]])
-proj3d.persp_transformation = orthogonal_proj
