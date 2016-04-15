@@ -1,4 +1,6 @@
 
+from datetime import datetime
+
 import numpy as np
 
 from matplotlib import pyplot as plt
@@ -7,6 +9,8 @@ from mpl_toolkits.mplot3d.art3d import Line3DCollection
 import matplotlib.path as mpath
 import matplotlib.colors as colors
 from matplotlib.colorbar import ColorbarBase
+
+import ai.cdas as cdas
 
 from importlib import reload
 
@@ -308,6 +312,32 @@ def test_insitu_evo(
     plt.legend()
 
     plt.show()
+
+def test_fit2insitu():
+    cdas.set_cache(True, 'data')
+    data = cdas.get_data(
+        'sp_phys', 
+        'STA_L1_MAG_RTN', 
+        datetime(2010, 12, 15, 11), 
+        datetime(2010, 12, 16, 3), 
+        ['BFIELD']
+    )
+    b = data['BTOTAL']
+    bx = data['BR']
+    by = data['BT']
+    bz = data['BN']
+    b = b[0::600]
+    bx = bx[0::600]
+    by = by[0::600]
+    bz = bz[0::600]
+    # plt.plot(b, 'k')
+    # plt.plot(bx, 'r')
+    # plt.plot(by, 'g')
+    # plt.plot(bz, 'b')
+    # print(b.size, bx.size, by.size, bz.size)
+    # plt.show()
+    fr = FRi3D()
+    fr.fit2insitu_prototype(b, bx, by, bz)
 
 def orthogonal_proj(zfront, zback):
     a = (zfront+zback)/(zfront-zback)
