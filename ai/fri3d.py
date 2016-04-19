@@ -8,6 +8,8 @@ import scipy.integrate
 import scipy.optimize
 from scipy.spatial.distance import euclidean
 
+from sklearn.preprocessing import scale
+
 from fastdtw import fastdtw
 
 AU_KM = 149597870.7
@@ -473,17 +475,17 @@ class FRi3D:
 
     def fit2insitu_prototype(self, 
         b, bx, by, bz,
-        latitude=[-np.pi/180.0*20.0, np.pi/180.0*20.0], 
-        longitude=[-np.pi/180.0*60.0, np.pi/180.0*60.0], 
+        latitude=[-np.pi/180.0*10.0, np.pi/180.0*10.0], 
+        longitude=[-np.pi/180.0*20.0, np.pi/180.0*20.0], 
         toroidal_height=[0.8, 2.0], 
         poloidal_height=[0.2, 0.2], 
-        half_width=[np.pi/180.0*20.0, np.pi/180.0*60.0], 
-        tilt=[-np.pi/180.0*30.0, np.pi/180.0*30.0], 
+        half_width=[np.pi/180.0*20.0, np.pi/180.0*30.0], 
+        tilt=[-np.pi/180.0*10.0, np.pi/180.0*10.0], 
         flattening=0.5, 
         pancaking=np.pi/6.0, 
         skew=0.0, 
         twist=[1.0, 5.0], 
-        flux=[1e13, 1e16],
+        flux=1e13,
         sigma=[1.0, 3.0],
         polarity=-1.0,
         chirality=1.0):
@@ -493,8 +495,14 @@ class FRi3D:
         self.flattening = flattening
         self.pancaking = pancaking
         self.skew = skew
+        self.flux = flux
         self.polarity = polarity
         self.chirality = chirality
+
+        b = scale(b)
+        bx = scale(bx)
+        by = scale(by)
+        bz = scale(bz)
 
         def F(x):
             self.latitude = x[0]
@@ -502,8 +510,7 @@ class FRi3D:
             self.half_width = x[2]
             self.tilt = x[3]
             self.twist = x[4]
-            self.flux = x[5]
-            self.sigma = x[6]
+            self.sigma = x[5]
             
             print(x)
 
@@ -513,59 +520,75 @@ class FRi3D:
                 n=50
             )
             
-            print(b_.shape)
+            if b_.size > 0:
 
-            bb = b_[:,0]
-            bbx = b_[:,1]
-            bby = b_[:,2]
-            bbz = b_[:,3]
-            
-            tt = np.linspace(-1.0, 1.0, bb.size)
-            
-            db, _ = fastdtw(
-                np.stack([t, b], axis=-1),
-                np.stack([tt, bb], axis=-1),
-                dist=euclidean
-            )
-            dbx, _ = fastdtw(
-                np.stack([t, bx], axis=-1),
-                np.stack([tt, bbx], axis=-1),
-                dist=euclidean
-            )
-            dby, _ = fastdtw(
-                np.stack([t, by], axis=-1),
-                np.stack([tt, bby], axis=-1),
-                dist=euclidean
-            )
-            dbz, _ = fastdtw(
-                np.stack([t, bz], axis=-1),
-                np.stack([tt, bbz], axis=-1),
-                dist=euclidean
-            )
-            return np.mean([db, dbx, dby, dbz])
+                print(b_.shape)
 
-        res = scipy.optimize.minimize(
+                bb = scale(b_[:,0])
+                bbx = scale(b_[:,1])
+                bby = scale(b_[:,2])
+                bbz = scale(b_[:,3])
+                
+                tt = np.linspace(-1.0, 1.0, bb.size)
+                
+                db, _ = fastdtw(
+                    np.stack([t, b], axis=-1),
+                    np.stack([tt, bb], axis=-1),
+                    dist=euclidean
+                )
+                dbx, _ = fastdtw(
+                    np.stack([t, bx], axis=-1),
+                    np.stack([tt, bbx], axis=-1),
+                    dist=euclidean
+                )
+                dby, _ = fastdtw(
+                    np.stack([t, by], axis=-1),
+                    np.stack([tt, bby], axis=-1),
+                    dist=euclidean
+                )
+                dbz, _ = fastdtw(
+                    np.stack([t, bz], axis=-1),
+                    np.stack([tt, bbz], axis=-1),
+                    dist=euclidean
+                )
+                d = np.mean([db, dbx, dby, dbz])
+                print(d)
+                return d
+            else:
+                return np.inf
+
+        res = scipy.optimize.differential_evolution(
             F,
-            np.array([
-                np.mean([latitude[0], latitude[1]]), 
-                np.mean([longitude[0], longitude[1]]), 
-                np.mean([half_width[0], half_width[1]]), 
-                np.mean([tilt[0], tilt[1]]), 
-                np.mean([twist[0], twist[1]]), 
-                np.mean([flux[0], flux[1]]), 
-                np.mean([sigma[0], sigma[1]])
-            ]), 
             bounds=[
                 (latitude[0], latitude[1]), 
                 (longitude[0], longitude[1]), 
                 (half_width[0], half_width[1]), 
                 (tilt[0], tilt[1]), 
                 (twist[0], twist[1]), 
-                (flux[0], flux[1]), 
                 (sigma[0], sigma[1])
             ],
-            method='L-BFGS-B'
         )
+
+        # res = scipy.optimize.minimize(
+        #     F,
+        #     np.array([
+        #         np.mean([latitude[0], latitude[1]]), 
+        #         np.mean([longitude[0], longitude[1]]), 
+        #         np.mean([half_width[0], half_width[1]]), 
+        #         np.mean([tilt[0], tilt[1]]), 
+        #         np.mean([twist[0], twist[1]]), 
+        #         np.mean([sigma[0], sigma[1]])
+        #     ]), 
+        #     bounds=[
+        #         (latitude[0], latitude[1]), 
+        #         (longitude[0], longitude[1]), 
+        #         (half_width[0], half_width[1]), 
+        #         (tilt[0], tilt[1]), 
+        #         (twist[0], twist[1]), 
+        #         (sigma[0], sigma[1])
+        #     ],
+        #     method='L-BFGS-B'
+        # )
         print(res.x)
 
     def fit2remote(self):

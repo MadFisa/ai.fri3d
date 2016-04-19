@@ -248,6 +248,10 @@ def test_insitu_static(
 
     plt.show()
 
+# [ 0.06166189 -0.16725744  0.3817882   0.12310777  4.83976848  2.23878726]
+
+
+
 def test_insitu_evo(
     latitude=0.0, 
     longitude=0.0, 
@@ -270,22 +274,7 @@ def test_insitu_evo(
     theta=None,
     phi=None):
 
-    fr = FRi3D(
-        latitude=latitude, 
-        longitude=longitude, 
-        toroidal_height=toroidal_height, 
-        poloidal_height=poloidal_height, 
-        half_width=half_width, 
-        tilt=tilt, 
-        flattening=flattening, 
-        pancaking=pancaking, 
-        skew=skew, 
-        twist=twist, 
-        flux=flux,
-        sigma=sigma,
-        polarity=polarity,
-        chirality=chirality
-    )
+    fr = FRi3D()
     fr.init()
 
     if r is not None and theta is not None and phi is not None:
@@ -297,9 +286,9 @@ def test_insitu_evo(
         y = y[0]
         z = z[0]
 
-    b = fr.evocut(x, y, z, 
-        toroidal_height=toroidal_height_evo, 
-        poloidal_height=poloidal_height_evo
+    b = fr.evocut1d(x, y, z, 
+        toroidal_height=toroidal_height, 
+        poloidal_height=poloidal_height
     )
     
     fig = plt.figure()
@@ -347,3 +336,20 @@ def orthogonal_proj(zfront, zback):
                      [0,0,a,b],
                      [0,0,-0.0001,zback]])
 proj3d.persp_transformation = orthogonal_proj
+
+test_insitu_evo(
+    latitude=0.06166189, 
+    longitude=-0.16725744, 
+    toroidal_height=[0.8, 2.0],
+    poloidal_height=[0.2, 0.2],
+    half_width=0.3817882, 
+    tilt=0.12310777, 
+    flattening=0.5, 
+    pancaking=np.pi/180.0*30.0, 
+    skew=np.pi/180.0*0.0, 
+    twist=4.83976848, 
+    flux=5e14,
+    sigma=2.23878726,
+    polarity=-1.0,
+    chirality=1.0
+)
