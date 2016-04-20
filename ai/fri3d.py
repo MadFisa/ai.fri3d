@@ -8,7 +8,9 @@ import scipy.integrate
 import scipy.optimize
 from scipy.spatial.distance import euclidean
 
+
 from matplotlib import pyplot as plt
+import matplotlib.gridspec as gridspec
 
 from sklearn.preprocessing import scale
 
@@ -16,6 +18,7 @@ from fastdtw import fastdtw
 
 AU_KM = 149597870.7
 RS_KM = 6.957e5
+AU_RS = AU_KM/RS_KM
 RS_AU = RS_KM/AU_KM
 
 class FRi3D:
@@ -385,7 +388,7 @@ class FRi3D:
         x, y, z = cs.sp2cart(r, theta, phi)
 
         # reverse orientation
-        T = cs.mx_rot(-self.latitude, self.longitude, self.tilt)
+        T = cs.mx_rot_reverse(-self.latitude, self.longitude, self.tilt)
         x_ = T[0,0]*x+T[0,1]*y+T[0,2]*z
         y_ = T[1,0]*x+T[1,1]*y+T[1,2]*z
         z_ = T[2,0]*x+T[2,1]*y+T[2,2]*z
@@ -453,7 +456,7 @@ class FRi3D:
         toroidal_height=0.8):
 
         th = toroidal_height
-        dth = 0.01
+        dth = 0.05
         maxth = toroidal_height*4.0
         crossed = False
         b = []
@@ -471,16 +474,16 @@ class FRi3D:
 
     def fit2insitu(self, 
         b, bx, by, bz,
-        latitude=[-np.pi/180.0*10.0, np.pi/180.0*10.0], 
-        longitude=[-np.pi/180.0*30.0, np.pi/180.0*30.0], 
-        toroidal_height=0.8, 
-        poloidal_height=0.2, 
-        half_width=[np.pi/180.0*20.0, np.pi/180.0*50.0], 
-        tilt=[-np.pi/180.0*10.0, np.pi/180.0*10.0], 
-        flattening=0.5, 
-        pancaking=np.pi/6.0, 
-        skew=0.0, 
-        twist=[0.5, 3.0], 
+        latitude=[-np.pi/180.0*20.0, np.pi/180.0*20.0], 
+        longitude=[-np.pi/180.0*40.0, np.pi/180.0*40.0], 
+        toroidal_height=0.7, 
+        poloidal_height=[0.05, 0.25], 
+        half_width=[np.pi/180.0*40.0, np.pi/180.0*70.0], 
+        tilt=[-np.pi/180.0*15.0, np.pi/180.0*15.0], 
+        flattening=[0.3, 0.7], 
+        pancaking=[np.pi/180.0*15.0, np.pi/180.0*25.0], 
+        skew=np.pi/180.0*0.0, 
+        twist=[1.0, 3.0], 
         flux=1e13,
         sigma=[1.0, 3.0],
         polarity=-1.0,
@@ -489,9 +492,6 @@ class FRi3D:
         t = np.linspace(-1.0, 1.0, bx.size)
 
         self.toroidal_height = toroidal_height
-        self.poloidal_height = poloidal_height
-        self.flattening = flattening
-        self.pancaking = pancaking
         self.skew = skew
         self.flux = flux
         self.polarity = polarity
@@ -505,10 +505,13 @@ class FRi3D:
         def F(x):
             self.latitude = x[0]
             self.longitude = x[1]
-            self.half_width = x[2]
-            self.tilt = x[3]
-            self.twist = x[4]
-            self.sigma = x[5]
+            self.poloidal_height = x[2]
+            self.half_width = x[3]
+            self.tilt = x[4]
+            self.flattening = x[5]
+            self.pancaking = x[6]
+            self.twist = x[7]
+            self.sigma = x[8]
             
             b_ = self.evocut1d(1.0, 0.0, 0.0, 
                 toroidal_height=toroidal_height
@@ -549,14 +552,19 @@ class FRi3D:
                     np.stack([tt, bbz], axis=-1),
                     dist=euclidean
                 )
-                d = np.mean([dbx, dby, dbz])
+                d = np.amax([dbx, dby, dbz])
+                x[0] *= 180.0/np.pi
+                x[1] *= 180.0/np.pi
+                x[3] *= 180.0/np.pi
+                x[4] *= 180.0/np.pi
+                x[6] *= 180.0/np.pi
                 print(x)
                 print(d)
-                plt.plot(t, b, tt, bb)
-                plt.plot(t, bx, tt, bbx)
-                plt.plot(t, by, tt, bby)
-                plt.plot(t, bz, tt, bbz)
-                plt.show()
+                # plt.plot(t, b, tt, bb)
+                # plt.plot(t, bx, tt, bbx)
+                # plt.plot(t, by, tt, bby)
+                # plt.plot(t, bz, tt, bbz)
+                # plt.show()
                 return d
             else:
                 return np.inf
@@ -566,9 +574,12 @@ class FRi3D:
             bounds=[
                 (latitude[0], latitude[1]), 
                 (longitude[0], longitude[1]), 
+                (poloidal_height[0], poloidal_height[1]),
                 (half_width[0], half_width[1]), 
                 (tilt[0], tilt[1]), 
-                (twist[0], twist[1]), 
+                (flattening[0], flattening[1]),
+                (pancaking[0], pancaking[1]),
+                (twist[0], twist[1]),
                 (sigma[0], sigma[1])
             ],
         )
@@ -578,22 +589,75 @@ class FRi3D:
         #     np.array([
         #         np.mean([latitude[0], latitude[1]]), 
         #         np.mean([longitude[0], longitude[1]]), 
+        #         np.mean([poloidal_height[0], poloidal_height[1]]), 
         #         np.mean([half_width[0], half_width[1]]), 
         #         np.mean([tilt[0], tilt[1]]), 
-        #         np.mean([twist[0], twist[1]]), 
-        #         np.mean([sigma[0], sigma[1]])
+        #         np.mean([flattening[0], flattening[1]]), 
+        #         np.mean([twist[0], twist[1]])
         #     ]), 
         #     bounds=[
         #         (latitude[0], latitude[1]), 
         #         (longitude[0], longitude[1]), 
+        #         (poloidal_height[0], poloidal_height[1]),
         #         (half_width[0], half_width[1]), 
         #         (tilt[0], tilt[1]), 
-        #         (twist[0], twist[1]), 
-        #         (sigma[0], sigma[1])
+        #         (flattening[0], flattening[1]),
+        #         (twist[0], twist[1])
         #     ],
         #     method='L-BFGS-B'
         # )
         print(res.x)
 
     def fit2remote(self):
-        pass
+        x0, y0, z0 = self.shell()
+        fig = plt.figure()
+
+        gs = gridspec.GridSpec(1, 3)
+        gs.update(wspace=0.0, hspace=0.0)
+
+        ax = plt.subplot(gs[0])
+        ax.imshow(
+            plt.imread('/media/data/Documents/Articles/2016_Isavnin_FRi3D/remote_stb.png'),
+            zorder=0,
+            extent=[-15.0+0.02, 15.0+0.02, -15.0-0.1, 15.0-0.1]
+        )
+        # ax.plot([0.0], [0.0], '.y', markersize=5.0)
+        T = cs.mx_rot_z(-np.pi/180.0*172.566)
+        x = T[0,0]*x0+T[0,1]*y0+T[0,2]*z0
+        y = T[1,0]*x0+T[1,1]*y0+T[1,2]*z0
+        z = T[2,0]*x0+T[2,1]*y0+T[2,2]*z0
+        ax.plot(y*AU_RS, z*AU_RS, '.r', markersize=1.0)
+        ax.set_xlim([-15.0+0.02, 15.0+0.02])
+        ax.set_ylim([-15.0-0.1, 15.0-0.1])
+        plt.axis('off')
+
+        ax = plt.subplot(gs[1])
+        ax.imshow(
+            plt.imread('/media/data/Documents/Articles/2016_Isavnin_FRi3D/remote_soho.png'),
+            zorder=0,
+            extent=[-32.0+0.3, 32.0+0.3, -32.0+1.33, 32.0+1.33]
+        )
+        # ax.plot([0.0], [0.0], '.y', markersize=5.0)
+        T = cs.mx_rot_z(-np.pi/180.0*87.395)
+        x = T[0,0]*x0+T[0,1]*y0+T[0,2]*z0
+        y = T[1,0]*x0+T[1,1]*y0+T[1,2]*z0
+        z = T[2,0]*x0+T[2,1]*y0+T[2,2]*z0
+        ax.plot(y*AU_RS, z*AU_RS, '.r', markersize=1.0)
+        ax.set_xlim([-32.0+0.3, 32.0+0.3])
+        ax.set_ylim([-32.0+1.33, 32.0+1.33])
+        plt.axis('off')
+
+        ax = plt.subplot(gs[2])
+        ax.imshow(
+            plt.imread('/media/data/Documents/Articles/2016_Isavnin_FRi3D/remote_sta.png'),
+            zorder=0,
+            extent=[-13.54+0.01, 13.54+0.01, -13.54+0.04, 13.54+0.04]
+        )
+        # ax.plot([0.0], [0.0], '.y', markersize=5.0)
+        ax.plot(y0*AU_RS, z0*AU_RS, '.r', markersize=1.0)
+        ax.set_xlim([-13.54+0.01, 13.54+0.01])
+        ax.set_ylim([-13.54+0.04, 13.54+0.04])
+        plt.axis('off')
+
+        plt.show()
+

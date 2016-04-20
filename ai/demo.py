@@ -16,6 +16,11 @@ from importlib import reload
 
 from ai.fri3d import FRi3D
 
+AU_KM = 149597870.7
+RS_KM = 6.957e5
+AU_RS = AU_KM/RS_KM
+RS_AU = RS_KM/AU_KM
+
 def test_shell(
     latitude=0.0, 
     longitude=0.0, 
@@ -48,6 +53,10 @@ def test_shell(
     ax.set_xlabel('X [AU]')
     ax.set_ylabel('Y [AU]')
     ax.set_zlabel('Z [AU]]')
+
+    fig = plt.figure()
+    x, y, z = fr.shell()
+    plt.plot(y, z, '.r')
 
     plt.show()
 
@@ -370,12 +379,12 @@ proj3d.persp_transformation = orthogonal_proj
 # test_shell(
 #     latitude=0.16631833, 
 #     longitude=-0.27972665, 
-#     toroidal_height=0.3,
+#     toroidal_height=0.93,
 #     poloidal_height=0.07,
 #     half_width=0.69614774, 
 #     tilt=-0.13859975, 
 #     flattening=0.5, 
-#     pancaking=np.pi/180.0*30.0, 
+#     pancaking=np.pi/180.0*20.0, 
 #     skew=np.pi/180.0*0.0, 
 # )
 # test_insitu_evo(
@@ -395,19 +404,21 @@ proj3d.persp_transformation = orthogonal_proj
 #     chirality=1.0
 # )
 
+# 16.30159056 -13.20360581   0.17953712  47.21845229 -14.25877684 0.56555319   2.87495611
+
 def test_article(
-    latitude=0.16631833, 
-    longitude=-0.27972665, 
-    toroidal_height=0.8,
-    poloidal_height=0.07,
-    half_width=0.69614774, 
-    tilt=-0.13859975, 
-    flattening=0.5, 
+    latitude=np.pi/180.0*16.3, 
+    longitude=-np.pi/180.0*13.2, 
+    toroidal_height=0.7,
+    poloidal_height=0.1795,
+    half_width=np.pi/180.0*47.218, 
+    tilt=-np.pi/180.0*14.2587768, 
+    flattening=0.5655, 
     pancaking=np.pi/180.0*20.0, 
-    skew=np.pi/180.0*0.0, 
-    twist=2.79284826, 
+    skew=np.pi/180.0*30.0, 
+    twist=2.87495611, 
     flux=1e14,
-    sigma=2.29962923,
+    sigma=2.3,
     polarity=-1.0,
     chirality=1.0,
     x=1.0,
@@ -479,3 +490,42 @@ def test_article(
     # plt.legend()
 
     plt.show()
+
+def test_remote(
+    latitude=-np.pi/180.0*8.0, 
+    longitude=-np.pi/180.0*23.0, 
+    toroidal_height=13.0/AU_RS,
+    poloidal_height=4.0/AU_RS,
+    half_width=np.pi/180.0*50.0, 
+    tilt=np.pi/180.0*10.0, 
+    flattening=0.4, 
+    pancaking=np.pi/180.0*20.0, 
+    skew=np.pi/180.0*0.0, 
+    twist=2.79284826, 
+    flux=1e14,
+    sigma=2.29962923,
+    polarity=-1.0,
+    chirality=1.0,
+    x=1.0,
+    y=0.0,
+    z=0.0):
+    
+    fr = FRi3D(
+        latitude=latitude, 
+        longitude=longitude, 
+        toroidal_height=toroidal_height, 
+        poloidal_height=poloidal_height, 
+        half_width=half_width, 
+        tilt=tilt, 
+        flattening=flattening, 
+        pancaking=pancaking, 
+        skew=skew, 
+        twist=twist, 
+        flux=flux,
+        sigma=sigma,
+        polarity=polarity,
+        chirality=chirality
+    )
+    fr.init()
+
+    fr.fit2remote()

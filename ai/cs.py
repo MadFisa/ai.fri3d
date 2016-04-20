@@ -43,3 +43,9 @@ def mx_rot(theta, phi, gamma):
         return numpy.dot(mx_rot_z(phi), 
                          numpy.dot(mx_rot_y(theta), 
                                    mx_rot_x(gamma)))
+
+def mx_rot_reverse(theta, phi, gamma):
+    return numpy.dot(
+        mx_rot_x(gamma), 
+        numpy.dot(mx_rot_y(theta), mx_rot_z(phi))
+    )
