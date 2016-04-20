@@ -394,20 +394,22 @@ proj3d.persp_transformation = orthogonal_proj
 # 423
 # 12.03872107 -14.14146187   0.19314003  41.11990838  -8.48893417 0.52535873  24.0747819    2.80713025   1.73232396
 # 400
+# 11.46164081 -17.2274398    0.20056907  43.12149505  -8.4092668 0.43678998  24.72850232   2.7988322    1.57838507
+# 391
 
 def test_article(
-    latitude=np.pi/180.0*12.03872107, 
-    longitude=-np.pi/180.0*14.14146187, 
+    latitude=np.pi/180.0*11.46164081, 
+    longitude=-np.pi/180.0*17.2274398, 
     toroidal_height=0.7,
-    poloidal_height=0.19314003,
-    half_width=np.pi/180.0*41.11990838, 
-    tilt=-np.pi/180.0*8.48893417, 
-    flattening=0.52535873, 
-    pancaking=np.pi/180.0*24.0747819, 
+    poloidal_height=0.20056907,
+    half_width=np.pi/180.0*43.12149505, 
+    tilt=-np.pi/180.0*8.4092668, 
+    flattening=0.43678998, 
+    pancaking=np.pi/180.0*24.72850232, 
     skew=np.pi/180.0*0.0, 
-    twist=2.80713025, 
+    twist=2.7988322, 
     flux=1e14,
-    sigma=1.73232396,
+    sigma=1.57838507,
     polarity=-1.0,
     chirality=1.0,
     x=1.0,
