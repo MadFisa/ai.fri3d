@@ -474,26 +474,29 @@ class FRi3D:
 
     def fit2insitu(self, 
         b, bx, by, bz,
-        latitude=[-np.pi/180.0*20.0, np.pi/180.0*20.0], 
-        longitude=[-np.pi/180.0*40.0, np.pi/180.0*40.0], 
+        latitude=[-np.pi/180.0*15.0, np.pi/180.0*15.0], 
+        longitude=[-np.pi/180.0*30.0, np.pi/180.0*0.0], 
         toroidal_height=0.7, 
-        poloidal_height=[0.05, 0.25], 
-        half_width=[np.pi/180.0*40.0, np.pi/180.0*70.0], 
+        poloidal_height=[0.1, 0.3], 
+        half_width=np.pi/180.0*40.0, 
         tilt=[-np.pi/180.0*15.0, np.pi/180.0*15.0], 
-        flattening=[0.3, 0.7], 
-        pancaking=[np.pi/180.0*15.0, np.pi/180.0*25.0], 
+        flattening=[0.4, 0.6], 
+        pancaking=np.pi/180.0*20.0, 
         skew=np.pi/180.0*0.0, 
-        twist=[1.0, 3.0], 
+        twist=[2.0, 7.0], 
         flux=1e13,
-        sigma=[1.0, 3.0],
+        sigma=2.05,
         polarity=-1.0,
         chirality=1.0):
 
         t = np.linspace(-1.0, 1.0, bx.size)
 
         self.toroidal_height = toroidal_height
+        self.half_width = half_width
+        self.pancaking = pancaking
         self.skew = skew
         self.flux = flux
+        self.sigma = sigma
         self.polarity = polarity
         self.chirality = chirality
 
@@ -506,12 +509,9 @@ class FRi3D:
             self.latitude = x[0]
             self.longitude = x[1]
             self.poloidal_height = x[2]
-            self.half_width = x[3]
-            self.tilt = x[4]
-            self.flattening = x[5]
-            self.pancaking = x[6]
-            self.twist = x[7]
-            self.sigma = x[8]
+            self.tilt = x[3]
+            self.flattening = x[4]
+            self.twist = x[5]
             
             b_ = self.evocut1d(1.0, 0.0, 0.0, 
                 toroidal_height=toroidal_height
@@ -556,8 +556,6 @@ class FRi3D:
                 x[0] *= 180.0/np.pi
                 x[1] *= 180.0/np.pi
                 x[3] *= 180.0/np.pi
-                x[4] *= 180.0/np.pi
-                x[6] *= 180.0/np.pi
                 print(x)
                 print(d)
                 # plt.plot(t, b, tt, bb)
@@ -578,7 +576,6 @@ class FRi3D:
                 (half_width[0], half_width[1]), 
                 (tilt[0], tilt[1]), 
                 (flattening[0], flattening[1]),
-                (pancaking[0], pancaking[1]),
                 (twist[0], twist[1]),
                 (sigma[0], sigma[1])
             ],
