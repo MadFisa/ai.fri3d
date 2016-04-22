@@ -1,5 +1,6 @@
 
-from datetime import datetime
+import time
+from datetime import datetime, timedelta
 
 import numpy as np
 
@@ -326,23 +327,27 @@ def test_insitu_evo(
     plt.show()
 
 def test_fit2insitu():
-    # cdas.set_cache(True, 'data')
-    cdas.set_cache(False)
+    cdas.set_cache(True, 'data')
+    # cdas.set_cache(False)
     data = cdas.get_data(
         'sp_phys', 
         'STA_L1_MAG_RTN', 
         datetime(2010, 12, 15, 11), 
         datetime(2010, 12, 16, 3), 
-        ['BFIELD']
+        ['BFIELD'],
+        cdf=True
     )
-    b = data['BTOTAL']
-    bx = data['BR']
-    by = data['BT']
-    bz = data['BN']
-    b = b[0::1800]
-    bx = bx[0::1800]
-    by = by[0::1800]
-    bz = bz[0::1800]
+    # for key, _ in data.items() :
+    #     print(key)
+    t = data['Epoch']
+    b = data['BFIELD'][:,3]
+    bx = data['BFIELD'][:,0]
+    by = data['BFIELD'][:,1]
+    bz = data['BFIELD'][:,2]
+    # b = b[0::1800]
+    # bx = bx[0::1800]
+    # by = by[0::1800]
+    # bz = bz[0::1800]
     # plt.plot(b, 'k')
     # plt.plot(bx, 'r')
     # plt.plot(by, 'g')
@@ -350,7 +355,7 @@ def test_fit2insitu():
     # print(b.size, bx.size, by.size, bz.size)
     # plt.show()
     fr = FRi3D()
-    fr.fit2insitu(b, bx, by, bz)
+    fr.fit2insitu(t, b, bx, by, bz)
 
 def orthogonal_proj(zfront, zback):
     a = (zfront+zback)/(zfront-zback)
@@ -483,21 +488,61 @@ proj3d.persp_transformation = orthogonal_proj
 #    6.2482144 ]
 # 630.9223156164162
 
+
+# [  5.67714517 -14.38368045   0.13550604  -1.15569243   0.57904958
+#    6.07544706   2.29977037   1.12553558]
+# 3.12532058623
+
+# increased resolution to 0.02 AU
+
+# [ 10.009215   -16.07887594   0.15955503  -7.42553826   0.53295159
+#    6.43533042   1.86090296   1.26818314]
+# 3.60360658674
+
+# [  7.45525566 -17.24349792   0.17858595  -5.06079521   0.48072999
+#    4.88595661   1.33678636   1.23475906]
+# 3.4039173696
+
+# [  9.13935855 -18.77690073   0.10548114  -5.08018097   0.43273579
+#    6.42297451   1.9372092    1.16858023]
+# 2.94157206834
+
+# [  7.91624094 -18.57420865   0.10099705   0.03374686   0.49177376
+#    6.05033308   2.24051718   1.17247319]
+# 2.65376418521
+
+# [  8.13628301e+00  -1.75189394e+01   1.06670528e-01   9.08934282e-03
+#    4.99480528e-01   6.64944091e+00   2.52432559e+00   1.28426189e+00]
+# 2.64756760732
+
+# [  8.35804958 -20.33325833   0.12743121   1.08367922   0.49003112
+#    6.76876898   2.26008429   1.23151931]
+# 2.58214282798
+
+# [  8.14401601 -19.5715945    0.14182336   0.37987035   0.58457917
+#    6.53600575   2.36398786   1.22504594]
+# 2.54982939034
+
+# [  8.54355628 -20.39145993   0.11084887   2.16074957   0.50537504
+#    6.77391367   2.19169087   1.20288016]
+# 2.49470631039
+
 def test_article(
-    latitude=np.pi/180.0*6.05373672, 
-    longitude=-np.pi/180.0*21.05807102, 
+    latitude=np.pi/180.0*8.54355628, 
+    longitude=-np.pi/180.0*20.39145993, 
     toroidal_height=0.7,
-    poloidal_height=0.23147909,
+    poloidal_height=0.11084887,
     half_width=np.pi/180.0*40, 
-    tilt=np.pi/180.0*2.38135057, 
-    flattening=0.54898635, 
+    tilt=np.pi/180.0*2.16074957, 
+    flattening=0.50537504, 
     pancaking=np.pi/180.0*20.0, 
     skew=np.pi/180.0*0.0, 
-    twist=6.2482144, 
+    twist=6.77391367, 
     flux=1e14,
-    sigma=2.05,
+    sigma=2.19169087,
     polarity=-1.0,
     chirality=1.0,
+    ratio=1.20288016,
     x=1.0,
     y=0.0,
     z=0.0):
@@ -519,49 +564,72 @@ def test_article(
         chirality=chirality
     )
     fr.init()
+    
+
+    t0 = datetime(2010, 12, 15, 11)
+    t1 = datetime(2010, 12, 16, 3)
+    dt = timedelta(minutes=30)
+    
+    cdas.set_cache(True, 'data')
+    data = cdas.get_data(
+        'sp_phys', 
+        'STA_L1_MAG_RTN', 
+        t0, 
+        t1,
+        ['BFIELD'],
+        cdf=True
+    )
+    t = data['Epoch']
+    b = data['BFIELD'][:,3]
+    bx = data['BFIELD'][:,0]
+    by = data['BFIELD'][:,1]
+    bz = data['BFIELD'][:,2]
+
+    n = 300
+    t = np.array([time.mktime(x.timetuple()) for x in t])
+    t0 = t[0]+(t[-1]-t[0])*np.linspace(0.0, 1.0, n)
+    b0 = np.interp(t0, t, b)
+    bx0 = np.interp(t0, t, bx)
+    by0 = np.interp(t0, t, by)
+    bz0 = np.interp(t0, t, bz)
+
+    b0_mean = np.mean(b0)
 
     b_ = fr.evocut1d(x, y, z, 
         toroidal_height=toroidal_height
     )
 
-    
-    cdas.set_cache(False)
-    data = cdas.get_data(
-        'sp_phys', 
-        'STA_L1_MAG_RTN', 
-        datetime(2010, 12, 15, 11), 
-        datetime(2010, 12, 16, 3), # 3
-        ['BFIELD']
-    )
-    b = data['BTOTAL']
-    bx = data['BR']
-    by = data['BT']
-    bz = data['BN']
-    b = b[0::1800]
-    bx = bx[0::1800]
-    by = by[0::1800]
-    bz = bz[0::1800]
+    t = t0[0]+(t0[-1]-t0[0])*ratio*np.linspace(0.0, 1.0, b_.shape[0])
+    b = b_[:,0]
+    bx = b_[:,1]
+    by = b_[:,2]
+    bz = b_[:,3]
+    t1 = t0
+    b1 = np.interp(t1, t, b)
+    bx1 = np.interp(t1, t, bx)
+    by1 = np.interp(t1, t, by)
+    bz1 = np.interp(t1, t, bz)
 
-    mb = np.mean(b)
-    
-    sc = mb/np.mean(b_[:,0])
-    bb = b_[:,0]*sc
-    bbx = b_[:,1]*sc
-    bby = b_[:,2]*sc
-    bbz = b_[:,3]*sc
+    b1_mean = np.mean(b1)
 
-    t_ = np.linspace(0.0, 1.0, b_.shape[0])
-    t = np.linspace(0.0, 1.0, b.size)
+    coeff = b0_mean/b1_mean
+    b1 *= coeff
+    bx1 *= coeff
+    by1 *= coeff
+    bz1 *= coeff
+
+    t0 = np.array([datetime.fromtimestamp(x) for x in t0])
+    t1 = np.array([datetime.fromtimestamp(x) for x in t1])
 
     fig = plt.figure()
-    plt.plot(t_, bb, '--k', linewidth=2, label='B')
-    plt.plot(t, b, 'k', linewidth=2, label='B')
-    plt.plot(t_, bbx, '--r', linewidth=2, label='Bx')
-    plt.plot(t, bx, 'r', linewidth=2, label='Bx')
-    plt.plot(t_, bby, '--g', linewidth=2, label='By')
-    plt.plot(t, by, 'g', linewidth=2, label='By')
-    plt.plot(t_, bbz, '--b', linewidth=2, label='Bz')
-    plt.plot(t, bz, 'b', linewidth=2, label='Bz')
+    plt.plot(t1, b1, '--k', linewidth=2, label='B')
+    plt.plot(t0, b0, 'k', linewidth=2, label='B')
+    plt.plot(t1, bx1, '--r', linewidth=2, label='Bx')
+    plt.plot(t0, bx0, 'r', linewidth=2, label='Bx')
+    plt.plot(t1, by1, '--g', linewidth=2, label='By')
+    plt.plot(t0, by0, 'g', linewidth=2, label='By')
+    plt.plot(t1, bz1, '--b', linewidth=2, label='Bz')
+    plt.plot(t0, bz0, 'b', linewidth=2, label='Bz')
     plt.xlabel('time [arb. units]')
     plt.ylabel('B [nT]')
     # plt.legend()

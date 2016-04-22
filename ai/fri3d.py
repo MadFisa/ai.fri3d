@@ -1,4 +1,6 @@
 
+import time
+
 import numpy as np
 from ai import cs
 
@@ -455,14 +457,19 @@ class FRi3D:
     def evocut1d(self, x, y, z, 
         toroidal_height=0.8):
 
+        self.toroidal_height = 1.0
+        self.init()
+        self._unit_spline_initial_axis_s_phi = self._spline_initial_axis_s_phi
+
         th = toroidal_height
-        dth = 0.05
+        dth = 0.02
         maxth = toroidal_height*4.0
         crossed = False
         b = []
         while th <= maxth:
+            self._spline_initial_axis_s_phi = lambda s: self._unit_spline_initial_axis_s_phi(s/th)
             self.toroidal_height = th
-            self.init()
+            # self.init()
             b_ = self.cut1d(x, y, z)
             if crossed == True and b_.size == 0:
                 break
@@ -473,7 +480,7 @@ class FRi3D:
         return np.array(b)
 
     def fit2insitu(self, 
-        b, bx, by, bz,
+        t, b, bx, by, bz,
         latitude=[-np.pi/180.0*15.0, np.pi/180.0*15.0], 
         longitude=[-np.pi/180.0*30.0, np.pi/180.0*0.0], 
         toroidal_height=0.7, 
@@ -489,6 +496,24 @@ class FRi3D:
         polarity=-1.0,
         chirality=1.0):
 
+        resample = True
+
+        t = np.array([time.mktime(x.timetuple()) for x in t])
+
+        if resample:
+            n = 100
+            t0 = t[0]+(t[-1]-t[0])*np.linspace(0.0, 1.0, n)
+            b0 = np.interp(t0, t, b)
+            bx0 = np.interp(t0, t, bx)
+            by0 = np.interp(t0, t, by)
+            bz0 = np.interp(t0, t, bz)
+        else:
+            t0 = t
+            b0 = b
+            bx0 = bx
+            by0 = by
+            bz0 = bz
+
         self.toroidal_height = toroidal_height
         self.half_width = half_width
         self.pancaking = pancaking
@@ -497,11 +522,8 @@ class FRi3D:
         self.polarity = polarity
         self.chirality = chirality
 
-        mb = np.mean(b)
-        bx = bx
-        by = by
-        bz = bz
-        
+        b0_mean = np.mean(b0)
+
         def F(x):
             self.latitude = x[0]
             self.longitude = x[1]
@@ -517,22 +539,35 @@ class FRi3D:
             
             if b_.size > 0:
 
-                bb = b_[:,0]
-                bbx = b_[:,1]
-                bby = b_[:,2]
-                bbz = b_[:,3]
+                t = t0[0]+(t0[-1]-t0[0])*x[7]*np.linspace(0.0, 1.0, b_.shape[0])
+                b = b_[:,0]
+                bx = b_[:,1]
+                by = b_[:,2]
+                bz = b_[:,3]
+                t1 = t0
+                b1 = np.interp(t1, t, b)
+                bx1 = np.interp(t1, t, bx)
+                by1 = np.interp(t1, t, by)
+                bz1 = np.interp(t1, t, bz)
 
-                sc = mb/np.mean(bb)
-                bb *= sc
-                bbx *= sc
-                bby *= sc
-                bbz *= sc
+                b1_mean = np.mean(b1)
+
+                coeff = b0_mean/b1_mean
+                b1 *= coeff
+                bx1 *= coeff
+                by1 *= coeff
+                bz1 *= coeff
                 
-                db, _ = fastdtw(
-                    np.stack([bx, by, bz], axis=-1),
-                    np.stack([bbx, bby, bbz], axis=-1),
-                    dist=euclidean
-                )
+                db = np.mean([euclidean(
+                    [bx0[i], by0[i], bz0[i]],
+                    [bx1[i], by1[i], bz1[i]]
+                ) for i in range(t0.size)])
+
+                # db, _ = fastdtw(
+                #     np.stack([bx, by, bz], axis=-1),
+                #     np.stack([bbx, bby, bbz], axis=-1),
+                #     dist=euclidean
+                # )
                 # db, _ = fastdtw(
                 #     np.stack([t, b], axis=-1),
                 #     np.stack([tt, bb], axis=-1),
@@ -577,7 +612,8 @@ class FRi3D:
                 (tilt[0], tilt[1]), 
                 (flattening[0], flattening[1]),
                 (twist[0], twist[1]),
-                (sigma[0], sigma[1])
+                (sigma[0], sigma[1]),
+                (0.9, 1.5)
             ],
         )
 
