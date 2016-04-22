@@ -485,18 +485,15 @@ class FRi3D:
         skew=np.pi/180.0*0.0, 
         twist=[2.0, 7.0], 
         flux=1e13,
-        sigma=2.05,
+        sigma=[1.0, 3.0],
         polarity=-1.0,
         chirality=1.0):
-
-        t = np.linspace(-1.0, 1.0, bx.size)
 
         self.toroidal_height = toroidal_height
         self.half_width = half_width
         self.pancaking = pancaking
         self.skew = skew
         self.flux = flux
-        self.sigma = sigma
         self.polarity = polarity
         self.chirality = chirality
 
@@ -512,6 +509,7 @@ class FRi3D:
             self.tilt = x[3]
             self.flattening = x[4]
             self.twist = x[5]
+            self.sigma = x[6]
             
             b_ = self.evocut1d(1.0, 0.0, 0.0, 
                 toroidal_height=toroidal_height
@@ -530,40 +528,43 @@ class FRi3D:
                 bby *= sc
                 bbz *= sc
                 
-                tt = np.linspace(-1.0, 1.0, bbx.size)
-                
+                db, _ = fastdtw(
+                    np.stack([bx, by, bz], axis=-1),
+                    np.stack([bbx, bby, bbz], axis=-1),
+                    dist=euclidean
+                )
                 # db, _ = fastdtw(
                 #     np.stack([t, b], axis=-1),
                 #     np.stack([tt, bb], axis=-1),
                 #     dist=euclidean
                 # )
-                dbx, _ = fastdtw(
-                    np.stack([t, bx], axis=-1),
-                    np.stack([tt, bbx], axis=-1),
-                    dist=euclidean
-                )
-                dby, _ = fastdtw(
-                    np.stack([t, by], axis=-1),
-                    np.stack([tt, bby], axis=-1),
-                    dist=euclidean
-                )
-                dbz, _ = fastdtw(
-                    np.stack([t, bz], axis=-1),
-                    np.stack([tt, bbz], axis=-1),
-                    dist=euclidean
-                )
-                d = np.amax([dbx, dby, dbz])
+                # dbx, _ = fastdtw(
+                #     np.stack([t, bx], axis=-1),
+                #     np.stack([tt, bbx], axis=-1),
+                #     dist=euclidean
+                # )
+                # dby, _ = fastdtw(
+                #     np.stack([t, by], axis=-1),
+                #     np.stack([tt, bby], axis=-1),
+                #     dist=euclidean
+                # )
+                # dbz, _ = fastdtw(
+                #     np.stack([t, bz], axis=-1),
+                #     np.stack([tt, bbz], axis=-1),
+                #     dist=euclidean
+                # )
+                # d = np.amax([dbx, dby, dbz])
                 x[0] *= 180.0/np.pi
                 x[1] *= 180.0/np.pi
                 x[3] *= 180.0/np.pi
                 print(x)
-                print(d)
+                print(db)
                 # plt.plot(t, b, tt, bb)
                 # plt.plot(t, bx, tt, bbx)
                 # plt.plot(t, by, tt, bby)
                 # plt.plot(t, bz, tt, bbz)
                 # plt.show()
-                return d
+                return db
             else:
                 return np.inf
 
@@ -573,7 +574,6 @@ class FRi3D:
                 (latitude[0], latitude[1]), 
                 (longitude[0], longitude[1]), 
                 (poloidal_height[0], poloidal_height[1]),
-                (half_width[0], half_width[1]), 
                 (tilt[0], tilt[1]), 
                 (flattening[0], flattening[1]),
                 (twist[0], twist[1]),
