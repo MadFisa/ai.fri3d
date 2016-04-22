@@ -501,7 +501,7 @@ class FRi3D:
         t = np.array([time.mktime(x.timetuple()) for x in t])
 
         if resample:
-            n = 100
+            n = 300
             t0 = t[0]+(t[-1]-t[0])*np.linspace(0.0, 1.0, n)
             b0 = np.interp(t0, t, b)
             bx0 = np.interp(t0, t, bx)
@@ -523,6 +523,8 @@ class FRi3D:
         self.chirality = chirality
 
         b0_mean = np.mean(b0)
+
+        db_prev = np.inf
 
         def F(x):
             self.latitude = x[0]
@@ -589,11 +591,13 @@ class FRi3D:
                 #     dist=euclidean
                 # )
                 # d = np.amax([dbx, dby, dbz])
-                x[0] *= 180.0/np.pi
-                x[1] *= 180.0/np.pi
-                x[3] *= 180.0/np.pi
-                print(x)
-                print(db)
+                if db < db_prev:
+                    db_prev = db
+                    x[0] *= 180.0/np.pi
+                    x[1] *= 180.0/np.pi
+                    x[3] *= 180.0/np.pi
+                    print(x)
+                    print(db)
                 # plt.plot(t, b, tt, bb)
                 # plt.plot(t, bx, tt, bbx)
                 # plt.plot(t, by, tt, bby)
