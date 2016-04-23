@@ -402,22 +402,34 @@ proj3d.persp_transformation = orthogonal_proj
 #    6.87282201   2.72165576   1.20756696]
 # 2.45206364245
 
+# [  5.90279467 -23.54842414   0.14707356   4.71965664   0.53860386
+#    9.57691177   1.29043543]
+# 2.66978262064
+
+# [  6.61754667 -19.87803594   0.10132359   5.38408605   0.57112203
+#    8.73950104   1.25355065]
+# 2.64508988577
+
+# [  6.34967948 -23.52010342   0.10219471   5.54132107   0.4578051
+#    9.69389798   1.30678127]
+# 2.60204704475
+
 def test_article(
-    latitude=np.pi/180.0*8.61910947, 
-    longitude=-np.pi/180.0*21.10748715, 
+    latitude=np.pi/180.0*6.34967948, 
+    longitude=-np.pi/180.0*23.52010342, 
     toroidal_height=0.7,
-    poloidal_height=0.12170966,
+    poloidal_height=0.10219471,
     half_width=np.pi/180.0*40, 
-    tilt=np.pi/180.0*1.62849082, 
-    flattening=0.51726676, 
+    tilt=np.pi/180.0*5.54132107, 
+    flattening=0.4578051, 
     pancaking=np.pi/180.0*20.0, 
     skew=np.pi/180.0*0.0, 
-    twist=6.87282201, 
+    twist=9.69389798, 
     flux=1e14,
-    sigma=2.72165576,
+    sigma=2.05,
     polarity=-1.0,
     chirality=1.0,
-    ratio=1.20756696,
+    ratio=1.30678127,
     x=1.0,
     y=0.0,
     z=0.0):
@@ -441,8 +453,8 @@ def test_article(
     fr.init()
     
 
-    t_begin = datetime(2010, 12, 15, 11)
-    t_end = datetime(2010, 12, 16, 3)
+    t_begin = datetime(2010, 12, 15, 10, 20)
+    t_end = datetime(2010, 12, 16, 4)
     dt = timedelta(minutes=30)
     
     cdas.set_cache(True, 'data')

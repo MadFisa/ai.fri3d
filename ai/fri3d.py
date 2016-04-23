@@ -23,6 +23,9 @@ RS_KM = 6.957e5
 AU_RS = AU_KM/RS_KM
 RS_AU = RS_KM/AU_KM
 
+db_prev = np.inf
+
+
 class FRi3D:
     def __init__(
         self,
@@ -490,9 +493,9 @@ class FRi3D:
         flattening=[0.4, 0.6], 
         pancaking=np.pi/180.0*20.0, 
         skew=np.pi/180.0*0.0, 
-        twist=[2.0, 7.0], 
+        twist=[1.0, 10.0], 
         flux=1e13,
-        sigma=[1.0, 3.0],
+        sigma=2.05,
         polarity=-1.0,
         chirality=1.0):
 
@@ -519,6 +522,7 @@ class FRi3D:
         self.pancaking = pancaking
         self.skew = skew
         self.flux = flux
+        self.sigma = sigma
         self.polarity = polarity
         self.chirality = chirality
 
@@ -527,13 +531,14 @@ class FRi3D:
         db_prev = np.inf
 
         def F(x):
+            global db_prev
             self.latitude = x[0]
             self.longitude = x[1]
             self.poloidal_height = x[2]
             self.tilt = x[3]
             self.flattening = x[4]
             self.twist = x[5]
-            self.sigma = x[6]
+            # self.sigma = x[6]
             
             b_ = self.evocut1d(1.0, 0.0, 0.0, 
                 toroidal_height=toroidal_height
@@ -541,7 +546,7 @@ class FRi3D:
             
             if b_.size > 0:
 
-                t = t0[0]+(t0[-1]-t0[0])*x[7]*np.linspace(0.0, 1.0, b_.shape[0])
+                t = t0[0]+(t0[-1]-t0[0])*x[6]*np.linspace(0.0, 1.0, b_.shape[0])
                 b = b_[:,0]
                 bx = b_[:,1]
                 by = b_[:,2]
@@ -616,7 +621,6 @@ class FRi3D:
                 (tilt[0], tilt[1]), 
                 (flattening[0], flattening[1]),
                 (twist[0], twist[1]),
-                (sigma[0], sigma[1]),
                 (0.9, 1.5)
             ],
         )
