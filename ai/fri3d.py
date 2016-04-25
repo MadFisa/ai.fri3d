@@ -546,7 +546,8 @@ class FRi3D:
             
             if b_.size > 0:
 
-                t = t0[0]+(t0[-1]-t0[0])*x[6]*np.linspace(0.0, 1.0, b_.shape[0])
+                t = t0[-1]-(t0[-1]-t0[0])*x[6]*np.linspace(1.0, 0.0, b_.shape[0])
+                # t = t0[0]+(t0[-1]-t0[0])*x[6]*np.linspace(0.0, 1.0, b_.shape[0])
                 b = b_[:,0]
                 bx = b_[:,1]
                 by = b_[:,2]
@@ -621,7 +622,7 @@ class FRi3D:
                 (tilt[0], tilt[1]), 
                 (flattening[0], flattening[1]),
                 (twist[0], twist[1]),
-                (0.9, 1.5)
+                (0.7, 1.0)
             ],
         )
 

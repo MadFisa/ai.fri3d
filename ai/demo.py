@@ -414,22 +414,29 @@ proj3d.persp_transformation = orthogonal_proj
 #    9.69389798   1.30678127]
 # 2.60204704475
 
+# fix end
+
+# [  8.51140005 -19.76761041   0.12946792   1.13415351   0.47783838
+#    5.57315287   0.83631745]
+# 2.71855769001
+
+
 def test_article(
-    latitude=np.pi/180.0*6.34967948, 
-    longitude=-np.pi/180.0*23.52010342, 
+    latitude=np.pi/180.0*8.51140005, 
+    longitude=-np.pi/180.0*19.76761041, 
     toroidal_height=0.7,
-    poloidal_height=0.10219471,
+    poloidal_height=0.12946792,
     half_width=np.pi/180.0*40, 
-    tilt=np.pi/180.0*5.54132107, 
-    flattening=0.4578051, 
+    tilt=np.pi/180.0*1.13415351, 
+    flattening=0.47783838, 
     pancaking=np.pi/180.0*20.0, 
     skew=np.pi/180.0*0.0, 
-    twist=9.69389798, 
+    twist=5.57315287, 
     flux=1e14,
     sigma=2.05,
     polarity=-1.0,
     chirality=1.0,
-    ratio=1.30678127,
+    ratio=0.83631745,
     x=1.0,
     y=0.0,
     z=0.0):
@@ -450,7 +457,12 @@ def test_article(
         polarity=polarity,
         chirality=chirality
     )
+    fr.toroidal_height = 1.0
     fr.init()
+    print(twist/fr._initial_axis_s(fr.half_width))
+    fr.toroidal_height = toroidal_height
+    fr.init()
+    
     
 
     t_begin = datetime(2010, 12, 15, 10, 20)
@@ -486,7 +498,8 @@ def test_article(
         toroidal_height=toroidal_height
     )
 
-    t = t0[0]+(t0[-1]-t0[0])*ratio*np.linspace(0.0, 1.0, b_.shape[0])
+    t = t0[-1]-(t0[-1]-t0[0])*ratio*np.linspace(1.0, 0.0, b_.shape[0])
+    # t = t0[0]+(t0[-1]-t0[0])*ratio*np.linspace(0.0, 1.0, b_.shape[0])
     b = b_[:,0]
     bx = b_[:,1]
     by = b_[:,2]
