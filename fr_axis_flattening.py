@@ -15,6 +15,8 @@ from mpl_toolkits.axisartist import angle_helper
 from mpl_toolkits.axisartist.grid_finder import MaxNLocator
 from mpl_toolkits.axisartist.floating_axes import GridHelperCurveLinear, FloatingSubplot
 
+flattening = 0.42
+
 fr_parameter = 1.0
 fr_height = 1.0
 fr_radius_max = 0.1*fr_height
@@ -86,22 +88,14 @@ def fractional_polar_axes(f, thlim=(0, 180), rlim=(0, 1), step=(30, 0.2),
                         transform=auxa.transData._b, zorder=-1))
     return auxa
 
-flattening = 0.44
-
 def diameter(x, radius_max):
-    return 2.0*radius_max*numpy.cos(x/phi0*numpy.pi/2.0)**flattening
+    return 2.0*radius_max*numpy.cos(x/phi0*numpy.pi/2.0)**0.42
 
 def function(x, y, p):
     fr_parameter = p[0]
     # print 2.0*y[1]**2, y[0], 2.0*y[1]**2/y[0]
-    return numpy.array([
-        y[1],
-        fr_parameter*
-        # diameter(x, fr_radius_max)*
-        (y[0]**2+y[1]**2)/(0.3 if y[0] < 0.3 else y[0])**3-
-        y[0]-
-        2.0*y[1]**2/(0.3 if y[0] < 0.3 else y[0])
-    ])
+    return numpy.array([y[1],
+                        -fr_parameter*diameter(x, fr_radius_max)*(y[0]**2+y[1]**2)/(0.3 if y[0] < 0.3 else y[0])**4-y[0]-2.0*y[1]**2/(0.3 if y[0] < 0.3 else y[0])])
 
 def boundary_conditions(y_a, y_b, p):
     condition_a = numpy.array([y_a[0]-fr_height, y_a[1]])
@@ -122,46 +116,78 @@ problem = scikits.bvp_solver.ProblemDefinition(num_ODE = 2,
 
 phi = numpy.linspace(problem.boundary_points[0], problem.boundary_points[1], n_points)
 
-solution = scikits.bvp_solver.solve(problem,
-                                    solution_guess = guess,
-                                    parameter_guess = numpy.array([1.0]),
-                                    initial_mesh = phi,
-                                    method = 6,
-                                    trace = 2)
-
-print(solution.parameters)
-
 fig = plt.figure()
 axes = fractional_polar_axes(fig, (-90.0, 90.0), (0.0, 1.1), thlabel=r"$\varphi$")
 # axes = pylab.subplot(111, polar=True)
 
-mask = solution.mesh < 0.995*phi0
+flattening = 0.2
+guessed_r = map(lambda x: guess(x)[0]/guess(0.0)[0]*1.0, phi)
 axes.plot(
-  solution.mesh[mask]*180.0/numpy.pi, 
-  (solution.solution[0,:]/solution.solution[0,0]*1.0)[mask], 
-  's',
-  color='r', 
-  linewidth=3,
-  markersize=4,
-  label='numerical solution',
-  zorder=2
+    phi*180.0/numpy.pi, 
+    guessed_r, 
+    color='r', 
+    linewidth=2,
+    zorder=3
 )
+guessed_r = map(lambda x: guess(x)[0]/guess(0.0)[0]*1.0, -phi)
 axes.plot(
-  -solution.mesh[mask]*180.0/numpy.pi, 
-  (solution.solution[0,:]/solution.solution[0,0]*1.0)[mask], 
-  's',
-  color='r', 
-  linewidth=3,
-  markersize=4,
-  zorder=2
+    -phi*180.0/numpy.pi, 
+    guessed_r, 
+    color='r', 
+    linewidth=2, 
+    label='n = 0.2',
+    zorder=3
 )
 
+flattening = 0.4
 guessed_r = map(lambda x: guess(x)[0]/guess(0.0)[0]*1.0, phi)
-axes.plot(phi*180.0/numpy.pi, guessed_r, color='b', linewidth=2,
-    zorder=1)
+axes.plot(
+    phi*180.0/numpy.pi, 
+    guessed_r, 
+    color='b', 
+    linewidth=2,
+    linestyle='dashed',
+    zorder=2
+)
 guessed_r = map(lambda x: guess(x)[0]/guess(0.0)[0]*1.0, -phi)
-axes.plot(-phi*180.0/numpy.pi, guessed_r, color='b', linewidth=2, label='approximate\nanalytical solution',
-    zorder=1)
+axes.plot(
+    -phi*180.0/numpy.pi, 
+    guessed_r, 
+    color='b', 
+    linewidth=2, 
+    label='n = 0.4',
+    linestyle='dashed',
+    zorder=2
+)
+
+# flattening = 0.6
+# guessed_r = map(lambda x: guess(x)[0]/guess(0.0)[0]*1.0, phi)
+# axes.plot(phi*180.0/numpy.pi, guessed_r, color='r', linewidth=2,
+#     zorder=2)
+# guessed_r = map(lambda x: guess(x)[0]/guess(0.0)[0]*1.0, -phi)
+# axes.plot(-phi*180.0/numpy.pi, guessed_r, color='r', linewidth=2, label='',
+#     zorder=2)
+
+flattening = 0.8
+guessed_r = map(lambda x: guess(x)[0]/guess(0.0)[0]*1.0, phi)
+axes.plot(
+    phi*180.0/numpy.pi, 
+    guessed_r, 
+    color='g', 
+    linewidth=2,
+    linestyle=':',
+    zorder=1
+)
+guessed_r = map(lambda x: guess(x)[0]/guess(0.0)[0]*1.0, -phi)
+axes.plot(
+    -phi*180.0/numpy.pi, 
+    guessed_r, 
+    color='g', 
+    linewidth=2, 
+    label='n = 0.8',
+    linestyle=':',
+    zorder=1
+)
 
 # axes.set_rmax(fr_height+0.1)
 # axes.set_xlim(-numpy.pi/2.0,numpy.pi/2.0)
