@@ -21,6 +21,24 @@ fr_radius_max = 0.1*fr_height
 phi0 = numpy.pi/3.0
 n_points = 50
 
+BLIND_PALETTE = {
+    'orange': 
+        (0.901960784, 0.623529412, 0.0),
+    'sky-blue': 
+        (0.337254902, 0.705882353, 0.91372549),
+    'bluish-green': 
+        (0.0, 0.619607843, 0.450980392),
+    'yellow': 
+        (0.941176471, 0.894117647, 0.258823529),
+    'blue': 
+        (0.0, 0.447058824, 0.698039216),
+    'vermillion': 
+        (0.835294118, 0.368627451, 0.0),
+    'reddish-purple': 
+        (0.8, 0.474509804, 0.654901961)
+}
+
+
 def fractional_polar_axes(f, thlim=(0, 180), rlim=(0, 1), step=(30, 0.2),
     thlabel='theta', rlabel='r', ticklabels=True):
     """Return polar axes that adhere to desired theta (in deg) and r limits. steps for theta
@@ -131,7 +149,7 @@ solution = scikits.bvp_solver.solve(problem,
 
 print(solution.parameters)
 
-fig = plt.figure()
+fig = plt.figure(figsize=(5,9))
 axes = fractional_polar_axes(fig, (-90.0, 90.0), (0.0, 1.1), thlabel=r"$\varphi$")
 # axes = pylab.subplot(111, polar=True)
 
@@ -140,9 +158,9 @@ axes.plot(
   solution.mesh[mask]*180.0/numpy.pi, 
   (solution.solution[0,:]/solution.solution[0,0]*1.0)[mask], 
   's',
-  color='r', 
+  color=BLIND_PALETTE['vermillion'], 
   linewidth=3,
-  markersize=4,
+  markersize=5,
   label='numerical solution',
   zorder=2
 )
@@ -150,25 +168,36 @@ axes.plot(
   -solution.mesh[mask]*180.0/numpy.pi, 
   (solution.solution[0,:]/solution.solution[0,0]*1.0)[mask], 
   's',
-  color='r', 
+  color=BLIND_PALETTE['vermillion'], 
   linewidth=3,
-  markersize=4,
+  markersize=5,
   zorder=2
 )
 
 guessed_r = map(lambda x: guess(x)[0]/guess(0.0)[0]*1.0, phi)
-axes.plot(phi*180.0/numpy.pi, guessed_r, color='b', linewidth=2,
-    zorder=1)
+axes.plot(
+    phi*180.0/numpy.pi, 
+    guessed_r, 
+    color=BLIND_PALETTE['blue'], 
+    linewidth=3,
+    zorder=1
+)
 guessed_r = map(lambda x: guess(x)[0]/guess(0.0)[0]*1.0, -phi)
-axes.plot(-phi*180.0/numpy.pi, guessed_r, color='b', linewidth=2, label='approximate\nanalytical solution',
-    zorder=1)
+axes.plot(
+    -phi*180.0/numpy.pi, 
+    guessed_r, 
+    color=BLIND_PALETTE['blue'], 
+    linewidth=3, 
+    label='approximate\nanalytical solution',
+    zorder=1
+)
 
 # axes.set_rmax(fr_height+0.1)
 # axes.set_xlim(-numpy.pi/2.0,numpy.pi/2.0)
 
 axes.grid(True)
 
-pylab.legend(loc='upper center')
+pylab.legend(loc='upper right')
 
 pylab.show()
 

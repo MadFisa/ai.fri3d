@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 
 import numpy as np
 
+from matplotlib import rcParams
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import proj3d
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
@@ -17,10 +18,29 @@ from importlib import reload
 
 from ai.fri3d import FRi3D
 
+rcParams.update({'font.size': 14})
+
 AU_KM = 149597870.7
 RS_KM = 6.957e5
 AU_RS = AU_KM/RS_KM
 RS_AU = RS_KM/AU_KM
+
+BLIND_PALETTE = {
+    'orange': 
+        (0.901960784, 0.623529412, 0.0),
+    'sky-blue': 
+        (0.337254902, 0.705882353, 0.91372549),
+    'bluish-green': 
+        (0.0, 0.619607843, 0.450980392),
+    'yellow': 
+        (0.941176471, 0.894117647, 0.258823529),
+    'blue': 
+        (0.0, 0.447058824, 0.698039216),
+    'vermillion': 
+        (0.835294118, 0.368627451, 0.0),
+    'reddish-purple': 
+        (0.8, 0.474509804, 0.654901961)
+}
 
 def test_shell(
     latitude=0.0, 
@@ -46,18 +66,39 @@ def test_shell(
     )
     fr.init()
 
-    fig = plt.figure()
+    fig = plt.figure(figsize=(10,10))
     ax = fig.add_subplot(111, projection='3d', adjustable='box', aspect=1.0)
     x, y, z = fr.shell()
-    ax.plot_wireframe(x, y, z, alpha=0.1)
+    ax.plot_wireframe(x, y, z, color=BLIND_PALETTE['blue'], alpha=0.4)
 
-    ax.set_xlabel('X [AU]')
-    ax.set_ylabel('Y [AU]')
-    ax.set_zlabel('Z [AU]]')
+    # ax.set_xlabel('X [AU]')
+    # ax.set_ylabel('Y [AU]')
+    # ax.set_zlabel('Z [AU]]')
 
-    fig = plt.figure()
-    x, y, z = fr.shell()
-    plt.plot(y, z, '.r')
+    ax.set_xlabel('X', labelpad=10)
+    ax.set_ylabel('Y', labelpad=10)
+    # ax.set_zlabel('Z')
+
+    ax.set_xlim([0.0, 1.2])
+    ax.set_ylim([-0.6, 0.6])
+    ax.set_zlim([-0.6, 0.6])
+
+    # ax.xaxis._axinfo['label']['space_factor'] = 2.0
+    # ax.yaxis._axinfo['label']['space_factor'] = 2.0
+    # ax.zaxis._axinfo['label']['space_factor'] = 2.0
+    ax.tick_params(axis='x', pad=10)
+    ax.tick_params(axis='y', pad=10)
+
+    ax.w_zaxis.line.set_lw(0.)
+    ax.set_zticks([])
+    # ax.zaxis.set_visible(False)
+
+
+    ax.view_init(elev=0.0, azim=-90.0)
+
+    # fig = plt.figure()
+    # x, y, z = fr.shell()
+    # plt.plot(y, z, '.r')
 
     plt.show()
 

@@ -23,6 +23,23 @@ fr_radius_max = 0.1*fr_height
 phi0 = numpy.pi/3.0
 n_points = 50
 
+BLIND_PALETTE = {
+    'orange': 
+        (0.901960784, 0.623529412, 0.0),
+    'sky-blue': 
+        (0.337254902, 0.705882353, 0.91372549),
+    'bluish-green': 
+        (0.0, 0.619607843, 0.450980392),
+    'yellow': 
+        (0.941176471, 0.894117647, 0.258823529),
+    'blue': 
+        (0.0, 0.447058824, 0.698039216),
+    'vermillion': 
+        (0.835294118, 0.368627451, 0.0),
+    'reddish-purple': 
+        (0.8, 0.474509804, 0.654901961)
+}
+
 def fractional_polar_axes(f, thlim=(0, 180), rlim=(0, 1), step=(30, 0.2),
     thlabel='theta', rlabel='r', ticklabels=True):
     """Return polar axes that adhere to desired theta (in deg) and r limits. steps for theta
@@ -116,7 +133,7 @@ problem = scikits.bvp_solver.ProblemDefinition(num_ODE = 2,
 
 phi = numpy.linspace(problem.boundary_points[0], problem.boundary_points[1], n_points)
 
-fig = plt.figure()
+fig = plt.figure(figsize=(5,9))
 axes = fractional_polar_axes(fig, (-90.0, 90.0), (0.0, 1.1), thlabel=r"$\varphi$")
 # axes = pylab.subplot(111, polar=True)
 
@@ -125,16 +142,16 @@ guessed_r = map(lambda x: guess(x)[0]/guess(0.0)[0]*1.0, phi)
 axes.plot(
     phi*180.0/numpy.pi, 
     guessed_r, 
-    color='r', 
-    linewidth=2,
+    color=BLIND_PALETTE['vermillion'], 
+    linewidth=3,
     zorder=3
 )
 guessed_r = map(lambda x: guess(x)[0]/guess(0.0)[0]*1.0, -phi)
 axes.plot(
     -phi*180.0/numpy.pi, 
     guessed_r, 
-    color='r', 
-    linewidth=2, 
+    color=BLIND_PALETTE['vermillion'], 
+    linewidth=3, 
     label='n = 0.2',
     zorder=3
 )
@@ -144,8 +161,8 @@ guessed_r = map(lambda x: guess(x)[0]/guess(0.0)[0]*1.0, phi)
 axes.plot(
     phi*180.0/numpy.pi, 
     guessed_r, 
-    color='b', 
-    linewidth=2,
+    color=BLIND_PALETTE['blue'], 
+    linewidth=3,
     linestyle='dashed',
     zorder=2
 )
@@ -153,8 +170,8 @@ guessed_r = map(lambda x: guess(x)[0]/guess(0.0)[0]*1.0, -phi)
 axes.plot(
     -phi*180.0/numpy.pi, 
     guessed_r, 
-    color='b', 
-    linewidth=2, 
+    color=BLIND_PALETTE['blue'], 
+    linewidth=3, 
     label='n = 0.4',
     linestyle='dashed',
     zorder=2
@@ -173,8 +190,8 @@ guessed_r = map(lambda x: guess(x)[0]/guess(0.0)[0]*1.0, phi)
 axes.plot(
     phi*180.0/numpy.pi, 
     guessed_r, 
-    color='g', 
-    linewidth=2,
+    color=BLIND_PALETTE['bluish-green'], 
+    linewidth=3,
     linestyle=':',
     zorder=1
 )
@@ -182,8 +199,8 @@ guessed_r = map(lambda x: guess(x)[0]/guess(0.0)[0]*1.0, -phi)
 axes.plot(
     -phi*180.0/numpy.pi, 
     guessed_r, 
-    color='g', 
-    linewidth=2, 
+    color=BLIND_PALETTE['bluish-green'], 
+    linewidth=3, 
     label='n = 0.8',
     linestyle=':',
     zorder=1
@@ -194,7 +211,7 @@ axes.plot(
 
 axes.grid(True)
 
-pylab.legend(loc='upper center')
+pylab.legend(loc='upper right')
 
 pylab.show()
 

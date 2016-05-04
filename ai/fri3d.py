@@ -114,8 +114,10 @@ class FRi3D:
 
     @pancaking.setter
     def pancaking(self, pancaking):
-        if pancaking > 0.0 and pancaking < np.pi:
+        if pancaking is not None and pancaking > 0.0 and pancaking < np.pi:
             self._pancaking = pancaking
+        else:
+            self._pancaking = None
 
     @property
     def skew(self):
@@ -196,7 +198,7 @@ class FRi3D:
         phi = np.linspace(-self.half_width, self.half_width, 100)
         s = np.array([self._initial_axis_s(p) for p in phi])
         self._spline_initial_axis_s_phi = scipy.interpolate.interp1d(
-            s, phi, kind='linear',
+            s, phi, kind='cubic',
             bounds_error=False,
             fill_value=(-self.half_width, self.half_width)
         )
@@ -292,13 +294,14 @@ class FRi3D:
         y_ = r*np.sin(phi)+np.cos(t-phi-np.pi/2.0)*y
         z_ = z
 
-        # pancaking
-        r, theta, phi = cs.cart2sp(x_, y_, z_)
-        theta = (
-            theta/np.arctan2(self.poloidal_height, self.toroidal_height)*
-            self.pancaking
-        )
-        x_, y_, z_ = cs.sp2cart(r, theta, phi)
+        if self.pancaking is not None:
+            # pancaking
+            r, theta, phi = cs.cart2sp(x_, y_, z_)
+            theta = (
+                theta/np.arctan2(self.poloidal_height, self.toroidal_height)*
+                self.pancaking
+            )
+            x_, y_, z_ = cs.sp2cart(r, theta, phi)
 
         # orientation
         T = cs.mx_rot(self.latitude, -self.longitude, -self.tilt)
