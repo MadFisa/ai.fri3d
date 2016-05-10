@@ -42,6 +42,155 @@ BLIND_PALETTE = {
         (0.8, 0.474509804, 0.654901961)
 }
 
+def paper_shell(
+    latitude=0.0, 
+    longitude=0.0, 
+    toroidal_height=1.0, 
+    poloidal_height=0.15, 
+    half_width=np.pi/180.0*40.0, 
+    tilt=np.pi/180.0*0.0, 
+    flattening=0.5, 
+    pancaking=None, 
+    skew=np.pi/180.0*0.0):
+
+    fr = FRi3D(
+        latitude=latitude, 
+        longitude=longitude, 
+        toroidal_height=toroidal_height, 
+        poloidal_height=poloidal_height, 
+        half_width=half_width, 
+        tilt=tilt, 
+        flattening=flattening, 
+        pancaking=pancaking, 
+        skew=skew
+    )
+
+    fig = plt.figure(figsize=(30,15))
+
+    top_view = (90.0,-90.0)
+    side_view = (0.0,-90.0)
+
+    # for i, skew in enumerate([0.0, np.pi/180.0*20.0]):
+    # for i, pancaking in enumerate([None, np.pi/180.0*30.0]):
+    for i, flattening in enumerate([0.7, 0.35]):
+        fr.flattening = flattening
+        fr.init()
+
+        ax = fig.add_subplot(2, 3, i*3+1, 
+            projection='3d', 
+            adjustable='box', 
+            aspect=1.0
+        )
+
+        x, y, z = fr.shell()
+        ax.plot_wireframe(x, y, z, color=BLIND_PALETTE['blue'], alpha=0.4)
+
+        # plt.subplots_adjust(hspace = 0.001)
+
+        ax.set_xlabel('X', labelpad=20)
+        ax.set_ylabel('Y', labelpad=20)
+        # ax.set_zlabel('Z', labelpad=20)
+
+        ax.set_xlim3d(0.0, 1.2)
+        ax.set_ylim3d(-0.6, 0.6)
+        ax.set_zlim3d(-0.6, 0.6)
+        
+        ax.tick_params(axis='x', pad=10)
+        ax.tick_params(axis='y', pad=10)
+        ax.tick_params(axis='z', pad=10)
+
+        ax.w_zaxis.line.set_lw(0.)
+        ax.set_zticks([])
+
+        # ax.w_yaxis.line.set_lw(0.)
+        # ax.set_yticks([])
+
+        ax.view_init(*top_view)
+
+        if i == 0:
+            ax.set_title('(a) front flattening (top view)')
+
+    fr.flattening = 0.5
+    for i, pancaking in enumerate([None, np.pi/180.0*30.0]):
+        fr.pancaking = pancaking
+        fr.init()
+
+        ax = fig.add_subplot(2, 3, i*3+2, 
+            projection='3d', 
+            adjustable='box', 
+            aspect=1.0
+        )
+
+        x, y, z = fr.shell()
+        ax.plot_wireframe(x, y, z, color=BLIND_PALETTE['blue'], alpha=0.4)
+
+        # plt.subplots_adjust(hspace = 0.001)
+
+        ax.set_xlabel('X', labelpad=20)
+        # ax.set_ylabel('Y', labelpad=20)
+        ax.set_zlabel('Z', labelpad=20)
+        
+        ax.set_xlim3d(0.0, 1.2)
+        ax.set_ylim3d(-0.6, 0.6)
+        ax.set_zlim3d(-0.6, 0.6)
+
+        ax.tick_params(axis='x', pad=10)
+        ax.tick_params(axis='y', pad=10)
+        ax.tick_params(axis='z', pad=10)
+
+        # ax.w_zaxis.line.set_lw(0.)
+        # ax.set_zticks([])
+
+        ax.w_yaxis.line.set_lw(0.)
+        ax.set_yticks([])
+
+        ax.view_init(*side_view)
+
+        if i == 0:
+            ax.set_title('(b) pancaking (side view)')
+
+    fr.pancaking = None
+    for i, skew in enumerate([0.0, np.pi/180.0*30.0]):
+        fr.skew = skew
+        fr.init()
+
+        ax = fig.add_subplot(2, 3, i*3+3, 
+            projection='3d', 
+            adjustable='box', 
+            aspect=1.0
+        )
+
+        x, y, z = fr.shell()
+        ax.plot_wireframe(x, y, z, color=BLIND_PALETTE['blue'], alpha=0.4)
+
+        # plt.subplots_adjust(hspace = 0.001)
+
+        ax.set_xlabel('X', labelpad=20)
+        ax.set_ylabel('Y', labelpad=20)
+        # ax.set_zlabel('Z', labelpad=20)
+        
+        ax.set_xlim3d(0.0, 1.2)
+        ax.set_ylim3d(-0.6, 0.6)
+        ax.set_zlim3d(-0.6, 0.6)
+
+        ax.tick_params(axis='x', pad=10)
+        ax.tick_params(axis='y', pad=10)
+        ax.tick_params(axis='z', pad=10)
+
+        ax.w_zaxis.line.set_lw(0.)
+        ax.set_zticks([])
+
+        # ax.w_yaxis.line.set_lw(0.)
+        # ax.set_yticks([])
+
+        ax.view_init(*top_view)
+
+        if i == 0:
+            ax.set_title('(c) skewing (top view)')
+
+    plt.tight_layout()
+    plt.show()
+
 def test_shell(
     latitude=0.0, 
     longitude=0.0, 

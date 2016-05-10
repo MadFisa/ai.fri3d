@@ -195,7 +195,7 @@ class FRi3D:
 
     # initilize spline phi(s)
     def _init_spline_initial_axis_s_phi(self):
-        phi = np.linspace(-self.half_width, self.half_width, 100)
+        phi = np.linspace(-self.half_width, self.half_width, 500)
         s = np.array([self._initial_axis_s(p) for p in phi])
         self._spline_initial_axis_s_phi = scipy.interpolate.interp1d(
             s, phi, kind='cubic',
