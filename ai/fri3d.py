@@ -25,6 +25,23 @@ RS_AU = RS_KM/AU_KM
 
 db_prev = np.inf
 
+BLIND_PALETTE = {
+    'orange': 
+        (0.901960784, 0.623529412, 0.0),
+    'sky-blue': 
+        (0.337254902, 0.705882353, 0.91372549),
+    'bluish-green': 
+        (0.0, 0.619607843, 0.450980392),
+    'yellow': 
+        (0.941176471, 0.894117647, 0.258823529),
+    'blue': 
+        (0.0, 0.447058824, 0.698039216),
+    'vermillion': 
+        (0.835294118, 0.368627451, 0.0),
+    'reddish-purple': 
+        (0.8, 0.474509804, 0.654901961)
+}
+
 
 class FRi3D:
     def __init__(
@@ -38,6 +55,7 @@ class FRi3D:
         flattening=0.5, 
         pancaking=np.pi/6.0, 
         skew=0.0, 
+        tapering=1.5, 
         twist=1.0, 
         flux=5e14,
         sigma=2.05,
@@ -53,6 +71,7 @@ class FRi3D:
         self.flattening = flattening
         self.pancaking = pancaking
         self.skew = skew
+        self.tapering = tapering
         self.twist = twist
         self.flux = flux
         self.sigma = sigma
@@ -151,6 +170,14 @@ class FRi3D:
     @tilt.setter
     def tilt(self, tilt):
         self._tilt = tilt    
+
+    @property
+    def tapering(self):
+        return self._tapering
+
+    @tapering.setter
+    def tapering(self, tapering):
+        self._tapering = tapering
 
     @property
     def flux(self):
@@ -275,8 +302,11 @@ class FRi3D:
         
         # tapering
         r = (
-            r*self._initial_axis_r(self._spline_initial_axis_s_phi(z))*
-            self.poloidal_height/self.toroidal_height
+            r*self.poloidal_height*
+            (
+                self._initial_axis_r(self._spline_initial_axis_s_phi(z))/
+                self.toroidal_height
+            )**self.tapering
         )
         x_, y_, z_ = cs.cyl2cart(r, phi, z)
 
@@ -657,26 +687,60 @@ class FRi3D:
         x0, y0, z0 = self.shell()
         fig = plt.figure()
 
-        gs = gridspec.GridSpec(1, 3)
+        RB = 16.0496368
+        RA = 14.4910588
+
+        gs = gridspec.GridSpec(2, 3)
         gs.update(wspace=0.0, hspace=0.0)
 
         ax = plt.subplot(gs[0])
         ax.imshow(
             plt.imread('/media/data/Documents/Articles/2016_Isavnin_FRi3D/remote_stb.png'),
             zorder=0,
-            extent=[-15.0+0.02, 15.0+0.02, -15.0-0.1, 15.0-0.1]
+            extent=[-RB+0.05, RB+0.05, -RB-0.1, RB-0.1]
+        )
+        ax.set_xlim([-RB+0.05, RB+0.05])
+        ax.set_ylim([-RB-0.1, RB-0.1])
+        plt.axis('off')
+
+        ax = plt.subplot(gs[1])
+        ax.imshow(
+            plt.imread('/media/data/Documents/Articles/2016_Isavnin_FRi3D/remote_soho.png'),
+            zorder=0,
+            extent=[-32.0+0.3, 32.0+0.3, -32.0+1.33, 32.0+1.33]
+        )
+        ax.set_xlim([-32.0+0.3, 32.0+0.3])
+        ax.set_ylim([-32.0+1.33, 32.0+1.33])
+        plt.axis('off')
+
+        ax = plt.subplot(gs[2])
+        ax.imshow(
+            plt.imread('/media/data/Documents/Articles/2016_Isavnin_FRi3D/remote_sta.png'),
+            zorder=0,
+            extent=[-RA, RA, -RA+0.04, RA+0.04]
+        )
+        ax.set_xlim([-RA, RA])
+        ax.set_ylim([-RA+0.04, RA+0.04])
+        plt.axis('off')
+
+        
+        ax = plt.subplot(gs[3])
+        ax.imshow(
+            plt.imread('/media/data/Documents/Articles/2016_Isavnin_FRi3D/remote_stb.png'),
+            zorder=0,
+            extent=[-RB+0.05, RB+0.05, -RB-0.1, RB-0.1]
         )
         # ax.plot([0.0], [0.0], '.y', markersize=5.0)
         T = cs.mx_rot_z(-np.pi/180.0*172.566)
         x = T[0,0]*x0+T[0,1]*y0+T[0,2]*z0
         y = T[1,0]*x0+T[1,1]*y0+T[1,2]*z0
         z = T[2,0]*x0+T[2,1]*y0+T[2,2]*z0
-        ax.plot(y*AU_RS, z*AU_RS, '.r', markersize=1.0)
-        ax.set_xlim([-15.0+0.02, 15.0+0.02])
-        ax.set_ylim([-15.0-0.1, 15.0-0.1])
+        ax.scatter(y*AU_RS, z*AU_RS, 3, color=BLIND_PALETTE['yellow'], marker='.')
+        ax.set_xlim([-RB+0.05, RB+0.05])
+        ax.set_ylim([-RB-0.1, RB-0.1])
         plt.axis('off')
 
-        ax = plt.subplot(gs[1])
+        ax = plt.subplot(gs[4])
         ax.imshow(
             plt.imread('/media/data/Documents/Articles/2016_Isavnin_FRi3D/remote_soho.png'),
             zorder=0,
@@ -687,21 +751,22 @@ class FRi3D:
         x = T[0,0]*x0+T[0,1]*y0+T[0,2]*z0
         y = T[1,0]*x0+T[1,1]*y0+T[1,2]*z0
         z = T[2,0]*x0+T[2,1]*y0+T[2,2]*z0
-        ax.plot(y*AU_RS, z*AU_RS, '.r', markersize=1.0)
+        ax.scatter(y*AU_RS, z*AU_RS, 3, color=BLIND_PALETTE['yellow'], marker='.')
         ax.set_xlim([-32.0+0.3, 32.0+0.3])
         ax.set_ylim([-32.0+1.33, 32.0+1.33])
         plt.axis('off')
 
-        ax = plt.subplot(gs[2])
+        
+        ax = plt.subplot(gs[5])
         ax.imshow(
             plt.imread('/media/data/Documents/Articles/2016_Isavnin_FRi3D/remote_sta.png'),
             zorder=0,
-            extent=[-13.54+0.01, 13.54+0.01, -13.54+0.04, 13.54+0.04]
+            extent=[-RA, RA, -RA+0.04, RA+0.04]
         )
         # ax.plot([0.0], [0.0], '.y', markersize=5.0)
-        ax.plot(y0*AU_RS, z0*AU_RS, '.r', markersize=1.0)
-        ax.set_xlim([-13.54+0.01, 13.54+0.01])
-        ax.set_ylim([-13.54+0.04, 13.54+0.04])
+        ax.scatter(y0*AU_RS, z0*AU_RS, 3, color=BLIND_PALETTE['yellow'], marker='.')
+        ax.set_xlim([-RA, RA])
+        ax.set_ylim([-RA+0.04, RA+0.04])
         plt.axis('off')
 
         plt.show()

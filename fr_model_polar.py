@@ -109,7 +109,7 @@ def fr_dphi(phi, phi0, Rt, n, Rp):
     return numpy.arctan(numpy.cos(fr_tangent(phi, phi0, n))*Rp/Rt)
 
 phi0 = numpy.pi/4.0
-phi = numpy.linspace(-phi0, phi0, 100)
+phi = numpy.linspace(-phi0, phi0, 10000)
 Rt = 1.0
 Rp = 0.15
 n = 0.32
@@ -117,9 +117,9 @@ n = 0.32
 fig = plt.figure(figsize=(9,9))
 
 axes = fractional_polar_axes(fig, (-90.0, 90.0), (0.0, 1.2), thlabel=r"$\varphi$")
-r = map(lambda x: fr_model(x, phi0, Rt, n), phi)
+r = numpy.array(map(lambda x: fr_model(x, phi0, Rt, n), phi))
 axes.plot(
-    phi*180.0/numpy.pi, 
+    phi*180.0/numpy.pi+30.0*(1.0-r/Rt), 
     r, 
     color=BLIND_PALETTE['bluish-green'], 
     linewidth=3,
@@ -129,7 +129,7 @@ axes.plot(
 r1 = numpy.array(map(lambda x: fr_model_outer(x, phi0, Rt, n, Rp), phi))
 phi1 = numpy.array(map(lambda x: x+numpy.sign(x)*fr_dphi(x, phi0, Rt, n, Rp), phi))
 axes.plot(
-    phi1*180.0/numpy.pi, 
+    phi1*180.0/numpy.pi+30.0*(1.0-r1/Rt), 
     r1, 
     color=BLIND_PALETTE['vermillion'], 
     linewidth=3,
@@ -138,7 +138,7 @@ axes.plot(
 r2 = numpy.array(map(lambda x: fr_model_inner(x, phi0, Rt, n, Rp), phi))
 phi2 = numpy.array(map(lambda x: x-numpy.sign(x)*fr_dphi(x, phi0, Rt, n, Rp), phi))
 axes.plot(
-    phi2*180.0/numpy.pi, 
+    phi2*180.0/numpy.pi+30.0*(1.0-r2/Rt), 
     r2, 
     color=BLIND_PALETTE['vermillion'], 
     linewidth=3,
