@@ -687,8 +687,12 @@ class FRi3D:
         x0, y0, z0 = self.shell()
         fig = plt.figure()
 
+        DB = 1.070206
+        DA = 0.966103
+        DS = 1.0
         RB = 16.0496368
         RA = 14.4910588
+        RS = 32.0
 
         gs = gridspec.GridSpec(2, 3)
         gs.update(wspace=0.0, hspace=0.0)
@@ -735,6 +739,8 @@ class FRi3D:
         x = T[0,0]*x0+T[0,1]*y0+T[0,2]*z0
         y = T[1,0]*x0+T[1,1]*y0+T[1,2]*z0
         z = T[2,0]*x0+T[2,1]*y0+T[2,2]*z0
+        y = DB/(DB-x)*y
+        z = DB/(DB-x)*z
         ax.scatter(y*AU_RS, z*AU_RS, 3, color=BLIND_PALETTE['yellow'], marker='.')
         ax.set_xlim([-RB+0.05, RB+0.05])
         ax.set_ylim([-RB-0.1, RB-0.1])
@@ -751,6 +757,8 @@ class FRi3D:
         x = T[0,0]*x0+T[0,1]*y0+T[0,2]*z0
         y = T[1,0]*x0+T[1,1]*y0+T[1,2]*z0
         z = T[2,0]*x0+T[2,1]*y0+T[2,2]*z0
+        y = DS/(DS-x)*y
+        z = DS/(DS-x)*z
         ax.scatter(y*AU_RS, z*AU_RS, 3, color=BLIND_PALETTE['yellow'], marker='.')
         ax.set_xlim([-32.0+0.3, 32.0+0.3])
         ax.set_ylim([-32.0+1.33, 32.0+1.33])
@@ -764,7 +772,9 @@ class FRi3D:
             extent=[-RA, RA, -RA+0.04, RA+0.04]
         )
         # ax.plot([0.0], [0.0], '.y', markersize=5.0)
-        ax.scatter(y0*AU_RS, z0*AU_RS, 3, color=BLIND_PALETTE['yellow'], marker='.')
+        y = DA/(DA-x0)*y0
+        z = DA/(DA-x0)*z0
+        ax.scatter(y*AU_RS, z*AU_RS, 3, color=BLIND_PALETTE['yellow'], marker='.')
         ax.set_xlim([-RA, RA])
         ax.set_ylim([-RA+0.04, RA+0.04])
         plt.axis('off')
