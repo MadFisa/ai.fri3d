@@ -55,7 +55,7 @@ class FRi3D:
         flattening=0.5, 
         pancaking=np.pi/6.0, 
         skew=0.0, 
-        tapering=1.5, 
+        tapering=1.0, 
         twist=1.0, 
         flux=5e14,
         sigma=2.05,
@@ -687,11 +687,11 @@ class FRi3D:
         x0, y0, z0 = self.shell()
         fig = plt.figure()
 
-        DB = 1.070206
-        DA = 0.966103
+        DB = 1.079771
+        DA = 0.960188
         DS = 1.0
-        RB = 16.0496368
-        RA = 14.4910588
+        RB = DB*AU_RS*np.tan(4.0*np.pi/180.0)
+        RA = DA*AU_RS*np.tan(4.0*np.pi/180.0)
         RS = 32.0
 
         gs = gridspec.GridSpec(2, 3)
@@ -699,84 +699,107 @@ class FRi3D:
 
         ax = plt.subplot(gs[0])
         ax.imshow(
-            plt.imread('/media/data/Documents/Articles/2016_Isavnin_FRi3D/remote_stb.png'),
+            plt.imread('/media/data/Documents/Articles/2016_Isavnin_FRi3D/20130106_103900_dbc2B_opt.png'),
             zorder=0,
             extent=[-RB+0.05, RB+0.05, -RB-0.1, RB-0.1]
         )
         ax.set_xlim([-RB+0.05, RB+0.05])
         ax.set_ylim([-RB-0.1, RB-0.1])
+        ax.set_axis_bgcolor('black')
         plt.axis('off')
 
         ax = plt.subplot(gs[1])
         ax.imshow(
-            plt.imread('/media/data/Documents/Articles/2016_Isavnin_FRi3D/remote_soho.png'),
+            plt.imread('/media/data/Documents/Articles/2016_Isavnin_FRi3D/20130106_1042_c3_1024_opt.png'),
             zorder=0,
             extent=[-32.0+0.3, 32.0+0.3, -32.0+1.33, 32.0+1.33]
         )
         ax.set_xlim([-32.0+0.3, 32.0+0.3])
         ax.set_ylim([-32.0+1.33, 32.0+1.33])
+        ax.set_axis_bgcolor('black')
         plt.axis('off')
 
         ax = plt.subplot(gs[2])
         ax.imshow(
-            plt.imread('/media/data/Documents/Articles/2016_Isavnin_FRi3D/remote_sta.png'),
+            plt.imread('/media/data/Documents/Articles/2016_Isavnin_FRi3D/20130106_103900_dbc2A_opt.png'),
             zorder=0,
             extent=[-RA, RA, -RA+0.04, RA+0.04]
         )
         ax.set_xlim([-RA, RA])
         ax.set_ylim([-RA+0.04, RA+0.04])
+        ax.set_axis_bgcolor('black')
         plt.axis('off')
 
         
         ax = plt.subplot(gs[3])
         ax.imshow(
-            plt.imread('/media/data/Documents/Articles/2016_Isavnin_FRi3D/remote_stb.png'),
+            plt.imread('/media/data/Documents/Articles/2016_Isavnin_FRi3D/20130106_103900_dbc2B_opt.png'),
             zorder=0,
-            extent=[-RB+0.05, RB+0.05, -RB-0.1, RB-0.1]
+            extent=[-RB-0.03, RB-0.03, -RB-0.0, RB-0.0]
         )
         # ax.plot([0.0], [0.0], '.y', markersize=5.0)
-        T = cs.mx_rot_z(-np.pi/180.0*172.566)
+        T = cs.mx_rot_z(-np.pi/180.0*(128.919+132.550))
         x = T[0,0]*x0+T[0,1]*y0+T[0,2]*z0
         y = T[1,0]*x0+T[1,1]*y0+T[1,2]*z0
         z = T[2,0]*x0+T[2,1]*y0+T[2,2]*z0
         y = DB/(DB-x)*y
         z = DB/(DB-x)*z
         ax.scatter(y*AU_RS, z*AU_RS, 3, color=BLIND_PALETTE['yellow'], marker='.')
-        ax.set_xlim([-RB+0.05, RB+0.05])
-        ax.set_ylim([-RB-0.1, RB-0.1])
+        ax.set_xlim([-RB-0.03, RB-0.03])
+        ax.set_ylim([-RB-0.0, RB-0.0])
+        ax.set_axis_bgcolor('black')
+        # ax.text(-RA+1, -RA+1, 
+        #     'COR2B 2013-01-06 10:39', 
+        #     fontsize=24,
+        #     color=BLIND_PALETTE['yellow']
+        # )
         plt.axis('off')
 
         ax = plt.subplot(gs[4])
         ax.imshow(
-            plt.imread('/media/data/Documents/Articles/2016_Isavnin_FRi3D/remote_soho.png'),
+            plt.imread('/media/data/Documents/Articles/2016_Isavnin_FRi3D/20130106_1042_c3_1024_opt.png'),
             zorder=0,
-            extent=[-32.0+0.3, 32.0+0.3, -32.0+1.33, 32.0+1.33]
+            extent=[-32.0+0.37, 32.0+0.37, -32.0+1.19, 32.0+1.19]
         )
         # ax.plot([0.0], [0.0], '.y', markersize=5.0)
-        T = cs.mx_rot_z(-np.pi/180.0*87.395)
+        T = cs.mx_rot_z(-np.pi/180.0*128.919)
         x = T[0,0]*x0+T[0,1]*y0+T[0,2]*z0
         y = T[1,0]*x0+T[1,1]*y0+T[1,2]*z0
         z = T[2,0]*x0+T[2,1]*y0+T[2,2]*z0
         y = DS/(DS-x)*y
         z = DS/(DS-x)*z
         ax.scatter(y*AU_RS, z*AU_RS, 3, color=BLIND_PALETTE['yellow'], marker='.')
-        ax.set_xlim([-32.0+0.3, 32.0+0.3])
-        ax.set_ylim([-32.0+1.33, 32.0+1.33])
+        ax.set_xlim([-32.0+0.37, 32.0+0.37])
+        ax.set_ylim([-32.0+1.19, 32.0+1.19])
+        ax.set_axis_bgcolor('black')
+        # ax.text(-RA+1, -RA+1, 
+        #     'C3 2013-01-06 10:42', 
+        #     fontsize=24,
+        #     color=BLIND_PALETTE['yellow']
+        # )
         plt.axis('off')
 
         
         ax = plt.subplot(gs[5])
         ax.imshow(
-            plt.imread('/media/data/Documents/Articles/2016_Isavnin_FRi3D/remote_sta.png'),
+            plt.imread('/media/data/Documents/Articles/2016_Isavnin_FRi3D/20130106_103900_dbc2A_opt.png'),
             zorder=0,
-            extent=[-RA, RA, -RA+0.04, RA+0.04]
+            extent=[-RA+0.1, RA+0.1, -RA+0.04, RA+0.04]
         )
         # ax.plot([0.0], [0.0], '.y', markersize=5.0)
         y = DA/(DA-x0)*y0
         z = DA/(DA-x0)*z0
         ax.scatter(y*AU_RS, z*AU_RS, 3, color=BLIND_PALETTE['yellow'], marker='.')
-        ax.set_xlim([-RA, RA])
+        ax.set_xlim([-RA+0.1, RA+0.1])
         ax.set_ylim([-RA+0.04, RA+0.04])
+        ax.set_axis_bgcolor('black')
+        ax.patch.set_facecolor('black')
+        # ax.text(-RA+1, -RA+1, 
+        #     'COR2A 2013-01-06 10:39', 
+        #     fontsize=24,
+        #     color=BLIND_PALETTE['yellow']
+        # )
+
         plt.axis('off')
 
         plt.show()

@@ -759,16 +759,16 @@ def test_article(
     plt.show()
 
 def test_remote(
-    latitude=-np.pi/180.0*8.0, 
-    longitude=-np.pi/180.0*26.0, 
-    toroidal_height=13.5/AU_RS,
-    poloidal_height=3.6/AU_RS,
-    half_width=np.pi/180.0*50.0, 
-    tilt=np.pi/180.0*8.0, 
-    flattening=0.4, 
-    pancaking=np.pi/180.0*20.0, 
-    skew=np.pi/180.0*10.0, 
-    tapering=1.5,
+    latitude=-np.pi/180.0*6.0, 
+    longitude=-np.pi/180.0*6.0, 
+    toroidal_height=12.5/AU_RS,
+    poloidal_height=3.7/AU_RS,
+    half_width=np.pi/180.0*44.0, 
+    tilt=np.pi/180.0*42.0, 
+    flattening=0.37, 
+    pancaking=np.pi/180.0*18.0, 
+    skew=np.pi/180.0*5.0, 
+    tapering=1.4,
     twist=2.79284826, 
     flux=1e14,
     sigma=2.29962923,
@@ -798,3 +798,5 @@ def test_remote(
     fr.init()
 
     fr.fit2remote()
+
+test_remote()
