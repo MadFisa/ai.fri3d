@@ -11,12 +11,17 @@ from mpl_toolkits.mplot3d.art3d import Line3DCollection
 import matplotlib.path as mpath
 import matplotlib.colors as colors
 from matplotlib.colorbar import ColorbarBase
+import matplotlib.gridspec as gridspec
 
 import ai.cdas as cdas
+
+from scipy.io import readsav
 
 from importlib import reload
 
 from ai.fri3d import FRi3D
+
+from ai import cs
 
 rcParams.update({'font.size': 14})
 
@@ -584,26 +589,6 @@ proj3d.persp_transformation = orthogonal_proj
 #     chirality=1.0
 # )
 
-# [  8.54355628 -20.39145993   0.11084887   2.16074957   0.50537504
-#    6.77391367   2.19169087   1.20288016]
-# 2.49470631039
-
-# [  8.61910947 -21.10748715   0.12170966   1.62849082   0.51726676
-#    6.87282201   2.72165576   1.20756696]
-# 2.45206364245
-
-# [  5.90279467 -23.54842414   0.14707356   4.71965664   0.53860386
-#    9.57691177   1.29043543]
-# 2.66978262064
-
-# [  6.61754667 -19.87803594   0.10132359   5.38408605   0.57112203
-#    8.73950104   1.25355065]
-# 2.64508988577
-
-# [  6.34967948 -23.52010342   0.10219471   5.54132107   0.4578051
-#    9.69389798   1.30678127]
-# 2.60204704475
-
 # fix end
 
 # [  8.51140005 -19.76761041   0.12946792   1.13415351   0.47783838
@@ -759,16 +744,17 @@ def test_article(
     plt.show()
 
 def test_remote(
-    latitude=-np.pi/180.0*6.0, 
-    longitude=-np.pi/180.0*6.0, 
+    latitude=-np.pi/180.0*5.0, 
+    longitude=np.pi/180.0*123.0, 
+    # longitude=np.pi/180.0*90.0, 
     toroidal_height=12.5/AU_RS,
-    poloidal_height=3.7/AU_RS,
-    half_width=np.pi/180.0*44.0, 
-    tilt=np.pi/180.0*42.0, 
+    poloidal_height=3.5/AU_RS,
+    half_width=np.pi/180.0*43.0, 
+    tilt=np.pi/180.0*44.0, 
     flattening=0.37, 
     pancaking=np.pi/180.0*18.0, 
     skew=np.pi/180.0*5.0, 
-    tapering=1.4,
+    tapering=1.2,
     twist=2.79284826, 
     flux=1e14,
     sigma=2.29962923,
@@ -797,6 +783,323 @@ def test_remote(
     )
     fr.init()
 
-    fr.fit2remote()
 
-test_remote()
+    sta_lon = 129.266*np.pi/180.0
+    sta_lat = -2.511*np.pi/180.0
+    sta_r = 0.960188
+    sta_fov = sta_r*AU_RS*np.tan(4.0*np.pi/180.0)
+    stb_lon = -132.444*np.pi/180.0
+    stb_lat = 7.074*np.pi/180.0
+    stb_r = 1.079771
+    stb_fov = stb_r*AU_RS*np.tan(4.0*np.pi/180.0)
+    soho_lon = 0.0*np.pi/180.0
+    soho_lat = 0.0*np.pi/180.0
+    soho_r = 1.0
+    soho_fov = 32.0
+
+    x0, y0, z0 = fr.shell()
+    fig = plt.figure()
+    ax = fig.add_subplot(111, 
+        projection='3d', 
+        adjustable='box', 
+        aspect=1.0
+    )
+    ax.plot_wireframe(x0, y0, z0, color=BLIND_PALETTE['blue'], alpha=0.4)
+    plt.show()
+
+
+    fig = plt.figure()
+
+    gs = gridspec.GridSpec(2, 3)
+    gs.update(wspace=0.0, hspace=0.0)
+
+    ax = plt.subplot(gs[0])
+    ax.imshow(
+        plt.imread('/media/data/Documents/Articles/2016_Isavnin_FRi3D/20130106_103900_dbc2B_opt.png'),
+        zorder=0,
+        extent=[-stb_fov+0.05, stb_fov+0.05, -stb_fov-0.1, stb_fov-0.1]
+    )
+    ax.set_xlim([-stb_fov+0.05, stb_fov+0.05])
+    ax.set_ylim([-stb_fov-0.1, stb_fov-0.1])
+    ax.set_axis_bgcolor('black')
+    plt.axis('off')
+
+    ax = plt.subplot(gs[1])
+    ax.imshow(
+        plt.imread('/media/data/Documents/Articles/2016_Isavnin_FRi3D/20130106_1042_c3_1024_opt.png'),
+        zorder=0,
+        extent=[-soho_fov+0.3, soho_fov+0.3, -soho_fov+1.33, soho_fov+1.33]
+    )
+    ax.set_xlim([-soho_fov+0.3, soho_fov+0.3])
+    ax.set_ylim([-soho_fov+1.33, soho_fov+1.33])
+    ax.set_axis_bgcolor('black')
+    plt.axis('off')
+
+    ax = plt.subplot(gs[2])
+    ax.imshow(
+        plt.imread('/media/data/Documents/Articles/2016_Isavnin_FRi3D/20130106_103900_dbc2A_opt.png'),
+        zorder=0,
+        extent=[-sta_fov, sta_fov, -sta_fov+0.04, sta_fov+0.04]
+    )
+    ax.set_xlim([-sta_fov, sta_fov])
+    ax.set_ylim([-sta_fov+0.04, sta_fov+0.04])
+    ax.set_axis_bgcolor('black')
+    plt.axis('off')
+
+    
+    ax = plt.subplot(gs[3])
+    ax.imshow(
+        plt.imread('/media/data/Documents/Articles/2016_Isavnin_FRi3D/20130106_103900_dbc2B_opt.png'),
+        zorder=0,
+        extent=[-stb_fov-0.03, stb_fov-0.03, -stb_fov-0.0, stb_fov-0.0]
+    )
+    # ax.plot([0.0], [0.0], '.y', markersize=5.0)
+    T = cs.mx_rot_z(-stb_lon)*cs.mx_rot_y(stb_lat)
+    x = T[0,0]*x0+T[0,1]*y0+T[0,2]*z0
+    y = T[1,0]*x0+T[1,1]*y0+T[1,2]*z0
+    z = T[2,0]*x0+T[2,1]*y0+T[2,2]*z0
+    y = stb_r/(stb_r-x)*y
+    z = stb_r/(stb_r-x)*z
+    ax.scatter(y*AU_RS, z*AU_RS, 3, color=BLIND_PALETTE['yellow'], marker='.')
+    ax.set_xlim([-stb_fov-0.03, stb_fov-0.03])
+    ax.set_ylim([-stb_fov-0.0, stb_fov-0.0])
+    ax.set_axis_bgcolor('black')
+    plt.axis('off')
+
+    ax = plt.subplot(gs[4])
+    ax.imshow(
+        plt.imread('/media/data/Documents/Articles/2016_Isavnin_FRi3D/20130106_1042_c3_1024_opt.png'),
+        zorder=0,
+        extent=[-soho_fov+0.37, soho_fov+0.37, -soho_fov+1.19, soho_fov+1.19]
+    )
+    # ax.plot([0.0], [0.0], '.y', markersize=5.0)
+    T = cs.mx_rot_z(-soho_lon)*cs.mx_rot_y(soho_lat)
+    x = T[0,0]*x0+T[0,1]*y0+T[0,2]*z0
+    y = T[1,0]*x0+T[1,1]*y0+T[1,2]*z0
+    z = T[2,0]*x0+T[2,1]*y0+T[2,2]*z0
+    y = soho_r/(soho_r-x)*y
+    z = soho_r/(soho_r-x)*z
+    ax.scatter(y*AU_RS, z*AU_RS, 3, color=BLIND_PALETTE['yellow'], marker='.')
+    ax.set_xlim([-soho_fov+0.37, soho_fov+0.37])
+    ax.set_ylim([-soho_fov+1.19, soho_fov+1.19])
+    ax.set_axis_bgcolor('black')
+    plt.axis('off')
+
+    
+    ax = plt.subplot(gs[5])
+    ax.imshow(
+        plt.imread('/media/data/Documents/Articles/2016_Isavnin_FRi3D/20130106_103900_dbc2A_opt.png'),
+        zorder=0,
+        extent=[-sta_fov+0.1, sta_fov+0.1, -sta_fov+0.04, sta_fov+0.04]
+    )
+    # ax.plot([0.0], [0.0], '.y', markersize=5.0)
+    T = cs.mx_rot_z(-sta_lon)*cs.mx_rot_y(sta_lat)
+    x = T[0,0]*x0+T[0,1]*y0+T[0,2]*z0
+    y = T[1,0]*x0+T[1,1]*y0+T[1,2]*z0
+    z = T[2,0]*x0+T[2,1]*y0+T[2,2]*z0
+    y = sta_r/(sta_r-x)*y
+    z = sta_r/(sta_r-x)*z
+    ax.scatter(y*AU_RS, z*AU_RS, 3, color=BLIND_PALETTE['yellow'], marker='.')
+    ax.set_xlim([-sta_fov+0.1, sta_fov+0.1])
+    ax.set_ylim([-sta_fov+0.04, sta_fov+0.04])
+    ax.set_axis_bgcolor('black')
+    ax.patch.set_facecolor('black')
+    plt.axis('off')
+
+    plt.show()
+
+def test_insitu_mes(
+    latitude=np.pi/180.0*8.51140005, 
+    longitude=-np.pi/180.0*19.76761041, 
+    toroidal_height=0.7,
+    poloidal_height=0.12946792,
+    half_width=np.pi/180.0*40, 
+    tilt=np.pi/180.0*1.13415351, 
+    flattening=0.47783838, 
+    pancaking=np.pi/180.0*20.0, 
+    skew=np.pi/180.0*0.0, 
+    twist=5.57315287, 
+    flux=1e14,
+    sigma=2.05,
+    polarity=-1.0,
+    chirality=1.0,
+    ratio=0.83631745,
+    x=1.0,
+    y=0.0,
+    z=0.0):
+
+    fr = FRi3D(
+        latitude=latitude, 
+        longitude=longitude, 
+        toroidal_height=toroidal_height, 
+        poloidal_height=poloidal_height, 
+        half_width=half_width, 
+        tilt=tilt, 
+        flattening=flattening, 
+        pancaking=pancaking, 
+        skew=skew, 
+        twist=twist, 
+        flux=flux,
+        sigma=sigma,
+        polarity=polarity,
+        chirality=chirality
+    )
+    fr.toroidal_height = 1.0
+    fr.init()
+    print(twist/fr._initial_axis_s(fr.half_width))
+    fr.toroidal_height = toroidal_height
+    fr.init()
+    
+    
+
+    t_begin = datetime(2010, 12, 15, 10, 20)
+    t_end = datetime(2010, 12, 16, 4)
+    dt = timedelta(minutes=30)
+    
+    cdas.set_cache(True, 'data')
+    data = cdas.get_data(
+        'sp_phys', 
+        'STA_L1_MAG_RTN', 
+        t_begin, 
+        t_end,
+        ['BFIELD'],
+        cdf=True
+    )
+    t = data['Epoch']
+    b = data['BFIELD'][:,3]
+    bx = data['BFIELD'][:,0]
+    by = data['BFIELD'][:,1]
+    bz = data['BFIELD'][:,2]
+
+    n = 300
+    t = np.array([time.mktime(x.timetuple()) for x in t])
+    t0 = t[0]+(t[-1]-t[0])*np.linspace(0.0, 1.0, n)
+    b0 = np.interp(t0, t, b)
+    bx0 = np.interp(t0, t, bx)
+    by0 = np.interp(t0, t, by)
+    bz0 = np.interp(t0, t, bz)
+
+    b0_mean = np.mean(b0)
+
+    b_ = fr.evocut1d(x, y, z, 
+        toroidal_height=toroidal_height
+    )
+
+    t = t0[-1]-(t0[-1]-t0[0])*ratio*np.linspace(1.0, 0.0, b_.shape[0])
+    # t = t0[0]+(t0[-1]-t0[0])*ratio*np.linspace(0.0, 1.0, b_.shape[0])
+    b = b_[:,0]
+    bx = b_[:,1]
+    by = b_[:,2]
+    bz = b_[:,3]
+    if False:
+        t1 = t0
+        b1 = np.interp(t1, t, b)
+        bx1 = np.interp(t1, t, bx)
+        by1 = np.interp(t1, t, by)
+        bz1 = np.interp(t1, t, bz)
+    else:
+        t1 = t
+        b1 = b
+        bx1 = bx
+        by1 = by
+        bz1 = bz
+
+    b1_mean = np.mean(b1)
+
+    coeff = b0_mean/b1_mean
+    b1 *= coeff
+    bx1 *= coeff
+    by1 *= coeff
+    bz1 *= coeff
+
+    t0 = np.array([datetime.fromtimestamp(x) for x in t0])
+    t1 = np.array([datetime.fromtimestamp(x) for x in t1])
+
+    cdas.set_cache(False)
+    data = cdas.get_data(
+        'sp_phys', 
+        'STA_L1_MAG_RTN', 
+        t_begin-timedelta(hours=12), 
+        t_end+timedelta(hours=12),
+        ['BFIELD'],
+        cdf=True
+    )
+    t = data['Epoch'][::1800]
+    b = data['BFIELD'][::1800,3]
+    bx = data['BFIELD'][::1800,0]
+    by = data['BFIELD'][::1800,1]
+    bz = data['BFIELD'][::1800,2]
+
+    fig = plt.figure()
+    mask = t1 <= t_end
+    not_mask = t1 >= t[mask][-1]
+    plt.plot(t1[mask], b1[mask], '--k', linewidth=2, label='B')
+    plt.plot(t1[not_mask], b1[not_mask], '--k', linewidth=2, label='B', alpha=0.2)
+    # plt.plot(t0, b0, 'k', linewidth=2, label='B')
+    plt.plot(t, b, 'k', label='B')
+    plt.plot(t1[mask], bx1[mask], '--r', linewidth=2, label='Bx')
+    plt.plot(t1[not_mask], bx1[not_mask], '--r', linewidth=2, label='Bx', alpha=0.2)
+    # plt.plot(t0, bx0, 'r', linewidth=2, label='Bx')
+    plt.plot(t, bx, 'r', label='Bx')
+    plt.plot(t1[mask], by1[mask], '--g', linewidth=2, label='By')
+    plt.plot(t1[not_mask], by1[not_mask], '--g', linewidth=2, label='By', alpha=0.2)
+    # plt.plot(t0, by0, 'g', linewidth=2, label='By')
+    plt.plot(t, by, 'g', label='By')
+    plt.plot(t1[mask], bz1[mask], '--b', linewidth=2, label='Bz')
+    plt.plot(t1[not_mask], bz1[not_mask], '--b', linewidth=2, label='Bz', alpha=0.2)
+    # plt.plot(t0, bz0, 'b', linewidth=2, label='Bz')
+    plt.plot(t, bz, 'b', label='Bz')
+    plt.xlabel('time [arb. units]')
+    plt.ylabel('B [nT]')
+    # plt.legend()
+
+    plt.show()
+
+def test_insitu_vex():
+    pass
+
+def test_insitu_sta():
+    pass
+
+def prepare_data():
+    dt = time.mktime(datetime(1979, 1, 1).timetuple())
+    # MESSENGER
+    data=readsav(
+        'MES_2007to2014_HEEQ.sav', 
+        python_dict=True, 
+        verbose=True
+    )
+    t1 = time.mktime(datetime(2013, 1, 7).timetuple())
+    t2 = time.mktime(datetime(2013, 1, 10).timetuple())
+    mask = np.logical_and(
+        data['mes']['time']+dt >= t1, 
+        data['mes']['time']+dt <= t2
+    )
+    t = np.array(
+        [datetime.fromtimestamp(x+dt) for x in data['mes']['time'][mask]]
+    )
+    b = data['mes']['btot'][mask]
+    bx = data['mes']['bx'][mask]
+    by = data['mes']['by'][mask]
+    bz = data['mes']['bz'][mask]
+    np.savez('./mes', t=t, b=b, bx=bx, by=by, bz=bz)
+    # Venus Express
+    data=readsav(
+        'VEX_2007to2014_HEEQ_removed.sav', 
+        python_dict=True, 
+        verbose=True
+    )
+    t1 = time.mktime(datetime(2013, 1, 7).timetuple())
+    t2 = time.mktime(datetime(2013, 1, 11).timetuple())
+    mask = np.logical_and(
+        data['vex']['time']+dt >= t1, 
+        data['vex']['time']+dt <= t2
+    )
+    t = np.array(
+        [datetime.fromtimestamp(x+dt) for x in data['vex']['time'][mask]]
+    )
+    b = data['vex']['btot'][mask]
+    bx = data['vex']['bx'][mask]
+    by = data['vex']['by'][mask]
+    bz = data['vex']['bz'][mask]
+    np.savez('./vex', t=t, b=b, bx=bx, by=by, bz=bz)

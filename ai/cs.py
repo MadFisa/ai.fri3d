@@ -23,20 +23,19 @@ def cyl2cart(r, phi, z):
     y = r*numpy.sin(phi)
     return (x, y, z)
 
-
 def mx_rot_x(gamma):
     return numpy.matrix([[1.0, 0.0, 0.0], 
-                         [0.0, numpy.cos(gamma), numpy.sin(gamma)], 
-                         [0.0, -numpy.sin(gamma), numpy.cos(gamma)]])
+                         [0.0, numpy.cos(gamma), -numpy.sin(gamma)], 
+                         [0.0, numpy.sin(gamma), numpy.cos(gamma)]])
 
 def mx_rot_y(theta):
-    return numpy.matrix([[numpy.cos(theta), 0.0, -numpy.sin(theta)],
+    return numpy.matrix([[numpy.cos(theta), 0.0, numpy.sin(theta)],
                          [0.0, 1.0, 0.0],
-                         [numpy.sin(theta), 0.0, numpy.cos(theta)]])
+                         [-numpy.sin(theta), 0.0, numpy.cos(theta)]])
 
 def mx_rot_z(phi):
-    return numpy.matrix([[numpy.cos(phi), numpy.sin(phi), 0.0],
-                         [-numpy.sin(phi), numpy.cos(phi), 0.0],
+    return numpy.matrix([[numpy.cos(phi), -numpy.sin(phi), 0.0],
+                         [numpy.sin(phi), numpy.cos(phi), 0.0],
                          [0.0, 0.0, 1.0]])
 
 def mx_rot(theta, phi, gamma):

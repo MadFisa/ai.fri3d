@@ -311,7 +311,7 @@ class FRi3D:
         x_, y_, z_ = cs.cyl2cart(r, phi, z)
 
         # rotation to x axis
-        T = cs.mx_rot_y(-np.pi/2.0)
+        T = cs.mx_rot_y(np.pi/2.0)
         x = T[0,0]*x_+T[0,1]*y_+T[0,2]*z_
         y = T[1,0]*x_+T[1,1]*y_+T[1,2]*z_
         z = T[2,0]*x_+T[2,1]*y_+T[2,2]*z_
@@ -334,7 +334,7 @@ class FRi3D:
             x_, y_, z_ = cs.sp2cart(r, theta, phi)
 
         # orientation
-        T = cs.mx_rot(self.latitude, -self.longitude, -self.tilt)
+        T = cs.mx_rot(-self.latitude, self.longitude, self.tilt)
         x = T[0,0]*x_+T[0,1]*y_+T[0,2]*z_
         y = T[1,0]*x_+T[1,1]*y_+T[1,2]*z_
         z = T[2,0]*x_+T[2,1]*y_+T[2,2]*z_

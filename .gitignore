@@ -1,3 +1,6 @@
+*.sav
+*.npz
+
 data/
 
 # Virtual environment
