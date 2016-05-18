@@ -754,7 +754,7 @@ def test_remote(
     flattening=0.37, 
     pancaking=np.pi/180.0*18.0, 
     skew=np.pi/180.0*5.0, 
-    tapering=1.2,
+    tapering=1.0,
     twist=2.79284826, 
     flux=1e14,
     sigma=2.29962923,
