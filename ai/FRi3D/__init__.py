@@ -2,6 +2,7 @@
 import numpy as np
 from scipy.interpolate import interp1d
 from scipy.integrate import quad
+from scipy.optimize import minimize_scalar
 from astropy import constants as c
 from astropy import units as u
 
@@ -226,10 +227,10 @@ class FRi3D:
 
     # find phi which gives the minimum distance to undeformed axis
     def _initial_axis_min_l_phi(self, r0, phi0):
-        res = scipy.optimize.minimize_scalar(
+        res = minimize_scalar(
             lambda phi: self._initial_axis_l(phi, r0, phi0),
             bounds=[-self.half_width, self.half_width],
-            method='Brent'
+            method='Bounded'
         )
         return res.x
 
@@ -253,3 +254,4 @@ class FRi3D:
 
     from ai.FRi3D.shell import shell
     from ai.FRi3D.line import line
+    from ai.FRi3D.data import data
