@@ -1,7 +1,7 @@
 
 import numpy as np
 from astropy import units as u
-from ai.FRi3D import FRi3D
+from ai.fri3d import FRi3D
 from matplotlib import pyplot as plt
 
 u.nT = u.def_unit('nT', 1e-9*u.T)
@@ -20,7 +20,7 @@ def demo_data(
     flux=5e14,
     polarity=1.0,
     chirality=1.0,
-    x=u.au.to(u.m)*np.linspace(1.2, 0.8, 100),
+    x=u.au.to(u.m)*np.linspace(1.3, 0.7, 100),
     y=u.au.to(u.m)*np.zeros(100),
     z=u.au.to(u.m)*np.zeros(100)):
 

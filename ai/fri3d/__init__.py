@@ -6,16 +6,12 @@ from scipy.optimize import minimize_scalar
 from astropy import constants as c
 from astropy import units as u
 
-# definition of nT unit
-u.nT = u.def_unit('nT', 1e-9*u.T)
-
 class FRi3D:
-    def __init__(
-        self,
+    def __init__(self,
         latitude=u.deg.to(u.rad, 0.0), 
         longitude=u.deg.to(u.rad, 0.0), 
         toroidal_height=u.au.to(u.m, 1.0), 
-        poloidal_height=u.au.to(u.m, 0.1), 
+        poloidal_height=u.au.to(u.m, 0.2), 
         half_width=u.deg.to(u.rad, 40.0), 
         tilt=u.deg.to(u.rad, 0.0), 
         flattening=0.5, 
@@ -252,6 +248,191 @@ class FRi3D:
         s = quad(self._initial_axis_ds, -self.half_width, phi)
         return s[0]
 
-    from ai.FRi3D.shell import shell
-    from ai.FRi3D.line import line
-    from ai.FRi3D.data import data
+    from ai.fri3d.shell import shell
+    from ai.fri3d.line import line
+    from ai.fri3d.data import data
+
+class Evolution:
+    def __init__(self,
+        latitude=lambda t: u.deg.to(u.rad, 0.0),
+        longitude=lambda t: u.deg.to(u.rad, 0.0),
+        toroidal_height=lambda t: 
+            u.Unit('km/s').to(u.Unit('m/s'), 450.0)*t+u.au.to(u.m, 0.7), 
+        poloidal_height=lambda t: u.au.to(u.m, 0.2), 
+        half_width=lambda t: u.deg.to(u.rad, 40.0), 
+        tilt=lambda t: u.deg.to(u.rad, 0.0), 
+        flattening=lambda t: 0.5, 
+        pancaking=lambda t: u.deg.to(u.rad, 20.0), 
+        skew=lambda t: u.deg.to(u.rad, 0.0), 
+        twist=lambda t: 3.0, 
+        flux=lambda t: 5e14,
+        sigma=1.05,
+        polarity=1.0,
+        chirality=1.0,
+        spline_s_phi_kind='cubic',
+        spline_s_phi_n=500):
+        
+        self.latitude = latitude
+        self.longitude = longitude
+        self.toroidal_height = toroidal_height
+        self.poloidal_height = poloidal_height
+        self.half_width = half_width
+        self.tilt = tilt
+        self.flattening = flattening
+        self.pancaking = pancaking
+        self.skew = skew
+        self.twist = twist
+        self.flux = flux
+        self.sigma = sigma
+        self.polarity = polarity
+        self.chirality = chirality
+        self.spline_s_phi_kind = spline_s_phi_kind
+        self.spline_s_phi_n = spline_s_phi_n
+
+    @property
+    def latitude(self):
+        return self._latitude
+    @latitude.setter
+    def latitude(self, latitude):
+        self._latitude = latitude
+
+    @property
+    def longitude(self):
+        return self._longitude
+    @longitude.setter
+    def longitude(self, longitude):
+        self._longitude = longitude
+
+    @property
+    def toroidal_height(self):
+        return self._toroidal_height
+    @toroidal_height.setter
+    def toroidal_height(self, toroidal_height):
+        self._toroidal_height = toroidal_height
+
+    @property
+    def poloidal_height(self):
+        return self._poloidal_height
+    @poloidal_height.setter
+    def poloidal_height(self, poloidal_height):
+        self._poloidal_height = poloidal_height
+
+    @property
+    def half_width(self):
+        return self._half_width
+    @half_width.setter
+    def half_width(self, half_width):
+        self._half_width = half_width
+
+    @property
+    def tilt(self):
+        return self._tilt
+    @tilt.setter
+    def tilt(self, tilt):
+        self._tilt = tilt
+
+    @property
+    def flattening(self):
+        return self._flattening
+    @flattening.setter
+    def flattening(self, flattening):
+        self._flattening = flattening
+
+    @property
+    def pancaking(self):
+        return self._pancaking
+    @pancaking.setter
+    def pancaking(self, pancaking):
+        self._pancaking = pancaking
+
+    @property
+    def skew(self):
+        return self._skew
+    @skew.setter
+    def skew(self, skew):
+        self._skew = skew
+
+    @property
+    def twist(self):
+        return self._twist
+    @twist.setter
+    def twist(self, twist):
+        self._twist = twist
+
+    @property
+    def flux(self):
+        return self._flux
+    @flux.setter
+    def flux(self, flux):
+        self._flux = flux
+
+    @property
+    def sigma(self):
+        return self._sigma
+    @sigma.setter
+    def sigma(self, sigma):
+        self._sigma = sigma
+
+    @property
+    def polarity(self):
+        return self._polarity
+    @polarity.setter
+    def polarity(self, polarity):
+        self._polarity = polarity
+
+    @property
+    def chirality(self):
+        return self._chirality
+    @chirality.setter
+    def chirality(self, chirality):
+        self._chirality = chirality
+
+    @property
+    def spline_s_phi_kind(self):
+        return self._spline_s_phi_kind
+    @spline_s_phi_kind.setter
+    def spline_s_phi_kind(self, spline_s_phi_kind):
+        self._spline_s_phi_kind = spline_s_phi_kind
+
+    @property
+    def spline_s_phi_n(self):
+        return self._spline_s_phi_n
+    @spline_s_phi_n.setter
+    def spline_s_phi_n(self, spline_s_phi_n):
+        self._spline_s_phi_n = spline_s_phi_n
+
+    def insitu(self, t, x, y, z):
+        fr = FRi3D()
+        fr.sigma = self.sigma
+        fr.polarity = self.polarity
+        fr.chirality = self.chirality
+        fr.spline_s_phi_kind = self.spline_s_phi_kind
+        fr.spline_s_phi_n = self.spline_s_phi_n
+        b = []
+        for i, t in enumerate(t):
+            fr.latitude = self.latitude(t)
+            fr.longitude = self.longitude(t)
+            fr.toroidal_height = self.toroidal_height(t)
+            fr.poloidal_height = self.poloidal_height(t)
+            fr.half_width = self.half_width(t)
+            fr.tilt = self.tilt(t)
+            fr.flattening = self.flattening(t)
+            fr.pancaking = self.pancaking(t)
+            fr.skew = self.skew(t)
+            fr.twist = self.twist(t)
+            fr.flux = self.flux(t)
+            if i == 0:
+                fr.toroidal_height = 1.0
+                fr.init()
+                fr._unit_spline_initial_axis_s_phi = \
+                    fr._spline_initial_axis_s_phi
+                fr.toroidal_height = self.toroidal_height(t)
+                fr.init()
+            # valid if flattening, half width and flux stay constant
+            fr._spline_initial_axis_s_phi = lambda s: \
+                fr._unit_spline_initial_axis_s_phi(s/fr.toroidal_height)
+            b_ = fr.data(x, y, z)
+            if b_.size == 0:
+                b_ = np.array([0.0, 0.0, 0.0, 0.0])
+            b.append(b_.ravel())
+        return np.array(b)

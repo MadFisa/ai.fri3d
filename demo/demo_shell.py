@@ -1,5 +1,5 @@
 
-from ai.FRi3D import FRi3D
+from ai.fri3d import FRi3D
 from astropy import units as u
 from ai.shared.color import BLIND_PALETTE
 from matplotlib import pyplot as plt

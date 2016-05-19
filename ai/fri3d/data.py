@@ -2,7 +2,7 @@
 import numpy as np
 from ai.shared import cs
 
-def data(self, x, y, z):
+def data(self, x, y, z, ds=1e-5):
     x = np.array(x, copy=False, ndmin=1)
     y = np.array(y, copy=False, ndmin=1)
     z = np.array(z, copy=False, ndmin=1)
@@ -73,7 +73,7 @@ def data(self, x, y, z):
         x_, y_, z_, b_ = self.line(
             r[i],
             phi[i],
-            [s[i]-1e-5, s[i]+1e-5]
+            [s[i]-ds, s[i]+ds]
         )
         dr = np.array([
             x_[1]-x_[0],
