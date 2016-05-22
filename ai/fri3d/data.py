@@ -75,13 +75,16 @@ def data(self, x, y, z, ds=1e-5):
             phi[i],
             [s[i]-ds, s[i]+ds]
         )
+        # if x_.size != 2:
+        #     print(r[i], phi[i], s[i]-ds, s[i]+ds)
+        #     print(x_, b_)
         dr = np.array([
             x_[1]-x_[0],
             y_[1]-y_[0],
             z_[1]-z_[0]
         ])
         dr /= np.linalg.norm(dr)
-        b.append(np.insert(dr*np.mean(b_)*self.polarity, 0, np.mean(b_)))
+        b.append(dr*np.mean(b_)*self.polarity)
     b = np.array(b)
     if b.shape[0] == 1:
         b = b[0,:]

@@ -266,7 +266,7 @@ class Evolution:
         skew=lambda t: u.deg.to(u.rad, 0.0), 
         twist=lambda t: 3.0, 
         flux=lambda t: 5e14,
-        sigma=1.05,
+        sigma=lambda t: 2.05,
         polarity=1.0,
         chirality=1.0,
         spline_s_phi_kind='cubic',
@@ -403,7 +403,6 @@ class Evolution:
 
     def insitu(self, t, x, y, z):
         fr = FRi3D()
-        fr.sigma = self.sigma
         fr.polarity = self.polarity
         fr.chirality = self.chirality
         fr.spline_s_phi_kind = self.spline_s_phi_kind
@@ -421,6 +420,7 @@ class Evolution:
             fr.skew = self.skew(t)
             fr.twist = self.twist(t)
             fr.flux = self.flux(t)
+            fr.sigma = self.sigma(t)
             if i == 0:
                 fr.toroidal_height = 1.0
                 fr.init()
@@ -429,10 +429,24 @@ class Evolution:
                 fr.toroidal_height = self.toroidal_height(t)
                 fr.init()
             # valid if flattening, half width and flux stay constant
+            # print(
+            #     u.rad.to(u.deg, fr.latitude),
+            #     u.rad.to(u.deg, fr.longitude),
+            #     u.m.to(u.au, fr.toroidal_height),
+            #     u.m.to(u.au, fr.poloidal_height),
+            #     u.rad.to(u.deg, fr.half_width),
+            #     u.rad.to(u.deg, fr.tilt),
+            #     fr.flattening,
+            #     u.rad.to(u.deg, fr.pancaking),
+            #     u.rad.to(u.deg, fr.skew),
+            #     fr.flux,
+            #     fr.sigma
+            # )
+
             fr._spline_initial_axis_s_phi = lambda s: \
                 fr._unit_spline_initial_axis_s_phi(s/fr.toroidal_height)
             b_ = fr.data(x, y, z)
             if b_.size == 0:
-                b_ = np.array([0.0, 0.0, 0.0, 0.0])
+                b_ = np.array([0.0, 0.0, 0.0])
             b.append(b_.ravel())
         return np.array(b)

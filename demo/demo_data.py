@@ -49,10 +49,10 @@ def demo_data(
     b = fr.data(x, y, z)*u.T.to(u.nT)
 
     fig = plt.figure()
-    plt.plot(b[:,0], 'k')
-    plt.plot(b[:,1], 'r')
-    plt.plot(b[:,2], 'g')
-    plt.plot(b[:,3], 'b')
+    plt.plot(np.sqrt(b[:,0]**2+b[:,1]**2+b[:,2]**2), 'k')
+    plt.plot(b[:,0], 'r')
+    plt.plot(b[:,1], 'g')
+    plt.plot(b[:,2], 'b')
     plt.show()
 
 demo_data()
