@@ -17,7 +17,7 @@ def fit2insitu(t, b,
     x=u.au.to(u.m, 1.0), 
     y=u.au.to(u.m, 0.0), 
     z=u.au.to(u.m, 0.0),
-    period=3.0*24.0*3600.0,
+    period=4.0*24.0*3600.0,
     step_coarse=7200.0,
     step_fine=600.0,
     latitude=np.array([
@@ -171,22 +171,23 @@ def fit2insitu(t, b,
         ))[0]
 
         if nonzero_indices.size >= 2:
+            print('crossed')
             t_model_coarse = \
                 t_model_coarse[nonzero_indices[0]:nonzero_indices[-1]+1]
             t_model_coarse -= t_model_coarse[0]
             b_model_coarse = \
                 b_model_coarse[nonzero_indices[0]:nonzero_indices[-1]+1,:]
             
-            # coeff = np.mean(np.sqrt(
-            #     b_real_fine[:,0]**2+
-            #     b_real_fine[:,1]**2+
-            #     b_real_fine[:,2]**2
-            # ))/np.mean(np.sqrt(
-            #     b_model_coarse[:,0]**2+
-            #     b_model_coarse[:,1]**2+
-            #     b_model_coarse[:,2]**2
-            # ))
-            # b_model_coarse *= coeff
+            coeff = np.mean(np.sqrt(
+                b_real_fine[:,0]**2+
+                b_real_fine[:,1]**2+
+                b_real_fine[:,2]**2
+            ))/np.mean(np.sqrt(
+                b_model_coarse[:,0]**2+
+                b_model_coarse[:,1]**2+
+                b_model_coarse[:,2]**2
+            ))
+            b_model_coarse *= coeff
 
             f = interp1d(
                 t_model_coarse, 
@@ -199,6 +200,7 @@ def fit2insitu(t, b,
             b_model_fine = f(t_model_fine)
 
             if t_model_fine.size >= t_real_fine.size:
+                print('enough points')
                 cor = (
                     correlate(b_model_fine[:,0], b_real_fine[:,0])+
                     correlate(b_model_fine[:,1], b_real_fine[:,1])+
@@ -222,6 +224,7 @@ def fit2insitu(t, b,
                 # )
 
                 if t_model_fine[-1] >= t_real_fine[-1]:
+                    print('candidate')
                     b_model_fine_ = \
                         b_model_fine[shift:shift+t_real_fine.size,:]
 
@@ -231,63 +234,64 @@ def fit2insitu(t, b,
                     ) for i in range(t_real_fine.size)])
                     if db < db_prev:
                         db_prev = db
-                        # d_real_fine = np.array(
-                        #     [datetime.fromtimestamp(t) for t in t_real_fine]
-                        # )
-                        # d_model_fine = np.array(
-                        #     [datetime.fromtimestamp(t) for t in t_model_fine]
-                        # )
-                        # fig = plt.figure()
-                        # plt.plot(
-                        #     d_real_fine, 
-                        #     np.sqrt(
-                        #         b_real_fine[:,0]**2+
-                        #         b_real_fine[:,1]**2+
-                        #         b_real_fine[:,2]**2
-                        #     ), 
-                        #     'k'
-                        # )
-                        # plt.plot(
-                        #     d_real_fine,
-                        #     b_real_fine[:,0], 
-                        #     'r'
-                        # )
-                        # plt.plot(
-                        #     d_real_fine,
-                        #     b_real_fine[:,1], 
-                        #     'g'
-                        # )
-                        # plt.plot(
-                        #     d_real_fine,
-                        #     b_real_fine[:,2], 
-                        #     'b'
-                        # )
-                        # plt.plot(
-                        #     d_model_fine, 
-                        #     np.sqrt(
-                        #         b_model_fine[:,0]**2+
-                        #         b_model_fine[:,1]**2+
-                        #         b_model_fine[:,2]**2
-                        #     ), 
-                        #     '--k'
-                        # )
-                        # plt.plot(
-                        #     d_model_fine,
-                        #     b_model_fine[:,0],
-                        #     '--r'
-                        # )
-                        # plt.plot(
-                        #     d_model_fine,
-                        #     b_model_fine[:,1],
-                        #     '--g'
-                        # )
-                        # plt.plot(
-                        #     d_model_fine,
-                        #     b_model_fine[:,2],
-                        #     '--b'
-                        # )
-                        # plt.show()
                         print(db, p)
+
+                        d_real_fine = np.array(
+                            [datetime.fromtimestamp(t) for t in t_real_fine]
+                        )
+                        d_model_fine = np.array(
+                            [datetime.fromtimestamp(t) for t in t_model_fine]
+                        )
+                        fig = plt.figure()
+                        plt.plot(
+                            d_real_fine, 
+                            np.sqrt(
+                                b_real_fine[:,0]**2+
+                                b_real_fine[:,1]**2+
+                                b_real_fine[:,2]**2
+                            ), 
+                            'k'
+                        )
+                        plt.plot(
+                            d_real_fine,
+                            b_real_fine[:,0], 
+                            'r'
+                        )
+                        plt.plot(
+                            d_real_fine,
+                            b_real_fine[:,1], 
+                            'g'
+                        )
+                        plt.plot(
+                            d_real_fine,
+                            b_real_fine[:,2], 
+                            'b'
+                        )
+                        plt.plot(
+                            d_model_fine, 
+                            np.sqrt(
+                                b_model_fine[:,0]**2+
+                                b_model_fine[:,1]**2+
+                                b_model_fine[:,2]**2
+                            ), 
+                            '--k'
+                        )
+                        plt.plot(
+                            d_model_fine,
+                            b_model_fine[:,0],
+                            '--r'
+                        )
+                        plt.plot(
+                            d_model_fine,
+                            b_model_fine[:,1],
+                            '--g'
+                        )
+                        plt.plot(
+                            d_model_fine,
+                            b_model_fine[:,2],
+                            '--b'
+                        )
+                        plt.show()
                     return db
         return np.inf
 
