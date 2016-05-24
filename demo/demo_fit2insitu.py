@@ -104,7 +104,8 @@ def demo_fit2insitu(
         polarity=polarity,
         chirality=chirality,
         max_pre_time=max_pre_time,
-        max_post_time=max_post_time
+        max_post_time=max_post_time,
+        verbose=True
     )
 
 demo_fit2insitu(

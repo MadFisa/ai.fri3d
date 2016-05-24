@@ -62,10 +62,14 @@ def fit2insitu(t, b,
     spline_s_phi_kind='linear',
     spline_s_phi_n=100,
     max_pre_time=None,
-    max_post_time=None):
+    max_post_time=None,
+    verbose=False):
 
     t = np.array([time.mktime(x.timetuple()) for x in t])
-    f = interp1d(t, b, kind='nearest', axis=0, fill_value='extrapolate')
+    _, mask = np.unique(t, return_index=True)
+    t = t[mask]
+    b = b[mask,:]
+    f = interp1d(t, b, kind='linear', axis=0)
     t_real_fine = np.arange(t[0], t[-1], step_fine)
     b_real_fine = f(t_real_fine)
     
@@ -171,7 +175,6 @@ def fit2insitu(t, b,
         ))[0]
 
         if nonzero_indices.size >= 2:
-            print('crossed')
             t_model_coarse = \
                 t_model_coarse[nonzero_indices[0]:nonzero_indices[-1]+1]
             t_model_coarse -= t_model_coarse[0]
@@ -200,7 +203,6 @@ def fit2insitu(t, b,
             b_model_fine = f(t_model_fine)
 
             if t_model_fine.size >= t_real_fine.size:
-                print('enough points')
                 cor = (
                     correlate(b_model_fine[:,0], b_real_fine[:,0])+
                     correlate(b_model_fine[:,1], b_real_fine[:,1])+
@@ -217,14 +219,7 @@ def fit2insitu(t, b,
                     t_model_fine[-1]-t_real_fine[-1] > max_post_time):
                     return np.inf
 
-                # print(
-                #     shift, 
-                #     t_real_fine[0], t_real_fine[-1],
-                #     t_model_fine[0], t_model_fine[-1]
-                # )
-
                 if t_model_fine[-1] >= t_real_fine[-1]:
-                    print('candidate')
                     b_model_fine_ = \
                         b_model_fine[shift:shift+t_real_fine.size,:]
 
@@ -234,64 +229,70 @@ def fit2insitu(t, b,
                     ) for i in range(t_real_fine.size)])
                     if db < db_prev:
                         db_prev = db
-                        print(db, p)
+                        
+                        if verbose:
+                            print(db, p)
 
-                        d_real_fine = np.array(
-                            [datetime.fromtimestamp(t) for t in t_real_fine]
-                        )
-                        d_model_fine = np.array(
-                            [datetime.fromtimestamp(t) for t in t_model_fine]
-                        )
-                        fig = plt.figure()
-                        plt.plot(
-                            d_real_fine, 
-                            np.sqrt(
-                                b_real_fine[:,0]**2+
-                                b_real_fine[:,1]**2+
-                                b_real_fine[:,2]**2
-                            ), 
-                            'k'
-                        )
-                        plt.plot(
-                            d_real_fine,
-                            b_real_fine[:,0], 
-                            'r'
-                        )
-                        plt.plot(
-                            d_real_fine,
-                            b_real_fine[:,1], 
-                            'g'
-                        )
-                        plt.plot(
-                            d_real_fine,
-                            b_real_fine[:,2], 
-                            'b'
-                        )
-                        plt.plot(
-                            d_model_fine, 
-                            np.sqrt(
-                                b_model_fine[:,0]**2+
-                                b_model_fine[:,1]**2+
-                                b_model_fine[:,2]**2
-                            ), 
-                            '--k'
-                        )
-                        plt.plot(
-                            d_model_fine,
-                            b_model_fine[:,0],
-                            '--r'
-                        )
-                        plt.plot(
-                            d_model_fine,
-                            b_model_fine[:,1],
-                            '--g'
-                        )
-                        plt.plot(
-                            d_model_fine,
-                            b_model_fine[:,2],
-                            '--b'
-                        )
-                        plt.show()
+                            d_real_fine = np.array(
+                                [datetime.fromtimestamp(t) for t in t_real_fine]
+                            )
+                            d_model_fine = np.array(
+                                [datetime.fromtimestamp(t) for t in t_model_fine]
+                            )
+                            plt.close('all')
+                            fig = plt.figure()
+                            plt.plot(
+                                d_real_fine, 
+                                np.sqrt(
+                                    b_real_fine[:,0]**2+
+                                    b_real_fine[:,1]**2+
+                                    b_real_fine[:,2]**2
+                                ), 
+                                'k'
+                            )
+                            plt.plot(
+                                d_real_fine,
+                                b_real_fine[:,0], 
+                                'r'
+                            )
+                            plt.plot(
+                                d_real_fine,
+                                b_real_fine[:,1], 
+                                'g'
+                            )
+                            plt.plot(
+                                d_real_fine,
+                                b_real_fine[:,2], 
+                                'b'
+                            )
+                            plt.plot(
+                                d_model_fine, 
+                                np.sqrt(
+                                    b_model_fine[:,0]**2+
+                                    b_model_fine[:,1]**2+
+                                    b_model_fine[:,2]**2
+                                ), 
+                                '--k'
+                            )
+                            plt.plot(
+                                d_model_fine,
+                                b_model_fine[:,0],
+                                '--r'
+                            )
+                            plt.plot(
+                                d_model_fine,
+                                b_model_fine[:,1],
+                                '--g'
+                            )
+                            plt.plot(
+                                d_model_fine,
+                                b_model_fine[:,2],
+                                '--b'
+                            )
+                            plt.ion()
+                            plt.draw()
+                            plt.pause(0.001)
+                            plt.show()
                     return db
         return np.inf
 
@@ -346,3 +347,5 @@ def fit2insitu(t, b,
             bounds.append((sigma[i,0], sigma[i,-1])) 
 
     res = differential_evolution(F, bounds=bounds)
+
+    return res
