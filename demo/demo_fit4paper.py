@@ -24,6 +24,7 @@ def fit2vex():
             u.deg.to(u.rad, [100.0, 140.0])
         ]), 
         toroidal_height=np.array([
+            [-5.0, 5.0],
             u.Unit('km/s').to(u.Unit('m/s'), [400.0, 600.0]), 
             u.au.to(u.m, [0.3, 0.4])
         ]),
@@ -44,7 +45,7 @@ def fit2vex():
             [0.1, 5.0]
         ]), 
         flux=np.array([
-            [1e13, 1e15]
+            [1e13, 1e16]
         ]),
         sigma=np.array([
             [1.0, 3.0]
@@ -60,3 +61,5 @@ def fit2vex():
     )
 
 fit2vex()
+
+
