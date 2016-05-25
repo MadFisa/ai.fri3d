@@ -7,7 +7,8 @@ from astropy import units as u
 import time
 from scipy.io import readsav
 from matplotlib import pyplot as plt
-from ai.shared.data import getVEX
+from ai.shared.data import getVEX, getSTA
+from ai.fri3d import Evolution
 
 u.nT = u.def_unit('nT', 1e-9*u.T)
 
@@ -16,6 +17,7 @@ def fit2vex():
         datetime(2013, 1, 8, 18),
         datetime(2013, 1, 9, 16)
     )
+
     fit2insitu(t, b,
         latitude=np.array([
             u.deg.to(u.rad, [-10.0, 10.0])
@@ -57,9 +59,87 @@ def fit2vex():
         x=np.mean(p[:,0]),
         y=np.mean(p[:,1]),
         z=np.mean(p[:,2]),
-        verbose=True
+        verbose=True,
+        timestamp_mask=lambda t: np.logical_or(
+            t <= time.mktime(datetime(2013, 1, 9, 4, 10).timetuple()),
+            t >= time.mktime(datetime(2013, 1, 9, 7, 17).timetuple())
+        )
     )
 
+def forecast():
+
+    t, b, p = getSTA(
+        datetime(2013, 1, 9, 14),
+        datetime(2013, 1, 10, 16)
+    )
+    
+    evo = Evolution()
+    evo.latitude = lambda t: np.polyval(
+        np.array([-1.44628158e-01]), 
+        t
+    )
+    evo.longitude = lambda t: np.polyval(
+        np.array([2.40406402e+00]),
+        t
+    )
+    evo.toroidal_height = lambda t: np.polyval(
+        np.array([5.19288360e-01, 5.70490815e+05, 5.87875685e+10]),
+        t
+    )
+    evo.poloidal_height = lambda t: np.polyval(
+        np.array([2.66249606e+04, 2.63674675e+10]),
+        t
+    )
+    evo.half_width = lambda t: np.polyval(
+        np.array([u.deg.to(u.rad, 43.0)]),
+        t
+    )
+    evo.tilt = lambda t: np.polyval(
+        np.array([9.86547935e-01]),
+        t
+    )
+    evo.flattening = lambda t: np.polyval(
+        np.array([4.90521657e-01]),
+        t
+    )
+    evo.pancaking = lambda t: np.polyval(
+        np.array([u.deg.to(u.rad, 18.0)]),
+        t
+    )
+    evo.skew = lambda t: np.polyval(
+        np.array([u.deg.to(u.rad, 0.0)]),
+        t
+    )
+    evo.twist = lambda t: np.polyval(
+        np.array([2.71957227e+00]),
+        t
+    )
+    evo.flux = lambda t: np.polyval(
+        np.array([8.98471009e+14]),
+        t
+    )
+    evo.sigma = lambda t: np.polyval(
+        np.array([2.75450672e+00]),
+        t
+    )
+    tm = np.arange(0.0, 4.0*24.0*3600.0, 200)
+    bm = evo.insitu(
+        tm, 
+        np.mean(p[:,0]),
+        np.mean(p[:,1]),
+        np.mean(p[:,2])
+    )
+    d = np.array([datetime.fromtimestamp(x) for x in tm+1357617600.0])
+    fig = plt.figure()
+    plt.plot(t, np.sqrt(b[:,0]**2+b[:,1]**2+b[:,2]**2), 'k')
+    plt.plot(t, b[:,0], 'r')
+    plt.plot(t, b[:,1], 'g')
+    plt.plot(t, b[:,2], 'b')
+    plt.plot(d, np.sqrt(bm[:,0]**2+bm[:,1]**2+bm[:,2]**2), '--k')
+    plt.plot(d, bm[:,0], '--r')
+    plt.plot(d, bm[:,1], '--g')
+    plt.plot(d, bm[:,2], '--b')
+    plt.show()
+
 fit2vex()
-
-
+# forecast()

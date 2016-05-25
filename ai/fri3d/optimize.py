@@ -63,16 +63,25 @@ def fit2insitu(t, b,
     spline_s_phi_n=100,
     max_pre_time=None,
     max_post_time=None,
-    verbose=False):
+    verbose=False,
+    timestamp_mask=None):
 
     t = np.array([time.mktime(x.timetuple()) for x in t])
     _, mask = np.unique(t, return_index=True)
     t = t[mask]
     b = b[mask,:]
     f = interp1d(t, b, kind='linear', axis=0)
-    t_real_fine = np.arange(t[0], t[-1], step_fine)
-    b_real_fine = f(t_real_fine)
-    
+    t_real_fine_original = np.arange(t[0], t[-1], step_fine)
+    b_real_fine_original = f(t_real_fine_original)
+
+    if timestamp_mask is not None:
+        mask = timestamp_mask(t_real_fine_original)
+        t_real_fine = t_real_fine_original[mask]
+        b_real_fine = b_real_fine_original[mask,:]
+    else:
+        t_real_fine = t_real_fine_original
+        b_real_fine = b_real_fine_original
+
     db_prev = np.inf
 
     def F(p):
@@ -206,14 +215,20 @@ def fit2insitu(t, b,
             t_model_fine = np.arange(0.0, t_model_coarse[-1], step_fine)
             b_model_fine = f(t_model_fine)
 
+            cor = (
+                correlate(b_model_fine[:,0], b_real_fine_original[:,0])+
+                correlate(b_model_fine[:,1], b_real_fine_original[:,1])+
+                correlate(b_model_fine[:,2], b_real_fine_original[:,2])
+            )/3.0
+            shift = np.argmax(cor[t_real_fine_original.size-1:])
+            t_model_fine += t_real_fine_original[0]-shift*step_fine
+
+            if timestamp_mask is not None:
+                mask = timestamp_mask(t_model_fine)
+                t_model_fine = t_model_fine[mask]
+                b_model_fine = b_model_fine[mask,:]
+
             if t_model_fine.size >= t_real_fine.size:
-                cor = (
-                    correlate(b_model_fine[:,0], b_real_fine[:,0])+
-                    correlate(b_model_fine[:,1], b_real_fine[:,1])+
-                    correlate(b_model_fine[:,2], b_real_fine[:,2])
-                )/3.0
-                shift = np.argmax(cor[t_real_fine.size-1:])
-                t_model_fine += t_real_fine[0]-shift*step_fine
 
                 t_start += t_real_fine[0]-shift*step_fine
 
