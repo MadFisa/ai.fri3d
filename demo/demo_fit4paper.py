@@ -7,10 +7,81 @@ from astropy import units as u
 import time
 from scipy.io import readsav
 from matplotlib import pyplot as plt
-from ai.shared.data import getVEX, getSTA
+from ai.shared.data import getVEX, getSTA, getMES
 from ai.fri3d import Evolution
 
 u.nT = u.def_unit('nT', 1e-9*u.T)
+
+def fit2mes():
+    t, b, p = getMES(
+        datetime(2013, 1, 7, 18, 17),
+        datetime(2013, 1, 8, 14, 45)
+    )
+
+    # r = np.sqrt(p[:,0]**2+p[:,1]**2+p[:,2]**2)*u.m.to(u.au)
+    # print(r.min(), r.max())
+
+    # fig = plt.figure()
+    # plt.plot(t, b)
+    # plt.show()
+
+    fit2insitu(t, b,
+        latitude=np.array([
+            u.deg.to(u.rad, [-10.0, 0.0])
+        ]),
+        longitude=np.array([
+            u.deg.to(u.rad, [120.0, 150.0])
+        ]), 
+        toroidal_height=np.array([
+            [0.0, 0.2],
+            u.Unit('km/s').to(u.Unit('m/s'), [410.0, 440.0]), 
+            u.au.to(u.m, [0.2, 0.2])
+        ]),
+        poloidal_height=np.array([
+            u.Unit('km/s').to(u.Unit('m/s'), [0.0, 60.0]), 
+            u.au.to(u.m, [0.1, 0.15])
+        ]), 
+        half_width=u.deg.to(u.rad, 43.0), 
+        tilt=np.array([
+            u.deg.to(u.rad, [40.0, 60.0])
+        ]), 
+        flattening=np.array([
+            [0.4, 0.7]
+        ]), 
+        pancaking=u.deg.to(u.rad, 18.0), 
+        skew=u.deg.to(u.rad, 0.0),
+        twist=np.array([
+            [0.1, 3.0]
+        ]), 
+        flux=np.array([
+            [1e14, 1e16]
+        ]),
+        sigma=np.array([
+            [1.0, 3.0]
+        ]),
+        polarity=1.0,
+        chirality=1.0,
+        max_pre_time=1.0*3600.0,
+        max_post_time=5.0*3600.0,
+        x=np.mean(p[:,0]),
+        y=np.mean(p[:,1]),
+        z=np.mean(p[:,2]),
+        verbose=True,
+        timestamp_mask=lambda t: np.logical_or.reduce([
+            np.logical_and(
+                t >= time.mktime(datetime(2013, 1, 7, 18, 17).timetuple()),
+                t <= time.mktime(datetime(2013, 1, 7, 22, 52).timetuple())
+            ),
+            np.logical_and(
+                t >= time.mktime(datetime(2013, 1, 8, 1, 28).timetuple()),
+                t <= time.mktime(datetime(2013, 1, 8, 6, 52).timetuple())
+            ),
+            np.logical_and(
+                t >= time.mktime(datetime(2013, 1, 8, 9, 37).timetuple()),
+                t <= time.mktime(datetime(2013, 1, 8, 14, 45).timetuple())
+            )
+        ])
+    )
 
 def fit2vex():
     t, b, p = getVEX(
@@ -18,20 +89,23 @@ def fit2vex():
         datetime(2013, 1, 9, 16)
     )
 
+    # r = np.sqrt(p[:,0]**2+p[:,1]**2+p[:,2]**2)*u.m.to(u.au)
+    # print(r.min(), r.max())
+
     fit2insitu(t, b,
         latitude=np.array([
-            u.deg.to(u.rad, [-10.0, 10.0])
+            u.deg.to(u.rad, [-10.0, 0.0])
         ]),
         longitude=np.array([
-            u.deg.to(u.rad, [100.0, 140.0])
+            u.deg.to(u.rad, [110.0, 150.0])
         ]), 
         toroidal_height=np.array([
-            [-5.0, 5.0],
-            u.Unit('km/s').to(u.Unit('m/s'), [400.0, 600.0]), 
-            u.au.to(u.m, [0.3, 0.4])
+            [0.0, 0.2],
+            u.Unit('km/s').to(u.Unit('m/s'), [420.0, 450.0]), 
+            u.au.to(u.m, [0.4, 0.4])
         ]),
         poloidal_height=np.array([
-            u.Unit('km/s').to(u.Unit('m/s'), [0.0, 100.0]), 
+            u.Unit('km/s').to(u.Unit('m/s'), [0.0, 60.0]), 
             u.au.to(u.m, [0.01, 0.25])
         ]), 
         half_width=u.deg.to(u.rad, 43.0), 
@@ -39,15 +113,15 @@ def fit2vex():
             u.deg.to(u.rad, [0.0, 90.0])
         ]), 
         flattening=np.array([
-            [0.4, 0.6]
+            [0.4, 0.7]
         ]), 
         pancaking=u.deg.to(u.rad, 18.0), 
         skew=u.deg.to(u.rad, 0.0),
         twist=np.array([
-            [0.1, 5.0]
+            [0.1, 3.0]
         ]), 
         flux=np.array([
-            [1e13, 1e16]
+            [1e14, 1e16]
         ]),
         sigma=np.array([
             [1.0, 3.0]
@@ -75,19 +149,19 @@ def forecast():
     
     evo = Evolution()
     evo.latitude = lambda t: np.polyval(
-        np.array([-1.44628158e-01]), 
+        np.array([-1.64498250e-01]), 
         t
     )
     evo.longitude = lambda t: np.polyval(
-        np.array([2.40406402e+00]),
+        np.array([2.32708111e+00]),
         t
     )
     evo.toroidal_height = lambda t: np.polyval(
-        np.array([5.19288360e-01, 5.70490815e+05, 5.87875685e+10]),
+        np.array([1.90343671e-01, 4.23228844e+05, 5.98391483e+10]),
         t
     )
     evo.poloidal_height = lambda t: np.polyval(
-        np.array([2.66249606e+04, 2.63674675e+10]),
+        np.array([1.84188172e+04, 1.77474612e+10]),
         t
     )
     evo.half_width = lambda t: np.polyval(
@@ -95,11 +169,11 @@ def forecast():
         t
     )
     evo.tilt = lambda t: np.polyval(
-        np.array([9.86547935e-01]),
+        np.array([8.71445939e-01]),
         t
     )
     evo.flattening = lambda t: np.polyval(
-        np.array([4.90521657e-01]),
+        np.array([6.07968043e-01]),
         t
     )
     evo.pancaking = lambda t: np.polyval(
@@ -111,15 +185,15 @@ def forecast():
         t
     )
     evo.twist = lambda t: np.polyval(
-        np.array([2.71957227e+00]),
+        np.array([1.62208666e+00]),
         t
     )
     evo.flux = lambda t: np.polyval(
-        np.array([8.98471009e+14]),
+        np.array([2.76981199e+14]),
         t
     )
     evo.sigma = lambda t: np.polyval(
-        np.array([2.75450672e+00]),
+        np.array([1.98306387e+00]),
         t
     )
     tm = np.arange(0.0, 4.0*24.0*3600.0, 200)
@@ -129,7 +203,7 @@ def forecast():
         np.mean(p[:,1]),
         np.mean(p[:,2])
     )
-    d = np.array([datetime.fromtimestamp(x) for x in tm+1357617600.0])
+    d = np.array([datetime.fromtimestamp(x) for x in tm+1357581600.0])
     fig = plt.figure()
     plt.plot(t, np.sqrt(b[:,0]**2+b[:,1]**2+b[:,2]**2), 'k')
     plt.plot(t, b[:,0], 'r')
@@ -141,5 +215,6 @@ def forecast():
     plt.plot(d, bm[:,2], '--b')
     plt.show()
 
-fit2vex()
+fit2mes()
+# fit2vex()
 # forecast()
