@@ -123,6 +123,7 @@ def fit2vex():
         flux=np.array([
             [1e14, 1e16]
         ]),
+        sigma=2.05,
         sigma=np.array([
             [1.0, 3.0]
         ]),
