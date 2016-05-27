@@ -97,20 +97,20 @@ def fit2vex():
             u.deg.to(u.rad, [-10.0, 0.0])
         ]),
         longitude=np.array([
-            u.deg.to(u.rad, [110.0, 150.0])
+            u.deg.to(u.rad, [110.0, 140.0])
         ]), 
         toroidal_height=np.array([
-            [0.0, 0.2],
+            # [0.0, 0.2],
             u.Unit('km/s').to(u.Unit('m/s'), [420.0, 450.0]), 
             u.au.to(u.m, [0.4, 0.4])
         ]),
         poloidal_height=np.array([
-            u.Unit('km/s').to(u.Unit('m/s'), [0.0, 60.0]), 
-            u.au.to(u.m, [0.01, 0.25])
+            u.Unit('km/s').to(u.Unit('m/s'), [0.0, 80.0]), 
+            u.au.to(u.m, [0.01, 0.15])
         ]), 
         half_width=u.deg.to(u.rad, 43.0), 
         tilt=np.array([
-            u.deg.to(u.rad, [0.0, 90.0])
+            u.deg.to(u.rad, [40.0, 80.0])
         ]), 
         flattening=np.array([
             [0.4, 0.7]
@@ -123,7 +123,6 @@ def fit2vex():
         flux=np.array([
             [1e14, 1e16]
         ]),
-        sigma=2.05,
         sigma=np.array([
             [1.0, 3.0]
         ]),
@@ -194,6 +193,30 @@ def fit2sta():
         )
     )
 
+# longitude
+# 123
+# tilt
+# 44
+
+# longitude
+# 2.37035386e+00 136
+# tilt
+# 9.46053416e-01 54
+# twist
+# 1.58728098e+00   
+# flux
+# 5.47900789e+14   
+
+# longitude
+# 2.17625421e+00 125
+# tilt
+# 1.28848680e+00 74  
+# twist
+# 1.22226705e+00   
+# flux
+# 5.18637309e+14   
+
+
 def forecast():
 
     t, b, p = getSTA(
@@ -203,19 +226,19 @@ def forecast():
     
     evo = Evolution()
     evo.latitude = lambda t: np.polyval(
-        np.array([-1.69261425e-01]), 
+        np.array([-1.72146822e-01]), 
         t
     )
     evo.longitude = lambda t: np.polyval(
-        np.array([2.47483398e+00]),
+        np.array([2.37035386e+00]),
         t
     )
     evo.toroidal_height = lambda t: np.polyval(
-        np.array([1.43701501e-01, 4.21255684e+05, 5.98391483e+10]),
+        np.array([8.74162447e-02, 4.48261857e+05, 5.98391483e+10]),
         t
     )
     evo.poloidal_height = lambda t: np.polyval(
-        np.array([3.98763741e+04, 2.08526005e+10]),
+        np.array([5.95868918e+04, 1.47818198e+10]),
         t
     )
     evo.half_width = lambda t: np.polyval(
@@ -223,11 +246,11 @@ def forecast():
         t
     )
     evo.tilt = lambda t: np.polyval(
-        np.array([8.61710808e-01]),
+        np.array([9.46053416e-01]),
         t
     )
     evo.flattening = lambda t: np.polyval(
-        np.array([6.20660095e-01]),
+        np.array([6.76780990e-01]),
         t
     )
     evo.pancaking = lambda t: np.polyval(
@@ -239,15 +262,15 @@ def forecast():
         t
     )
     evo.twist = lambda t: np.polyval(
-        np.array([2.23633716e+00]),
+        np.array([1.58728098e+00]),
         t
     )
     evo.flux = lambda t: np.polyval(
-        np.array([3.89730706e+14]),
+        np.array([5.47900789e+14]),
         t
     )
     evo.sigma = lambda t: np.polyval(
-        np.array([1.89797987e+00]),
+        np.array([2.53772719e+00]),
         t
     )
     tm = np.arange(0.0, 4.0*24.0*3600.0, 200)
@@ -270,6 +293,6 @@ def forecast():
     plt.show()
 
 # fit2mes()
-# fit2vex()
-fit2sta()
+fit2vex()
+# fit2sta()
 # forecast()
