@@ -223,17 +223,13 @@ def fit2insitu(t, b,
             shift = np.argmax(cor[t_real_fine_original.size-1:])
             t_model_fine += t_real_fine_original[0]-shift*step_fine
 
-            if timestamp_mask is not None:
-                mask = timestamp_mask(t_model_fine)
-                t_model_fine = t_model_fine[mask]
-                b_model_fine = b_model_fine[mask,:]
+            if t_model_fine.size >= t_real_fine_original.size:
+                t_start += t_real_fine_original[0]-shift*step_fine
 
-            if t_model_fine.size >= t_real_fine.size:
+                pre_time = t_real_fine_original[0]-t_model_fine[0]
+                post_time = t_model_fine[-1]-t_real_fine_original[-1]
 
-                t_start += t_real_fine[0]-shift*step_fine
-
-                pre_time = t_real_fine[0]-t_model_fine[0]
-                post_time = t_model_fine[-1]-t_real_fine[-1]
+                # print(pre_time, post_time)
 
                 if pre_time < 0.0 or post_time < 0.0:
                     return np.inf
@@ -245,7 +241,12 @@ def fit2insitu(t, b,
                     return np.inf
 
                 b_model_fine_ = \
-                    b_model_fine[shift:shift+t_real_fine.size,:]
+                    b_model_fine[shift:shift+t_real_fine_original.size,:]
+
+                if timestamp_mask is not None:
+                    mask = timestamp_mask(t_model_fine)
+                    t_model_fine = t_model_fine[mask]
+                    b_model_fine = b_model_fine[mask,:]
 
                 db = np.mean([euclidean(
                     b_model_fine_[i,:],

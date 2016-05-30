@@ -20,45 +20,51 @@ def fit2mes():
 
     r = np.sqrt(p[:,0]**2+p[:,1]**2+p[:,2]**2)*u.m.to(u.au)
     print(r.min(), r.max())
+    print(u.m.to(u.au, p[:,2].min()), u.m.to(u.au, p[:,2].max()))
+    phi = u.rad.to(u.deg, np.arctan2(p[:,1], p[:,0]))
+    print(phi.min(), phi.max())
 
     # fig = plt.figure()
     # plt.plot(t, b)
     # plt.show()
 
     fit2insitu(t, b,
+        # latitude=u.deg.to(u.rad, -5.0),
         latitude=np.array([
-            u.deg.to(u.rad, [-10.0, 0.0])
+            u.deg.to(u.rad, [-15.0, 0.0])
         ]),
-        longitude=np.array([
-            u.deg.to(u.rad, [120.0, 150.0])
-        ]), 
+        longitude=u.deg.to(u.rad, 125.0),
+        # longitude=np.array([
+        #     u.deg.to(u.rad, [120.0, 150.0])
+        # ]), 
         toroidal_height=np.array([
-            [0.0, 0.2],
-            u.Unit('km/s').to(u.Unit('m/s'), [410.0, 440.0]), 
+            u.Unit('km/s').to(u.Unit('m/s'), [485.0, 485.0]), 
             u.au.to(u.m, [0.2, 0.2])
         ]),
         poloidal_height=np.array([
-            u.Unit('km/s').to(u.Unit('m/s'), [0.0, 60.0]), 
-            u.au.to(u.m, [0.1, 0.15])
+            u.Unit('km/s').to(u.Unit('m/s'), [0.0, 100.0]), 
+            u.au.to(u.m, [0.01, 0.2])
         ]), 
         half_width=u.deg.to(u.rad, 43.0), 
-        tilt=np.array([
-            u.deg.to(u.rad, [40.0, 60.0])
-        ]), 
+        tilt=u.deg.to(u.rad, 44.0),
+        # tilt=np.array([
+        #     u.deg.to(u.rad, [40.0, 60.0])
+        # ]), 
         flattening=np.array([
-            [0.4, 0.7]
+            [0.4, 0.8]
         ]), 
         pancaking=u.deg.to(u.rad, 18.0), 
         skew=u.deg.to(u.rad, 0.0),
         twist=np.array([
-            [0.1, 3.0]
+            [1.0, 3.0]
         ]), 
         flux=np.array([
-            [1e14, 1e16]
+            [1e14, 1e15]
         ]),
-        sigma=np.array([
-            [1.0, 3.0]
-        ]),
+        sigma=2.0,
+        # sigma=np.array([
+        #     [1.0, 3.0]
+        # ]),
         polarity=1.0,
         chirality=1.0,
         max_pre_time=1.0*3600.0,
@@ -103,27 +109,80 @@ def fit2vex():
         datetime(2013, 1, 9, 16)
     )
 
-    # r = np.sqrt(p[:,0]**2+p[:,1]**2+p[:,2]**2)*u.m.to(u.au)
+    r = np.sqrt(p[:,0]**2+p[:,1]**2+p[:,2]**2)
     # print(r.min(), r.max())
+
+    ts = time.mktime(datetime(2013,1,6,10,39).timetuple())
+    hs = u.R_sun.to(u.m, 12.5)
+    rs = u.R_sun.to(u.m, 3.5)
+    tm1 = time.mktime(datetime(2013,1,7,18,17).timetuple())
+    tm2 = time.mktime(datetime(2013,1,8,16).timetuple())
+    tv1 = time.mktime(datetime(2013,1,8,18).timetuple())
+    tv2 = time.mktime(datetime(2013,1,9,16).timetuple())
+    hm = u.au.to(u.m, 0.46)
+    hv = r.mean()
+
+    ta1 = time.mktime(datetime(2013,1,9,14).timetuple())
+    ta2 = time.mktime(datetime(2013,1,10,16).timetuple())
+    ha = u.au.to(u.m, 0.96)
+
+    vm1 = (hm-(hs+rs))/(tm1-ts)
+    vv1 = (hv-(hs+rs))/(tv1-ts)
+    vm1 = 497000.0
+    vv1 = 497000.0
+    vm2 = (hm-(hs-rs))/(tm2-ts)
+    vv2 = (hv-(hs-rs))/(tv2-ts)
+
+    p1 = np.polyfit([tm1, tv1], [vm1, vv1], 1)
+    p2 = np.polyfit([tm2, tv2], [vm2, vv2], 1)
+    
+    p3 = (p1+p2)/2.0
+    p4 = (p1-p2)/2.0
+
+    x01 = hm-p1[1]*tm1-p1[0]/2.0*tm1**2
+    x02 = hm-p2[1]*tm2-p2[0]/2.0*tm2**2
+    x03 = (x01+x02)/2.0
+    x04 = (x01-x02)/2.0
+
+    p_prp = np.array([p3[0]/2.0, p3[1], x03])
+    p_exp = np.array([p4[0]/2.0, p4[1], x04])
+
+    print(
+        np.polyval(p3, tm1)/1e3,
+        np.polyval(p4, tm1)/1e3,
+        u.m.to(u.au, np.polyval(p_prp, tm1)),
+        u.m.to(u.au, np.polyval(p_exp, tm1)),
+    )
+
+    print(p_prp, p_exp)
+
+    # tt = np.linspace()
+    # plt.plot()
+
+    print('Speed at STA = ', np.polyval(p3, ta1), np.polyval(p3, ta2))
+    print('Propagation acceleration = ', p3[0], 'm/s^2')
+    print('Expansion acceleration = ', p4[0], 'm/s^2')
 
     fit2insitu(t, b,
         latitude=np.array([
             u.deg.to(u.rad, [-15.0, 0.0])
         ]),
-        longitude=u.deg.to(u.rad, 125.0),
-        # longitude=np.array([
-        #     u.deg.to(u.rad, [120.0, 130.0])
-        # ]), 
+        # longitude=u.deg.to(u.rad, 125.0),
+        longitude=np.array([
+            u.deg.to(u.rad, [120.0, 130.0])
+        ]), 
         toroidal_height=np.array([
-            # [0.0, 0.2],
-            u.Unit('km/s').to(u.Unit('m/s'), [420.0, 480.0]), 
-            u.au.to(u.m, [0.4, 0.4])
+            [1.19777671e-01*0.95, 1.19777671e-01*1.05],
+            u.Unit('km/s').to(u.Unit('m/s'), [392.625485341*0.95, 392.625485341*1.05]), 
+            u.au.to(u.m, [0.379786123894*0.95, 0.379786123894*1.05])
         ]),
         poloidal_height=np.array([
-            u.Unit('km/s').to(u.Unit('m/s'), [40.0, 80.0]), 
-            u.au.to(u.m, [0.02, 0.15])
+            [-1.19777671e-01*1.05, -1.19777671e-01*0.95],
+            u.Unit('km/s').to(u.Unit('m/s'), [104.374514659*0.95, 104.374514659*1.05]), 
+            u.au.to(u.m, [0.0802138758249*0.95, 0.0802138758249*1.05])
         ]), 
         half_width=u.deg.to(u.rad, 43.0), 
+        # tilt=u.deg.to(u.rad, 44.0),
         tilt=np.array([
             u.deg.to(u.rad, [40.0, 80.0])
         ]), 
@@ -136,7 +195,7 @@ def fit2vex():
             [1.0, 3.0]
         ]), 
         flux=np.array([
-            [1e14, 1e16]
+            [1e14, 1e15]
         ]),
         sigma=2.0,
         # sigma=np.array([
@@ -162,21 +221,78 @@ def fit2sta():
         datetime(2013, 1, 10, 16)
     )
 
+    r = np.sqrt(p[:,0]**2+p[:,1]**2+p[:,2]**2)
+    # print(r.min(), r.max())
+
+    ts = time.mktime(datetime(2013,1,6,10,39).timetuple())
+    hs = u.R_sun.to(u.m, 12.5)
+    rs = u.R_sun.to(u.m, 3.5)
+    tm1 = time.mktime(datetime(2013,1,7,18,17).timetuple())
+    tm2 = time.mktime(datetime(2013,1,8,16).timetuple())
+    tv1 = time.mktime(datetime(2013,1,8,18).timetuple())
+    tv2 = time.mktime(datetime(2013,1,9,16).timetuple())
+    hm = u.au.to(u.m, 0.46)
+    hv = u.au.to(u.m, 0.72)
+    # r.mean()
+
+    ta1 = time.mktime(datetime(2013,1,9,14).timetuple())
+    ta2 = time.mktime(datetime(2013,1,10,16).timetuple())
+    ha = u.au.to(u.m, 0.96)
+
+    vm1 = (hm-(hs+rs))/(tm1-ts)
+    vv1 = (hv-(hs+rs))/(tv1-ts)
+    vm1 = 497000.0
+    vv1 = 497000.0
+    vm2 = (hm-(hs-rs))/(tm2-ts)
+    vv2 = (hv-(hs-rs))/(tv2-ts)
+
+    p1 = np.polyfit([tm1, tv1], [vm1, vv1], 1)
+    p2 = np.polyfit([tm2, tv2], [vm2, vv2], 1)
+    
+    p3 = (p1+p2)/2.0
+    p4 = (p1-p2)/2.0
+
+    x01 = hm-p1[1]*tm1-p1[0]/2.0*tm1**2
+    x02 = hm-p2[1]*tm2-p2[0]/2.0*tm2**2
+    x03 = (x01+x02)/2.0
+    x04 = (x01-x02)/2.0
+
+    p_prp = np.array([p3[0]/2.0, p3[1], x03])
+    p_exp = np.array([p4[0]/2.0, p4[1], x04])
+
+    print(
+        np.polyval(p3, tv1)/1e3,
+        np.polyval(p4, tv1)/1e3,
+        u.m.to(u.au, np.polyval(p_prp, tv1)),
+        u.m.to(u.au, np.polyval(p_exp, tv1)),
+    )
+
+    print(p_prp, p_exp)
+
+    # tt = np.linspace()
+    # plt.plot()
+
+    print('Speed at STA = ', np.polyval(p3, ta1), np.polyval(p3, ta2))
+    print('Propagation acceleration = ', p3[0], 'm/s^2')
+    print('Expansion acceleration = ', p4[0], 'm/s^2')
+
     fit2insitu(t, b,
         latitude=np.array([
             u.deg.to(u.rad, [-15.0, 0.0])
         ]),
-        longitude=u.deg.to(u.rad, 125.0),
-        # longitude=np.array([
-        #     u.deg.to(u.rad, [125.0, 125.0])
-        # ]), 
+        # longitude=u.deg.to(u.rad, [120.0, 130.0]),
+        longitude=np.array([
+            u.deg.to(u.rad, [120.0, 130.0])
+        ]), 
         toroidal_height=np.array([
-            u.Unit('km/s').to(u.Unit('m/s'), [450.0, 450.0]), 
-            u.au.to(u.m, [0.7, 0.7])
+            [1.19777671e-01*0.95, 1.19777671e-01*1.05],
+            u.Unit('km/s').to(u.Unit('m/s'), [418.33189022*0.95, 418.33189022*1.05]), 
+            u.au.to(u.m, [0.609832340241*0.95, 0.609832340241*1.05])
         ]),
         poloidal_height=np.array([
-            u.Unit('km/s').to(u.Unit('m/s'), [40.0, 80.0]), 
-            u.au.to(u.m, [0.02, 0.15])
+            [-1.19777671e-01*1.05, -1.19777671e-01*0.95],
+            u.Unit('km/s').to(u.Unit('m/s'), [78.6681097801*0.95, 78.6681097801*1.05]), 
+            u.au.to(u.m, [0.133820495508*0.95, 0.133820495508*1.05])
         ]), 
         half_width=u.deg.to(u.rad, 43.0), 
         tilt=np.array([
@@ -191,7 +307,7 @@ def fit2sta():
             [1.0, 3.0]
         ]), 
         flux=np.array([
-            [1e14, 1e16]
+            [1e14, 1e15]
         ]),
         sigma=2.0,
         # sigma=np.array([
@@ -234,6 +350,14 @@ def fit2sta():
 # flux
 # 5.18637309e+14   
 
+# 7.2095767742e-09 1357538400.0 [ -2.61642625e-01   4.53791928e+05   5.98391483e+10   5.38817215e+04
+#    4.22055661e+09   8.75565501e-01   7.59345650e-01   2.06359481e+00
+#    1.64030356e+14]
+
+# 1357675200.0 [ -2.10447023e-01   4.50000000e+05   1.04718509e+11   6.58158031e+04
+#    1.42248543e+10   1.31772088e+00   5.79993848e-01   1.30328507e+00
+#    3.47615568e+14]
+
 
 def forecast():
 
@@ -244,19 +368,19 @@ def forecast():
     
     evo = Evolution()
     evo.latitude = lambda t: np.polyval(
-        np.array([-1.73068345e-01]), 
+        np.array([-2.31726844e-01]), 
         t
     )
     evo.longitude = lambda t: np.polyval(
-        np.array([2.14092388e+00]),
+        np.array([u.deg.to(u.rad, 125.0)]),
         t
     )
     evo.toroidal_height = lambda t: np.polyval(
-        np.array([4.40643141e+05, 5.98391483e+10]),
+        np.array([1.47024208e-01, 4.32516259e+05, 5.31779805e+10]),
         t
     )
     evo.poloidal_height = lambda t: np.polyval(
-        np.array([7.58839625e+04, 3.01774683e+09]),
+        np.array([-3.72232493e-01, 1.13855334e+05, 1.08051515e+10]),
         t
     )
     evo.half_width = lambda t: np.polyval(
@@ -264,11 +388,11 @@ def forecast():
         t
     )
     evo.tilt = lambda t: np.polyval(
-        np.array([9.68526344e-01]),
+        np.array([1.14736439e+00]),
         t
     )
     evo.flattening = lambda t: np.polyval(
-        np.array([6.94032669e-01]),
+        np.array([7.31460827e-01]),
         t
     )
     evo.pancaking = lambda t: np.polyval(
@@ -280,15 +404,15 @@ def forecast():
         t
     )
     evo.twist = lambda t: np.polyval(
-        np.array([1.21665916e+00]),
+        np.array([2.66940993e+00]),
         t
     )
     evo.flux = lambda t: np.polyval(
-        np.array([1.98883466e+14]),
+        np.array([2.20317182e+14]),
         t
     )
     evo.sigma = lambda t: np.polyval(
-        np.array([1.90627090e+00]),
+        np.array([2.0]),
         t
     )
     tm = np.arange(0.0, 4.0*24.0*3600.0, 200)
@@ -298,7 +422,7 @@ def forecast():
         np.mean(p[:,1]),
         np.mean(p[:,2])
     )
-    d = np.array([datetime.fromtimestamp(x) for x in tm+1357552800.0])
+    d = np.array([datetime.fromtimestamp(x) for x in tm+1357545600.0])
     fig = plt.figure()
     plt.plot(t, np.sqrt(b[:,0]**2+b[:,1]**2+b[:,2]**2), 'k')
     plt.plot(t, b[:,0], 'r')
@@ -311,6 +435,6 @@ def forecast():
     plt.show()
 
 # fit2mes()
-fit2vex()
-# fit2sta()
+# fit2vex()
+fit2sta()
 # forecast()
