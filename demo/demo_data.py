@@ -10,13 +10,13 @@ def demo_data(
     latitude=u.deg.to(u.rad, 0.0), 
     longitude=u.deg.to(u.rad, 0.0), 
     toroidal_height=u.au.to(u.m, 1.0), 
-    poloidal_height=u.au.to(u.m, 0.2), 
+    poloidal_height=u.au.to(u.m, 0.15), 
     half_width=u.deg.to(u.rad, 40.0), 
     tilt=u.deg.to(u.rad, 0.0), 
     flattening=0.5, 
-    pancaking=u.deg.to(u.rad, 20.0), 
+    pancaking=u.deg.to(u.rad, 30.0), 
     skew=u.deg.to(u.rad, 0.0), 
-    twist=5.0, 
+    twist=3.0, 
     flux=5e14,
     polarity=1.0,
     chirality=1.0,
@@ -40,11 +40,11 @@ def demo_data(
         chirality=chirality
     )
 
-    print(fr.data(
-        x=u.au.to(u.m, 1.0), 
-        y=u.au.to(u.m, 0.0), 
-        z=u.au.to(u.m, 0.0)
-    )*u.T.to(u.nT))
+    # print(fr.data(
+    #     x=u.au.to(u.m, 1.0), 
+    #     y=u.au.to(u.m, 0.0), 
+    #     z=u.au.to(u.m, 0.0)
+    # )*u.T.to(u.nT))
 
     b = fr.data(x, y, z)*u.T.to(u.nT)
 
@@ -53,6 +53,15 @@ def demo_data(
     plt.plot(b[:,0], 'r')
     plt.plot(b[:,1], 'g')
     plt.plot(b[:,2], 'b')
+
+    plt.axis('tight')
+    plt.ylim([-12,12])
+
+    plt.xlabel('time [arb. units]')
+    plt.ylabel('B [nT]')
+
+
+
     plt.show()
 
 demo_data()
