@@ -1,5 +1,7 @@
 
-from ai.fri3d import Evolution
+from ai.fri3d import FRi3D, Evolution
+from ai.shared import cs
+from ai.shared.color import BLIND_PALETTE
 from astropy import units as u
 from scipy.spatial.distance import euclidean
 from scipy.signal import correlate
@@ -9,6 +11,7 @@ import numpy as np
 import time
 
 from matplotlib import pyplot as plt
+import matplotlib.gridspec as gridspec
 from datetime import datetime
 
 db_prev = np.inf
@@ -805,3 +808,182 @@ def fit2insitu2(
     print(res.x)
 
     return res
+
+def fit2remote(
+    cor2a=False,
+    cor2a_img=None,
+    cor2a_aov=u.deg.to(u.rad, 4.0),
+    cor2a_xc=0.0,
+    cor2a_yc=0.0,
+    sta_r=None,
+    sta_lat=None,
+    sta_lon=None,
+
+    cor2b=False,
+    cor2b_img=None,
+    cor2b_aov=u.deg.to(u.rad, 4.0),
+    cor2b_xc=0.0,
+    cor2b_yc=0.0,
+    stb_r=None,
+    stb_lat=None,
+    stb_lon=None,
+    
+    c3=False,
+    c3_img=None,
+    c3_fov=u.R_sun.to(u.m, 30.0),
+    c3_xc=0.0,
+    c3_yc=0.0,
+    soho_r=u.au.to(u.m, 1.0),
+    soho_lat=u.deg.to(u.rad, 0.0),
+    soho_lon=u.deg.to(u.rad, 0.0),
+
+    latitude=u.deg.to(u.rad, 0.0),
+    longitude=u.deg.to(u.rad, 0.0),
+    toroidal_height=u.R_sun.to(u.m, 12.5),
+    poloidal_height=u.R_sun.to(u.m, 3.5),
+    half_width=u.deg.to(u.rad, 40.0),
+    tilt=u.deg.to(u.rad, 0.0),
+    flattening=0.5,
+    pancaking=u.deg.to(u.rad, 20.0),
+    skew=u.deg.to(u.rad, 0.0),
+    
+    spline_s_phi_kind='linear',
+    spline_s_phi_n=100):
+
+    fr = FRi3D(
+        latitude=latitude, 
+        longitude=longitude, 
+        toroidal_height=toroidal_height, 
+        poloidal_height=poloidal_height, 
+        half_width=half_width, 
+        tilt=tilt, 
+        flattening=flattening, 
+        pancaking=pancaking, 
+        skew=skew,
+        spline_s_phi_kind=spline_s_phi_kind,
+        spline_s_phi_n=spline_s_phi_n
+    )
+    fr.init()
+
+    x0, y0, z0 = fr.shell()
+
+    fig = plt.figure()
+
+    sc = cor2b+c3+cor2a
+
+    gs = gridspec.GridSpec(2, sc)
+    gs.update(wspace=0.0, hspace=0.0)
+
+    i = 0
+    
+    if cor2b:
+        cor2b_fov = stb_r*np.tan(cor2b_aov)
+        ax = plt.subplot(gs[i])
+        ax.imshow(
+            plt.imread(cor2b_img),
+            zorder=0,
+            extent=[-cor2b_fov, cor2b_fov, -cor2b_fov, cor2b_fov]
+        )
+        ax.set_xlim([-cor2b_fov-cor2b_xc, cor2b_fov-cor2b_xc])
+        ax.set_ylim([-cor2b_fov-cor2b_yc, cor2b_fov-cor2b_yc])
+        ax.set_axis_bgcolor('black')
+        plt.axis('off')
+
+        ax = plt.subplot(gs[i+sc])
+        ax.imshow(
+            plt.imread(cor2b_img),
+            zorder=0,
+            extent=[-cor2b_fov, cor2b_fov, -cor2b_fov, cor2b_fov]
+        )
+        # ax.plot([0.0], [0.0], '.y', markersize=5.0)
+        T = cs.mx_rot_z(-stb_lon)*cs.mx_rot_y(stb_lat)
+        x = T[0,0]*x0+T[0,1]*y0+T[0,2]*z0
+        y = T[1,0]*x0+T[1,1]*y0+T[1,2]*z0
+        z = T[2,0]*x0+T[2,1]*y0+T[2,2]*z0
+        y = stb_r/(stb_r-x)*y
+        z = stb_r/(stb_r-x)*z
+        ax.scatter(y, z, 3, 
+            color=BLIND_PALETTE['yellow'], 
+            marker='.'
+        )
+        ax.set_xlim([-cor2b_fov-cor2b_xc, cor2b_fov-cor2b_xc])
+        ax.set_ylim([-cor2b_fov-cor2b_yc, cor2b_fov-cor2b_yc])
+        ax.set_axis_bgcolor('black')
+        plt.axis('off')
+
+        i += 1
+
+    if c3:
+        ax = plt.subplot(gs[i])
+        ax.imshow(
+            plt.imread(c3_img),
+            zorder=0,
+            extent=[-c3_fov, c3_fov, -c3_fov, c3_fov]
+        )
+        ax.set_xlim([-c3_fov-c3_xc, c3_fov-c3_xc])
+        ax.set_ylim([-c3_fov-c3_yc, c3_fov-c3_yc])
+        ax.set_axis_bgcolor('black')
+        plt.axis('off')
+
+        ax = plt.subplot(gs[i+sc])
+        ax.imshow(
+            plt.imread(c3_img),
+            zorder=0,
+            extent=[-c3_fov, c3_fov, -c3_fov, c3_fov]
+        )
+        # ax.plot([0.0], [0.0], '.y', markersize=5.0)
+        T = cs.mx_rot_z(-soho_lon)*cs.mx_rot_y(soho_lat)
+        x = T[0,0]*x0+T[0,1]*y0+T[0,2]*z0
+        y = T[1,0]*x0+T[1,1]*y0+T[1,2]*z0
+        z = T[2,0]*x0+T[2,1]*y0+T[2,2]*z0
+        y = soho_r/(soho_r-x)*y
+        z = soho_r/(soho_r-x)*z
+        ax.scatter(y, z, 3, 
+            color=BLIND_PALETTE['yellow'], 
+            marker='.'
+        )
+        ax.set_xlim([-c3_fov-c3_xc, c3_fov-c3_xc])
+        ax.set_ylim([-c3_fov-c3_yc, c3_fov-c3_yc])
+        ax.set_axis_bgcolor('black')
+        plt.axis('off')
+
+        i += 1
+
+    if cor2a:
+        cor2a_fov = sta_r*np.tan(cor2a_aov)
+        ax = plt.subplot(gs[i])
+        ax.imshow(
+            plt.imread(cor2a_img),
+            zorder=0,
+            extent=[-cor2a_fov, cor2a_fov, -cor2a_fov, cor2a_fov]
+        )
+        ax.set_xlim([-cor2a_fov-cor2a_xc, cor2a_fov-cor2a_xc])
+        ax.set_ylim([-cor2a_fov-cor2a_yc, cor2a_fov-cor2a_yc])
+        ax.set_axis_bgcolor('black')
+        plt.axis('off')
+
+        ax = plt.subplot(gs[i+sc])
+        ax.imshow(
+            plt.imread(cor2a_img),
+            zorder=0,
+            extent=[-cor2a_fov, cor2a_fov, -cor2a_fov, cor2a_fov]
+        )
+        # ax.plot([0.0], [0.0], '.y', markersize=5.0)
+        T = cs.mx_rot_z(-sta_lon)*cs.mx_rot_y(sta_lat)
+        x = T[0,0]*x0+T[0,1]*y0+T[0,2]*z0
+        y = T[1,0]*x0+T[1,1]*y0+T[1,2]*z0
+        z = T[2,0]*x0+T[2,1]*y0+T[2,2]*z0
+        y = sta_r/(sta_r-x)*y
+        z = sta_r/(sta_r-x)*z
+        ax.scatter(y, z, 3, 
+            color=BLIND_PALETTE['yellow'], 
+            marker='.'
+        )
+        ax.set_xlim([-cor2a_fov-cor2a_xc, cor2a_fov-cor2a_xc])
+        ax.set_ylim([-cor2a_fov-cor2a_yc, cor2a_fov-cor2a_yc])
+        ax.set_axis_bgcolor('black')
+        plt.axis('off')
+
+        i += 1
+    
+    plt.show()
