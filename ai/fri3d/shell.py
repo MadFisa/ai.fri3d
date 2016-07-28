@@ -55,7 +55,7 @@ def shell(self,
 
     # orientation
     T = cs.mx_rot(-self.latitude, self.longitude, self.tilt)
-    cs.mx_apply(T, x, y, z)
+    x, y, z = cs.mx_apply(T, x, y, z)
     
     # skew
     r, phi, z = cs.cart2cyl(x, y, z)
