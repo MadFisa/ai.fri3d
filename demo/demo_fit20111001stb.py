@@ -99,7 +99,7 @@ def demo_fit2insitu():
         ]),
         sigma=2.0,
         polarity=1.0,
-        chirality=1.0, 
+        chirality=-1.0, 
         spline_s_phi_kind='linear',
         spline_s_phi_n=100,
         max_pre_time=2.0*3600.0,
