@@ -887,10 +887,12 @@ def fit2remote(
                 -cor2b_fov-cor2b_yc, cor2b_fov-cor2b_yc
             ]
         )
+
         ax.set_xlim([-cor2b_fov-cor2b_xc, cor2b_fov-cor2b_xc])
         ax.set_ylim([-cor2b_fov-cor2b_yc, cor2b_fov-cor2b_yc])
         ax.set_axis_bgcolor('black')
         plt.axis('off')
+        # ax.plot([0.0], [0.0], '.y', markersize=5.0)
 
         ax = plt.subplot(gs[i+sc])
         ax.imshow(
@@ -901,12 +903,8 @@ def fit2remote(
                 -cor2b_fov-cor2b_yc, cor2b_fov-cor2b_yc
             ]
         )
-        # ax.plot([0.0], [0.0], '.y', markersize=5.0)
         T = cs.mx_rot_y(stb_lat)*cs.mx_rot_z(-stb_lon)
         x, y, z = cs.mx_apply(T, x0, y0, z0)
-        # x = T[0,0]*x0+T[0,1]*y0+T[0,2]*z0
-        # y = T[1,0]*x0+T[1,1]*y0+T[1,2]*z0
-        # z = T[2,0]*x0+T[2,1]*y0+T[2,2]*z0
         y = stb_r/(stb_r-x)*y
         z = stb_r/(stb_r-x)*z
         ax.scatter(y, z, 3, 
@@ -934,6 +932,7 @@ def fit2remote(
         ax.set_ylim([-c3_fov-c3_yc, c3_fov-c3_yc])
         ax.set_axis_bgcolor('black')
         plt.axis('off')
+        # ax.plot([0.0], [0.0], '.y', markersize=5.0)
 
         ax = plt.subplot(gs[i+sc])
         ax.imshow(
@@ -944,12 +943,8 @@ def fit2remote(
                 -c3_fov-c3_yc, c3_fov-c3_yc
             ]
         )
-        # ax.plot([0.0], [0.0], '.y', markersize=5.0)
         T = cs.mx_rot_y(soho_lat)*cs.mx_rot_z(-soho_lon)
         x, y, z = cs.mx_apply(T, x0, y0, z0)
-        # x = T[0,0]*x0+T[0,1]*y0+T[0,2]*z0
-        # y = T[1,0]*x0+T[1,1]*y0+T[1,2]*z0
-        # z = T[2,0]*x0+T[2,1]*y0+T[2,2]*z0
         y = soho_r/(soho_r-x)*y
         z = soho_r/(soho_r-x)*z
         ax.scatter(y, z, 3, 
@@ -978,6 +973,7 @@ def fit2remote(
         ax.set_ylim([-cor2a_fov-cor2a_yc, cor2a_fov-cor2a_yc])
         ax.set_axis_bgcolor('black')
         plt.axis('off')
+        # ax.plot([0.0], [0.0], '.y', markersize=5.0)
 
         ax = plt.subplot(gs[i+sc])
         ax.imshow(
@@ -988,12 +984,8 @@ def fit2remote(
                 -cor2a_fov-cor2a_xc, cor2a_fov-cor2a_yc
             ]
         )
-        # ax.plot([0.0], [0.0], '.y', markersize=5.0)
         T = cs.mx_rot_y(sta_lat)*cs.mx_rot_z(-sta_lon)
         x, y, z = cs.mx_apply(T, x0, y0, z0)
-        # x = T[0,0]*x0+T[0,1]*y0+T[0,2]*z0
-        # y = T[1,0]*x0+T[1,1]*y0+T[1,2]*z0
-        # z = T[2,0]*x0+T[2,1]*y0+T[2,2]*z0
         y = sta_r/(sta_r-x)*y
         z = sta_r/(sta_r-x)*z
         ax.scatter(y, z, 3, 

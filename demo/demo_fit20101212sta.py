@@ -4,7 +4,7 @@ from astropy import units as u
 
 fit2remote(
     cor2a=True,
-    cor2a_img='data/COR2A_20101212083900.png',
+    cor2a_img='data/cor2a_20101212_083900.png',
     cor2a_aov=u.deg.to(u.rad, 4.0),
     cor2a_xc=-1.16802e7,
     cor2a_yc=-2.43284e7,
@@ -13,7 +13,7 @@ fit2remote(
     sta_lat=u.deg.to(u.rad, -7.346),
 
     cor2b=True,
-    cor2b_img='data/COR2B_20101212083900.png',
+    cor2b_img='data/cor2b_20101212_083900.png',
     cor2b_aov=u.deg.to(u.rad, 4.0),
     cor2b_xc=-3.85197e7,
     cor2b_yc=9.39991e7,
@@ -22,7 +22,7 @@ fit2remote(
     stb_lat=u.deg.to(u.rad, 7.281),
     
     c3=True,
-    c3_img='data/C3_20101212083900.png',
+    c3_img='data/c3_20101212_083934.png',
     c3_fov=u.R_sun.to(u.m, 30.0),
     c3_xc=-2.07815e8,
     c3_yc=-8.50331e8,
@@ -38,7 +38,7 @@ fit2remote(
     tilt=u.deg.to(u.rad, 16.0),
     flattening=0.6,
     pancaking=u.deg.to(u.rad, 23.0),
-    skew=u.deg.to(u.rad, 5.0),
+    skew=u.deg.to(u.rad, 0.0),
     
-    spline_s_phi_kind='linear',
-    spline_s_phi_n=100)
+    spline_s_phi_kind='cubic',
+    spline_s_phi_n=500)
