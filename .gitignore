@@ -1,7 +1,8 @@
-*.sav
+*.pkl
 *.npz
-
-data/
+*.sav
+*.txt
+*.cdf
 
 # Virtual environment
 py3env/
