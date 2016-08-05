@@ -113,8 +113,8 @@ def demo_insitu(
     t0=1292253600.0,
     period=3.0*24.0*3600.0,
     step=600.0,
-    latitude=lambda t: -5.76484870e-04,
-    longitude=lambda t: 1.08243448e+00,
+    latitude=lambda t: -8.35255421e-04,
+    longitude=lambda t: 1.04195088e+00,
     toroidal_height=lambda t: np.polyval(
         np.array([
             u.Unit('km/s').to(u.Unit('m/s'), 480.0), 
@@ -122,14 +122,14 @@ def demo_insitu(
         ]), 
         t
     ),
-    poloidal_height=lambda t: 1.52375410e+10,
-    half_width=lambda t: 9.24032770e-01,
-    tilt=lambda t: 1.64470079e-02,
-    flattening=lambda t: 4.57895263e-01,
-    pancaking=lambda t: 4.83729672e-01,
+    poloidal_height=lambda t: 1.55072350e+10,
+    half_width=lambda t: 1.16531074e+00,
+    tilt=lambda t: 3.09957231e-03,
+    flattening=lambda t: 6.16988347e-01,
+    pancaking=lambda t: 5.10604056e-01,
     skew=lambda t: 0.0,
-    twist=lambda t: 4.12708116e+00,
-    flux=lambda t: 4.29414200e+14,
+    twist=lambda t: 4.21465864e+00,
+    flux=lambda t: 4.66728444e+14,
     sigma=lambda t: 2.0,
     polarity=-1.0,
     chirality=1.0,
@@ -180,7 +180,7 @@ def demo_insitu(
         tt = tt[nonzero_indices[0]:nonzero_indices[-1]+1]
         bb = bb[nonzero_indices[0]:nonzero_indices[-1]+1,:]
 
-    tt = np.array([datetime.fromtimestamp(tt) for tt in tt+t0+600])
+    tt = np.array([datetime.fromtimestamp(tt) for tt in tt+t0])
     bb = u.T.to(u.nT, bb)
 
     b = u.T.to(u.nT, b)
@@ -198,14 +198,14 @@ def demo_insitu(
 
 #             remote  insitu
 # theta        -14.5     0.0
-# varphi        55.0    62.0
+# varphi        55.0    59.7
 # Rp                     0.1
-# varphi_hw     55.0    52.9
-# gamma         16.0     0.9
-# n              0.6     0.46
-# theta_p       23.0    27.7
-# tau                    4.1
-# Phi                 4.3e14
+# varphi_hw     55.0    66.8
+# gamma         16.0     0.2
+# n              0.6     0.62
+# theta_p       23.0    29.3
+# tau                    4.2
+# Phi                 4.7e14
 
 # demo_fit2remote()
 
@@ -218,6 +218,18 @@ def demo_insitu(
 # [ -5.76484870e-04   1.08243448e+00   1.52375410e+10   9.24032770e-01
 #    1.64470079e-02   4.57895263e-01   4.83729672e-01   4.12708116e+00
 #    4.29414200e+14]
+# Run 03.08
+# 2.85856096239e-09
+# 1292253600.0
+# [ -1.15716548e-04   1.05198582e+00   1.55008157e+10   1.13520846e+00
+#    2.15829880e-04   6.10684704e-01   4.80098299e-01   4.37158605e+00
+#    4.36600741e+14]
+# Final
+# 2.85139583297e-09
+# 1292253600.0
+# [ -8.35255421e-04   1.04195088e+00   1.55072350e+10   1.16531074e+00
+#    3.09957231e-03   6.16988347e-01   5.10604056e-01   4.21465864e+00
+#    4.66728444e+14]
 # demo_fit2insitu()
 
 demo_insitu()

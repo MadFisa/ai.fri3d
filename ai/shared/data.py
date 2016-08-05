@@ -5,6 +5,8 @@ from datetime import datetime
 import time
 import numpy as np
 from astropy import units as u
+import calendar
+
 
 u.nT = u.def_unit('nT', 1e-9*u.T)
 
@@ -41,13 +43,13 @@ def _getData(datetime0, datetime1, sc):
 
     if not os.path.isfile(fp):
         data = readsav(DATA_SAV, python_dict=True)
-        t = data[sc]['time']+time.mktime(datetime(1979, 1, 1).timetuple())
+        t = data[sc]['time']+calendar.timegm(datetime(1979, 1, 1).timetuple())
         mask = np.logical_and(
-            t >= time.mktime(datetime0.timetuple()), 
-            t <= time.mktime(datetime1.timetuple())
+            t >= calendar.timegm(datetime0.timetuple()), 
+            t <= calendar.timegm(datetime1.timetuple())
         )
         t = t[mask]
-        t = np.array([datetime.fromtimestamp(x) for x in t])
+        t = np.array([datetime.utcfromtimestamp(x) for x in t])
         b = np.stack([
             data[sc]['bx'][mask],
             data[sc]['by'][mask],

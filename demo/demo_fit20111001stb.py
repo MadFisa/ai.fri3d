@@ -8,6 +8,10 @@ from ai.shared.data import getSTB
 from matplotlib import pyplot as plt
 import ai.cdas as cdas
 from ai.shared.color import BLIND_PALETTE
+from astropy.io import ascii as ascii_
+from astropy import table
+from matplotlib.colors import LogNorm
+import matplotlib.dates as mdates
 
 u.nT = u.def_unit('nT', 1e-9*u.T)
 
@@ -114,11 +118,11 @@ def demo_fit2insitu():
         timestamp_mask=None)
 
 def demo_insitu(
-    t0=1317556200.0,
+    t0=1317562200.0,
     period=3.0*24.0*3600.0,
     step=600.0,
-    latitude=lambda t: 2.70502968e-02,
-    longitude=lambda t: -1.33790814e+00,
+    latitude=lambda t: -5.13294711e-03,
+    longitude=lambda t: -1.28380991e+00,
     toroidal_height=lambda t: np.polyval(
         np.array([
             u.Unit('km/s').to(u.Unit('m/s'), 680.0), 
@@ -126,14 +130,17 @@ def demo_insitu(
         ]), 
         t
     ),
-    poloidal_height=lambda t: 1.22125871e+10,
-    half_width=lambda t: 1.28981669e+00,
-    tilt=lambda t: 2.18918189e-01,
-    flattening=lambda t: 7.44157800e-01,
-    pancaking=lambda t: 5.52014484e-01,
+    poloidal_height=lambda t: np.polyval(
+        np.array([3.96482238e+04, 6.63635890e+09]),
+        t
+    ),
+    half_width=lambda t: 1.38802556e+00,
+    tilt=lambda t: 1.47944608e-01,
+    flattening=lambda t: 7.11867793e-01,
+    pancaking=lambda t: 6.31054126e-01,
     skew=lambda t: 0.0,
-    twist=lambda t: 1.20193832e+00,
-    flux=lambda t: 5.88473470e+14,
+    twist=lambda t: 1.14877898e+00,
+    flux=lambda t: 6.78825922e+14,
     sigma=lambda t: 2.0,
     polarity=1.0,
     chirality=-1.0,
@@ -145,9 +152,6 @@ def demo_insitu(
     dd = d2-d1
 
     t, b, p = getSTB(
-        # datetime(2011, 10, 4, 2),
-        # datetime(2011, 10, 4, 8)-timedelta(hours=12),
-        # datetime(2011, 10, 4, 8)+timedelta(hours=12)
         d1-dd*0.8,
         d2+dd*0.8
     )
@@ -185,33 +189,104 @@ def demo_insitu(
         tt = tt[nonzero_indices[0]:nonzero_indices[-1]+1]
         bb = bb[nonzero_indices[0]:nonzero_indices[-1]+1,:]
 
-    tt = np.array([datetime.fromtimestamp(tt) for tt in tt+t0])
+    tt = np.array([datetime.utcfromtimestamp(tt) for tt in tt+t0])
     bb = u.T.to(u.nT, bb)
 
     b = u.T.to(u.nT, b)
 
+
+    cdas.set_cache(True, 'data')
+    data = cdas.get_data(
+        'istp_public', 
+        'STB_L2_PLA_1DMAX_1MIN', 
+        d1-dd*0.8, d2+dd*0.8, 
+        ['proton_number_density', 'proton_bulk_speed', 'proton_temperature']
+    )
+    data['EPOCH'] = np.array(data['EPOCH'])
+
+
+    pa = table.vstack([
+        ascii_.read('data/STB_L2_SWEA_PAD_20111003_V04.cef',data_start=129),
+        ascii_.read('data/STB_L2_SWEA_PAD_20111004_V04.cef',data_start=129)
+    ])
+    pa_time = np.array(pa.columns[0])
+    pa_time = np.array([datetime.strptime(t, "%Y-%m-%dT%H:%M:%S.%fZ") for t in pa_time])
+    pa_angles = np.array([7.50, 22.50, 37.50, 52.50, 67.50, 82.50, 97.50, 112.50, 127.50, 142.50, 157.50, 172.50])
+    pa_energy = table.Table(pa.columns[4:20])
+    print(pa_energy[0])
+    pa = np.array(table.Table(pa.columns[52:244]))
+    pa = np.array([np.array(list(pa[i])) for i in range(pa.size)])
+    m = np.logical_and(pa_time >= d1-0.8*dd, pa_time <= d2+0.8*dd)
+    pa_time = pa_time[m]
+    pa = pa[m,:]
+    print(pa.shape)
+    pa = (
+        # pa[:,3::16]+
+        pa[:,4::16]+
+        pa[:,5::16]
+        # pa[:,6::16]
+    )
+    print(pa.shape)
+
+    pa = np.transpose(pa)
+
+    
+
+
     fig = plt.figure()
-    plt.plot(t, np.sqrt(b[:,0]**2+b[:,1]**2+b[:,2]**2), 'k')
-    plt.plot(tt, np.sqrt(bb[:,0]**2+bb[:,1]**2+bb[:,2]**2), color=BLIND_PALETTE['reddish-purple'], linewidth=4, linestyle='dashed')
-    plt.plot(t, b[:,0], color=BLIND_PALETTE['vermillion'])
-    plt.plot(tt, bb[:,0], color=BLIND_PALETTE['reddish-purple'], linewidth=4, linestyle='dashed')
-    plt.plot(t, b[:,1], color=BLIND_PALETTE['bluish-green'])
-    plt.plot(tt, bb[:,1], color=BLIND_PALETTE['reddish-purple'], linewidth=4, linestyle='dashed')
-    plt.plot(t, b[:,2], color=BLIND_PALETTE['blue'])
-    plt.plot(tt, bb[:,2], color=BLIND_PALETTE['reddish-purple'], linewidth=4, linestyle='dashed')
+    plt.subplots_adjust(hspace=0.001)
+    ax = fig.add_subplot(511)
+    ax.plot(t, np.sqrt(b[:,0]**2+b[:,1]**2+b[:,2]**2), 'k')
+    ax.plot(tt, np.sqrt(bb[:,0]**2+bb[:,1]**2+bb[:,2]**2), color=BLIND_PALETTE['reddish-purple'], linewidth=4, linestyle='dashed')
+    ax.plot(t, b[:,0], color=BLIND_PALETTE['vermillion'])
+    ax.plot(tt, bb[:,0], color=BLIND_PALETTE['reddish-purple'], linewidth=4, linestyle='dashed')
+    ax.plot(t, b[:,1], color=BLIND_PALETTE['bluish-green'])
+    ax.plot(tt, bb[:,1], color=BLIND_PALETTE['reddish-purple'], linewidth=4, linestyle='dashed')
+    ax.plot(t, b[:,2], color=BLIND_PALETTE['blue'])
+    ax.plot(tt, bb[:,2], color=BLIND_PALETTE['reddish-purple'], linewidth=4, linestyle='dashed')
+    plt.setp(ax.get_xticklabels(), visible=False)
+    
+    ax = fig.add_subplot(512)
+    ax.imshow(
+        pa, 
+        aspect='auto', 
+        cmap='RdBu_r', 
+        norm=LogNorm(), 
+        extent=[
+            mdates.date2num(d1-0.8*dd),
+            mdates.date2num(d2+0.8*dd),
+            0.0, 180.0
+        ]
+    )
+    ax.xaxis_date()
+    plt.setp(ax.get_xticklabels(), visible=False)
+    
+    ax = fig.add_subplot(513)
+    m = data['SPEED'] >= 0.0
+    ax.plot(data['EPOCH'][m], data['SPEED'][m], 'k')
+    plt.setp(ax.get_xticklabels(), visible=False)
+    
+    ax = fig.add_subplot(514)
+    m = data['DENSITY'] >= 0.0
+    ax.plot(data['EPOCH'][m], data['DENSITY'][m], 'k')
+    plt.setp(ax.get_xticklabels(), visible=False)
+    
+    ax = fig.add_subplot(515)
+    m = data['TEMPERATURE'] >= 0.0
+    ax.plot(data['EPOCH'][m], data['TEMPERATURE'][m], 'k')
+
     plt.show()
 
-
 #             remote  insitu
-# theta          5.5     1.6
-# varphi       -95.0   -76.7
-# Rp                    0.08
-# varphi_hw     75.0    73.9
-# gamma         21.0    12.5
-# n              0.55    0.74
-# theta_p       27.0    31.6
+# theta          5.5    -0.3
+# varphi       -95.0   -73.6
+# Rp                    0.044+t*36.7km/s
+# varphi_hw     75.0    79.5
+# gamma         21.0     8.5
+# n              0.55    0.71
+# theta_p       27.0    36.2
 # tau                    1.2
-# Phi                 5.9e14
+# Phi                 6.8e14
 
 # demo_fit2remote()
 
@@ -224,6 +299,18 @@ def demo_insitu(
 # [  2.70502968e-02  -1.33790814e+00   1.22125871e+10   1.28981669e+00
 #    2.18918189e-01   7.44157800e-01   5.52014484e-01   1.20193832e+00
 #    5.88473470e+14]
+# Run 03.08
+# 3.53156030898e-09
+# 1317555000.0
+# [ -4.57181375e-03  -1.29396113e+00   3.96861699e+04   6.65527090e+09
+#    1.35619279e+00   1.39100660e-01   7.10848444e-01   6.38561795e-01
+#    1.14614495e+00   6.92870250e+14]
+# Final
+# 3.52774378605e-09
+# 1317555000.0 
+# [ -5.13294711e-03  -1.28380991e+00   3.96482238e+04   6.63635890e+09
+#    1.38802556e+00   1.47944608e-01   7.11867793e-01   6.31054126e-01
+#    1.14877898e+00   6.78825922e+14]
 # demo_fit2insitu()
 
 demo_insitu()

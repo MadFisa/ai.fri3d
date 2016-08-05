@@ -3,6 +3,7 @@
 *.sav
 *.txt
 *.cdf
+*.gz
 
 # Virtual environment
 py3env/
