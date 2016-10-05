@@ -6,7 +6,14 @@ from datetime import datetime, timedelta
 import numpy as np
 from ai.shared.data import getSTA
 from matplotlib import pyplot as plt
+from matplotlib import transforms
+from matplotlib import dates as mdates
+import ai.cdas as cdas
 from ai.shared.color import BLIND_PALETTE
+from astropy.io import ascii as ascii_
+from astropy import table
+from matplotlib.colors import LogNorm
+from matplotlib import gridspec
 
 u.nT = u.def_unit('nT', 1e-9*u.T)
 
@@ -20,6 +27,7 @@ def demo_fit2remote():
         sta_r=u.au.to(u.m, 0.966087),
         sta_lon=u.deg.to(u.rad, 85.198),
         sta_lat=u.deg.to(u.rad, -7.346),
+        sta_datetime=datetime(2010,12,12,8,39),
 
         cor2b=True,
         cor2b_img='data/cor2b_20101212_083900.png',
@@ -29,6 +37,7 @@ def demo_fit2remote():
         stb_r=u.au.to(u.m, 1.070067),
         stb_lon=u.deg.to(u.rad, -87.282),
         stb_lat=u.deg.to(u.rad, 7.281),
+        stb_datetime=datetime(2010,12,12,8,39),
         
         c3=True,
         c3_img='data/c3_20101212_083934.png',
@@ -38,6 +47,7 @@ def demo_fit2remote():
         soho_r=u.au.to(u.m, 1.0),
         soho_lat=u.deg.to(u.rad, 0.0),
         soho_lon=u.deg.to(u.rad, 0.0),
+        soho_datetime=datetime(2010,12,12,8,39,34),
 
         latitude=u.deg.to(u.rad, -14.5),
         longitude=u.deg.to(u.rad, 55.0),
@@ -110,7 +120,7 @@ def demo_fit2insitu():
         timestamp_mask=None)
 
 def demo_insitu(
-    t0=1292253600.0,
+    t0=1292253600.0+7200.0,
     period=3.0*24.0*3600.0,
     step=600.0,
     latitude=lambda t: -8.35255421e-04,
@@ -136,9 +146,13 @@ def demo_insitu(
     spline_s_phi_kind='cubic',
     spline_s_phi_n=500):
 
-    d1 = datetime(2010, 12, 15, 10, 20)
-    d2 = datetime(2010, 12, 16, 4)
+    # d1 = datetime(2010, 12, 15, 10, 20)
+    # d2 = datetime(2010, 12, 16, 4)
+    d1 = datetime(2010, 12, 15, 12, 20)
+    d2 = datetime(2010, 12, 16, 6)
     dd = d2-d1
+
+    print(d1-dd*0.8, d2+dd*0.8)
 
     t, b, p = getSTA(
         # datetime(2010, 12, 15, 19)-timedelta(hours=12),
@@ -180,20 +194,150 @@ def demo_insitu(
         tt = tt[nonzero_indices[0]:nonzero_indices[-1]+1]
         bb = bb[nonzero_indices[0]:nonzero_indices[-1]+1,:]
 
-    tt = np.array([datetime.fromtimestamp(tt) for tt in tt+t0])
+    tt = np.array([datetime.utcfromtimestamp(tt) for tt in tt+t0])
     bb = u.T.to(u.nT, bb)
 
     b = u.T.to(u.nT, b)
 
-    fig = plt.figure()
-    plt.plot(t, np.sqrt(b[:,0]**2+b[:,1]**2+b[:,2]**2), 'k')
-    plt.plot(tt, np.sqrt(bb[:,0]**2+bb[:,1]**2+bb[:,2]**2), color=BLIND_PALETTE['reddish-purple'], linewidth=4, linestyle='dashed')
-    plt.plot(t, b[:,0], color=BLIND_PALETTE['vermillion'])
-    plt.plot(tt, bb[:,0], color=BLIND_PALETTE['reddish-purple'], linewidth=4, linestyle='dashed')
-    plt.plot(t, b[:,1], color=BLIND_PALETTE['bluish-green'])
-    plt.plot(tt, bb[:,1], color=BLIND_PALETTE['reddish-purple'], linewidth=4, linestyle='dashed')
-    plt.plot(t, b[:,2], color=BLIND_PALETTE['blue'])
-    plt.plot(tt, bb[:,2], color=BLIND_PALETTE['reddish-purple'], linewidth=4, linestyle='dashed')
+    m = np.logical_or(
+        t <= datetime(2010, 12, 15, 1, 5),
+        t >= datetime(2010, 12, 15, 4)
+    )
+    t = t[m]
+    b = b[m,:]
+
+
+    cdas.set_cache(True, 'data')
+    data = cdas.get_data(
+        'istp_public', 
+        'STA_L2_PLA_1DMAX_1MIN', 
+        d1-dd*0.8, d2+dd*0.8, 
+        ['proton_number_density', 'proton_bulk_speed', 'proton_temperature'],
+        cdf=True
+    )
+    print(data.keys())
+    data['epoch'] = np.array(data['epoch'])
+
+
+    pa = table.vstack([
+        ascii_.read('data/STA_L2_SWEA_PAD_20101214_V04.cef',data_start=129),
+        ascii_.read('data/STA_L2_SWEA_PAD_20101215_V04.cef',data_start=129),
+        ascii_.read('data/STA_L2_SWEA_PAD_20101216_V04.cef',data_start=129)
+    ])
+    pa_time = np.array(pa.columns[0])
+    pa_time = np.array([datetime.strptime(t, "%Y-%m-%dT%H:%M:%S.%fZ") for t in pa_time])
+    pa_angles = np.array([7.50, 22.50, 37.50, 52.50, 67.50, 82.50, 97.50, 112.50, 127.50, 142.50, 157.50, 172.50])
+    pa_energy = table.Table(pa.columns[4:20])
+    print(pa_energy[0])
+    print(table.Table(pa.columns[20:36])[0])
+    print(table.Table(pa.columns[36:52])[0])
+    pa = np.array(table.Table(pa.columns[52:244]))
+    pa = np.array([np.array(list(pa[i])) for i in range(pa.size)])
+    m = np.logical_and(pa_time >= d1-0.8*dd, pa_time <= d2+0.8*dd)
+    pa_time = pa_time[m]
+    pa = pa[m,:]
+    print(pa.shape)
+    pa = (
+        # pa[:,3::16]+
+        pa[:,4::16]+
+        pa[:,5::16]
+        # pa[:,6::16]
+    )
+    print(pa.shape)
+
+    pa = np.transpose(pa)
+
+    
+    major = mdates.DayLocator()
+    minor = mdates.HourLocator()
+    majorFormat = mdates.DateFormatter('%Y-%m-%d %H:%M')
+
+    fig = plt.figure(figsize=[8,10])
+
+    gs = gridspec.GridSpec(5, 1, height_ratios=[2, 1, 1, 1, 1])
+
+    plt.subplots_adjust(hspace=0.001)
+    ax = fig.add_subplot(gs[0])
+    ax.plot(t, np.sqrt(b[:,0]**2+b[:,1]**2+b[:,2]**2), 'k', label='B')
+    ax.plot(tt, np.sqrt(bb[:,0]**2+bb[:,1]**2+bb[:,2]**2), color=BLIND_PALETTE['reddish-purple'], linewidth=4, linestyle='dashed')
+    ax.plot(t, b[:,0], color=BLIND_PALETTE['vermillion'], label='Bx')
+    ax.plot(tt, bb[:,0], color=BLIND_PALETTE['reddish-purple'], linewidth=4, linestyle='dashed')
+    ax.plot(t, b[:,1], color=BLIND_PALETTE['bluish-green'], label='By')
+    ax.plot(tt, bb[:,1], color=BLIND_PALETTE['reddish-purple'], linewidth=4, linestyle='dashed')
+    ax.plot(t, b[:,2], color=BLIND_PALETTE['blue'], label='Bz')
+    ax.plot(tt, bb[:,2], color=BLIND_PALETTE['reddish-purple'], linewidth=4, linestyle='dashed', label='FRi3D')
+    plt.setp(ax.get_xticklabels(), visible=False)
+    ax.legend()
+    ax.set_ylabel('$B$ $[nT]$')
+
+
+    ax.xaxis.set_major_locator(major)
+    ax.xaxis.set_major_formatter(majorFormat)
+    ax.xaxis.set_minor_locator(minor)
+    ax.yaxis.set_label_coords(-0.08, 0.5)
+    
+    ax = fig.add_subplot(gs[1])
+    im = ax.imshow(
+        pa, 
+        aspect='auto', 
+        cmap='RdBu_r', 
+        norm=LogNorm(), 
+        extent=[
+            mdates.date2num(d1-0.8*dd),
+            mdates.date2num(d2+0.8*dd),
+            0.0, 180.0
+        ]
+    )
+    ax.xaxis_date()
+    plt.setp(ax.get_xticklabels(), visible=False)
+    Bbox = transforms.Bbox.from_bounds(1.02, 0, 0.03, 1)
+    trans = ax.transAxes+fig.transFigure.inverted()
+    l, b, w, h = transforms.TransformedBbox(Bbox, trans).bounds
+    cax = fig.add_axes([l, b, w, h])
+    cb = plt.colorbar(im, cax = cax)
+    # cb.locator = plt.MaxNLocator(5)
+    cb.update_ticks()
+    axc = ax
+    axc.yaxis.set_label_coords(-0.08, 0.5)
+    ax.set_ylabel('$PA$ $[^\circ]$')
+    
+    ax.xaxis.set_major_locator(major)
+    ax.xaxis.set_major_formatter(majorFormat)
+    ax.xaxis.set_minor_locator(minor)
+    ax.yaxis.set_label_coords(-0.08, 0.5)
+
+    ax = fig.add_subplot(gs[2])
+    m = data['proton_bulk_speed'] >= 0.0
+    ax.plot(data['epoch'][m], data['proton_bulk_speed'][m], 'k')
+    plt.setp(ax.get_xticklabels(), visible=False)
+    ax.set_ylabel('$V_p$ $[km/s]$')
+
+    ax.xaxis.set_major_locator(major)
+    ax.xaxis.set_major_formatter(majorFormat)
+    ax.xaxis.set_minor_locator(minor)
+    ax.yaxis.set_label_coords(-0.08, 0.5)
+    
+    ax = fig.add_subplot(gs[3])
+    m = data['proton_number_density'] >= 0.0
+    ax.plot(data['epoch'][m], data['proton_number_density'][m], 'k')
+    plt.setp(ax.get_xticklabels(), visible=False)
+    ax.set_ylabel('$N_p$ $[cm^{-3}]$')
+
+    ax.xaxis.set_major_locator(major)
+    ax.xaxis.set_major_formatter(majorFormat)
+    ax.xaxis.set_minor_locator(minor)
+    ax.yaxis.set_label_coords(-0.08, 0.5)
+    
+    ax = fig.add_subplot(gs[4])
+    m = data['proton_temperature'] >= 0.0
+    ax.plot(data['epoch'][m], data['proton_temperature'][m]/1e6, 'k')
+    ax.set_ylabel('$T_p$ $[MK]$')
+
+    ax.xaxis.set_major_locator(major)
+    ax.xaxis.set_major_formatter(majorFormat)
+    ax.xaxis.set_minor_locator(minor)
+    ax.yaxis.set_label_coords(-0.08, 0.5)
+
     plt.show()
 
 #             remote  insitu
@@ -207,7 +351,7 @@ def demo_insitu(
 # tau                    4.2
 # Phi                 4.7e14
 
-# demo_fit2remote()
+demo_fit2remote()
 
 # Run 01.08
 # [ -1.39915561e-02   9.03661698e-01   1.49928626e+10   1.19992133e+00
@@ -232,4 +376,4 @@ def demo_insitu(
 #    4.66728444e+14]
 # demo_fit2insitu()
 
-demo_insitu()
+# demo_insitu()

@@ -27,6 +27,7 @@ def fit2remote(
     sta_r=None,
     sta_lat=None,
     sta_lon=None,
+    sta_datetime=None,
 
     cor2b=False,
     cor2b_img=None,
@@ -36,6 +37,7 @@ def fit2remote(
     stb_r=None,
     stb_lat=None,
     stb_lon=None,
+    stb_datetime=None,
     
     c3=False,
     c3_img=None,
@@ -45,6 +47,7 @@ def fit2remote(
     soho_r=u.au.to(u.m, 1.0),
     soho_lat=u.deg.to(u.rad, 0.0),
     soho_lon=u.deg.to(u.rad, 0.0),
+    soho_datetime=None,
 
     latitude=u.deg.to(u.rad, 0.0),
     longitude=u.deg.to(u.rad, 0.0),
@@ -99,6 +102,15 @@ def fit2remote(
 
         ax.set_xlim([-cor2b_fov-cor2b_xc, cor2b_fov-cor2b_xc])
         ax.set_ylim([-cor2b_fov-cor2b_yc, cor2b_fov-cor2b_yc])
+
+        ax.text(
+            -cor2b_fov-cor2b_xc+0.05*cor2b_fov,
+            -cor2b_fov-cor2b_yc+0.05*cor2b_fov,
+            'COR2B '+stb_datetime.strftime('%Y-%m-%d %H:%M:%S'),
+            color='white',
+            fontsize='xx-large',
+        )
+
         ax.set_axis_bgcolor('black')
         plt.axis('off')
         # ax.plot([0.0], [0.0], '.y', markersize=5.0)
@@ -116,12 +128,21 @@ def fit2remote(
         x, y, z = cs.mx_apply(T, x0, y0, z0)
         y = stb_r/(stb_r-x)*y
         z = stb_r/(stb_r-x)*z
-        ax.scatter(y, z, 3, 
+        ax.scatter(y, z, 8, 
             color=BLIND_PALETTE['yellow'], 
             marker='.'
         )
         ax.set_xlim([-cor2b_fov-cor2b_xc, cor2b_fov-cor2b_xc])
         ax.set_ylim([-cor2b_fov-cor2b_yc, cor2b_fov-cor2b_yc])
+
+        ax.text(
+            -cor2b_fov-cor2b_xc+0.05*cor2b_fov,
+            -cor2b_fov-cor2b_yc+0.05*cor2b_fov,
+            'COR2B '+stb_datetime.strftime('%Y-%m-%d %H:%M:%S'),
+            color='white',
+            fontsize='xx-large',
+        )
+
         ax.set_axis_bgcolor('black')
         plt.axis('off')
 
@@ -139,6 +160,15 @@ def fit2remote(
         )
         ax.set_xlim([-c3_fov-c3_xc, c3_fov-c3_xc])
         ax.set_ylim([-c3_fov-c3_yc, c3_fov-c3_yc])
+
+        ax.text(
+            -c3_fov-c3_xc+0.05*c3_fov,
+            -c3_fov-c3_yc+0.05*c3_fov,
+            'C3 '+soho_datetime.strftime('%Y-%m-%d %H:%M:%S'),
+            color='white',
+            fontsize='xx-large',
+        )
+
         ax.set_axis_bgcolor('black')
         plt.axis('off')
         # ax.plot([0.0], [0.0], '.y', markersize=5.0)
@@ -156,12 +186,21 @@ def fit2remote(
         x, y, z = cs.mx_apply(T, x0, y0, z0)
         y = soho_r/(soho_r-x)*y
         z = soho_r/(soho_r-x)*z
-        ax.scatter(y, z, 3, 
+        ax.scatter(y, z, 8, 
             color=BLIND_PALETTE['yellow'], 
             marker='.'
         )
         ax.set_xlim([-c3_fov-c3_xc, c3_fov-c3_xc])
         ax.set_ylim([-c3_fov-c3_yc, c3_fov-c3_yc])
+
+        ax.text(
+            -c3_fov-c3_xc+0.05*c3_fov,
+            -c3_fov-c3_yc+0.05*c3_fov,
+            'C3 '+soho_datetime.strftime('%Y-%m-%d %H:%M:%S'),
+            color='white',
+            fontsize='xx-large',
+        )
+
         ax.set_axis_bgcolor('black')
         plt.axis('off')
 
@@ -180,6 +219,15 @@ def fit2remote(
         )
         ax.set_xlim([-cor2a_fov-cor2a_xc, cor2a_fov-cor2a_xc])
         ax.set_ylim([-cor2a_fov-cor2a_yc, cor2a_fov-cor2a_yc])
+
+        ax.text(
+            -cor2a_fov-cor2a_xc+0.05*cor2a_fov,
+            -cor2a_fov-cor2a_yc+0.05*cor2a_fov,
+            'COR2A '+sta_datetime.strftime('%Y-%m-%d %H:%M:%S'),
+            color='white',
+            fontsize='xx-large',
+        )
+
         ax.set_axis_bgcolor('black')
         plt.axis('off')
         # ax.plot([0.0], [0.0], '.y', markersize=5.0)
@@ -197,17 +245,29 @@ def fit2remote(
         x, y, z = cs.mx_apply(T, x0, y0, z0)
         y = sta_r/(sta_r-x)*y
         z = sta_r/(sta_r-x)*z
-        ax.scatter(y, z, 3, 
+        ax.scatter(y, z, 8, 
             color=BLIND_PALETTE['yellow'], 
             marker='.'
         )
         ax.set_xlim([-cor2a_fov-cor2a_xc, cor2a_fov-cor2a_xc])
         ax.set_ylim([-cor2a_fov-cor2a_yc, cor2a_fov-cor2a_yc])
+
+        ax.text(
+            -cor2a_fov-cor2a_xc+0.05*cor2a_fov,
+            -cor2a_fov-cor2a_yc+0.05*cor2a_fov,
+            'COR2A '+sta_datetime.strftime('%Y-%m-%d %H:%M:%S'),
+            color='white',
+            fontsize='xx-large',
+        )
+
         ax.set_axis_bgcolor('black')
         plt.axis('off')
 
         i += 1
     
+    mng = plt.get_current_fig_manager()
+    mng.resize(*mng.window.maxsize())
+
     plt.show()
 
 def fit2insitu(t, b, 
