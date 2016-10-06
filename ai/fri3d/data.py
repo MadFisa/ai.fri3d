@@ -90,3 +90,67 @@ def data(self, x, y, z, ds=1e-5):
         b = b[0,:]
 
     return b
+
+def closest(self, x, y, z):
+    # reverse skew
+    r, theta, phi = cs.cart2sp(x, y, z)
+    phi -= self.skew*(1.0-r/self.toroidal_height)
+    x, y, z = cs.sp2cart(r, theta, phi)
+
+    # reverse orientation
+    T = cs.mx_rot_reverse(self.latitude, -self.longitude, -self.tilt)
+    x, y, z = cs.mx_apply(T, x, y, z)
+    
+    # reverse pancaking
+    r, theta, phi = cs.cart2sp(x, y, z)
+    theta = (
+        theta/self.pancaking*
+        np.arctan2(self.poloidal_height, self.toroidal_height)
+    )
+    x, y, z = cs.sp2cart(r, theta, phi
+)
+    # inside axis loop mask
+    p_in = self._initial_axis_r(phi) >= r*np.cos(theta)
+    # outside axis loop mask
+    p_out = np.logical_not(p_in)
+    # get r_ax and phi_ax of the closest point on axis
+    v_initial_axis_min_l_phi = np.vectorize(
+        self._initial_axis_min_l_phi, 
+        otypes=[np.float64]
+    )
+    phi_ax = v_initial_axis_min_l_phi(r*np.cos(theta), phi)
+    r_ax = self._initial_axis_r(phi_ax)
+    v_initial_axis_s = np.vectorize(self._initial_axis_s, otypes=[np.float64])
+    s = v_initial_axis_s(phi_ax)/self._initial_axis_s(self.half_width)
+    x_ax, y_ax, z_ax = cs.sp2cart(r_ax, np.zeros(r_ax.size), phi_ax)
+
+    # pancaking
+    r, theta, phi = cs.cart2sp(x_ax, y_ax, z_ax)
+    theta = (
+        theta/np.arctan2(self.poloidal_height, self.toroidal_height)*
+        self.pancaking
+    )
+    x, y, z = cs.sp2cart(r, theta, phi)
+
+    # orientation
+    T = cs.mx_rot(-self.latitude, self.longitude, self.tilt)
+    x, y, z = cs.mx_apply(T, x, y, z)
+
+    # skew
+    r, theta, phi = cs.cart2sp(x, y, z)
+    phi += self.skew*(1.0-r/self.toroidal_height)
+    x, y, z = cs.sp2cart(r, theta, phi)
+
+    return (x, y, z)
+
+def cross(self, x, y, z):
+    x_ax, y_ax, z_ax = self.closest(x, y, z)
+    vtan = self.data(x_ax, y_ax, z_ax)
+    vtan /= np.linalg.norm(vtan)
+    vnorm = np.array([x-x_ax, y-y_ax, z-z_ax])
+    vnorm /= np.linalg.norm(vnorm)
+    vsc = np.array([x, y, z])
+    vsc /= np.linalg.norm(vsc)
+    vaxis = np.array([x_ax, y_ax, z_ax])
+    vaxis /= np.linalg.norm(vaxis)
+    
