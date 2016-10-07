@@ -91,7 +91,11 @@ def data(self, x, y, z, ds=1e-5):
 
     return b
 
-def closest(self, x, y, z):
+def impact(self, x, y, z):
+    x0 = x
+    y0 = y
+    z0 = z
+
     # reverse skew
     r, theta, phi = cs.cart2sp(x, y, z)
     phi -= self.skew*(1.0-r/self.toroidal_height)
@@ -141,16 +145,16 @@ def closest(self, x, y, z):
     phi += self.skew*(1.0-r/self.toroidal_height)
     x, y, z = cs.sp2cart(r, theta, phi)
 
-    return (x, y, z)
+    return (np.linalg.norm(np.array([x-x0, y-y0, z-z0])), x, y, z)
 
-def cross(self, x, y, z):
-    x_ax, y_ax, z_ax = self.closest(x, y, z)
-    vtan = self.data(x_ax, y_ax, z_ax)
-    vtan /= np.linalg.norm(vtan)
-    vnorm = np.array([x-x_ax, y-y_ax, z-z_ax])
-    vnorm /= np.linalg.norm(vnorm)
-    vsc = np.array([x, y, z])
-    vsc /= np.linalg.norm(vsc)
-    vaxis = np.array([x_ax, y_ax, z_ax])
-    vaxis /= np.linalg.norm(vaxis)
+# def cross(self, x, y, z):
+#     x_ax, y_ax, z_ax = self.closest(x, y, z)
+#     vec_tan = self.data(x_ax, y_ax, z_ax)
+#     vec_tan /= np.linalg.norm(vec_tan)
+#     vec_sun2sc = np.array([x, y, z])
+#     vec_sun2sc /= np.linalg.norm(vec_sun2sc)
     
+#     vec_mcy = np.cross(vec_tan, vec_sun2sc)
+#     vec_mcy /= np.linalg.norm(vec_mcy)
+#     vec_mcx = np.cross(vec_mcy, vec_tan)
+#     vec_mcx /= np.linalg.norm(vec_mcx)

@@ -340,6 +340,71 @@ def demo_insitu(
 
     plt.show()
 
+def demo_map(
+    t0=1292253600.0+7200.0,
+    period=3.0*24.0*3600.0,
+    step=600.0,
+    latitude=lambda t: -8.35255421e-04,
+    longitude=lambda t: 1.04195088e+00,
+    toroidal_height=lambda t: np.polyval(
+        np.array([
+            u.Unit('km/s').to(u.Unit('m/s'), 480.0), 
+            u.au.to(u.m, 0.5)
+        ]), 
+        t
+    ),
+    poloidal_height=lambda t: 1.55072350e+10,
+    half_width=lambda t: 1.16531074e+00,
+    tilt=lambda t: 3.09957231e-03,
+    flattening=lambda t: 6.16988347e-01,
+    pancaking=lambda t: 5.10604056e-01,
+    skew=lambda t: 0.0,
+    twist=lambda t: 4.21465864e+00,
+    flux=lambda t: 4.66728444e+14,
+    sigma=lambda t: 2.0,
+    polarity=-1.0,
+    chirality=1.0,
+    spline_s_phi_kind='cubic',
+    spline_s_phi_n=500):
+    
+    d1 = datetime(2010, 12, 15, 12, 20)
+    d2 = datetime(2010, 12, 16, 6)
+    dd = d2-d1
+
+    t, b, p = getSTA(
+        d1-dd*0.8,
+        d2+dd*0.8
+    )
+
+    evo = Evolution(
+        latitude=latitude,
+        longitude=longitude,
+        toroidal_height=toroidal_height,
+        poloidal_height=poloidal_height,
+        half_width=half_width,
+        tilt=tilt,
+        flattening=flattening,
+        pancaking=pancaking,
+        skew=skew,
+        twist=twist,
+        flux=flux,
+        sigma=sigma,
+        polarity=polarity,
+        chirality=chirality,
+        spline_s_phi_kind=spline_s_phi_kind,
+        spline_s_phi_n=spline_s_phi_n)
+
+    tt = np.arange(0.0, period+step, step)
+
+    evo.impact(
+        tt, 
+        x=np.mean(p[:,0]),
+        y=np.mean(p[:,1]),
+        z=np.mean(p[:,2])
+    )
+    
+
+
 #             remote  insitu
 # theta        -14.5     0.0
 # varphi        55.0    59.7
@@ -351,7 +416,7 @@ def demo_insitu(
 # tau                    4.2
 # Phi                 4.7e14
 
-demo_fit2remote()
+# demo_fit2remote()
 
 # Run 01.08
 # [ -1.39915561e-02   9.03661698e-01   1.49928626e+10   1.19992133e+00
@@ -377,3 +442,5 @@ demo_fit2remote()
 # demo_fit2insitu()
 
 # demo_insitu()
+
+demo_map()
