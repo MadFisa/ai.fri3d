@@ -17,6 +17,68 @@ from matplotlib import gridspec
 
 u.nT = u.def_unit('nT', 1e-9*u.T)
 
+# [  5.61847373e-02   2.10729553e+00   1.00553254e+05   1.02700561e+10
+#    1.14152669e+00  -5.50063318e-01   4.60029432e-01   2.62848982e-01
+#    9.84152210e+00   9.02391809e+13]
+
+def fit2insitu2():
+    t, b, p = getSTA(
+        datetime(2011, 6, 6, 17, 15),
+        datetime(2011, 6, 7, 1, 30)
+    )
+
+    fit2insitu(t, b, 
+        x=np.mean(p[:,0]),
+        y=np.mean(p[:,1]),
+        z=np.mean(p[:,2]),
+        period=3.0*24.0*3600.0,
+        step_coarse=3600.0,
+        step_fine=600.0,
+        latitude=np.array([
+            u.deg.to(u.rad, [0.0, 25.0])
+        ]),
+        longitude=np.array([
+            u.deg.to(u.rad, [120.0, 150.0])
+        ]), 
+        toroidal_height=lambda t: np.polyval(
+            np.array([
+                u.Unit('km/s').to(u.Unit('m/s'), 925.0), 
+                u.au.to(u.m, 0.5)
+            ]), t
+        ),
+        poloidal_height=np.array([
+            u.Unit('km/s').to(u.Unit('m/s'), [100.0, 130.0]),
+            u.au.to(u.m, [0.02, 0.2])
+        ]), 
+        half_width=np.array([
+            u.deg.to(u.rad, [20.0, 70.0])
+        ]), 
+        tilt=np.array([
+            u.deg.to(u.rad, [-40.0, 0.0])
+        ]), 
+        flattening=np.array([
+            [0.4, 0.8]
+        ]), 
+        pancaking=np.array([
+            u.deg.to(u.rad, [10.0, 30.0])
+        ]), 
+        skew=u.deg.to(u.rad, 0.0),
+        twist=np.array([
+            [1.0, 10.0]
+        ]), 
+        flux=np.array([
+            [1e13, 1e15]
+        ]),
+        sigma=2.0,
+        polarity=1.0,
+        chirality=1.0, 
+        spline_s_phi_kind='linear',
+        spline_s_phi_n=100,
+        max_pre_time=2.0*3600.0,
+        max_post_time=2.0*3600.0,
+        verbose=True,
+        timestamp_mask=None)
+
 def demo_fit2remote():
     fit2remote(
         cor2a=True,
@@ -148,70 +210,72 @@ def demo_insitu(
 
     # d1 = datetime(2010, 12, 15, 10, 20)
     # d2 = datetime(2010, 12, 16, 4)
-    d1 = datetime(2010, 12, 15, 12, 20)
-    d2 = datetime(2010, 12, 16, 6)
+    d1 = datetime(2011, 6, 6, 6)
+    d2 = datetime(2011, 6, 7, 12)
     dd = d2-d1
 
-    print(d1-dd*0.8, d2+dd*0.8)
+    # print(d1-dd*0.8, d2+dd*0.8)
 
     t, b, p = getSTA(
         # datetime(2010, 12, 15, 19)-timedelta(hours=12),
         # datetime(2010, 12, 15, 19)+timedelta(hours=12)
-        d1-dd*0.8,
-        d2+dd*0.8
+        # d1-dd*0.8,
+        # d2+dd*0.8
+        d1, d2
     )
 
-    evo = Evolution(
-        latitude=latitude,
-        longitude=longitude,
-        toroidal_height=toroidal_height,
-        poloidal_height=poloidal_height,
-        half_width=half_width,
-        tilt=tilt,
-        flattening=flattening,
-        pancaking=pancaking,
-        skew=skew,
-        twist=twist,
-        flux=flux,
-        sigma=sigma,
-        polarity=polarity,
-        chirality=chirality,
-        spline_s_phi_kind=spline_s_phi_kind,
-        spline_s_phi_n=spline_s_phi_n)
+    # evo = Evolution(
+    #     latitude=latitude,
+    #     longitude=longitude,
+    #     toroidal_height=toroidal_height,
+    #     poloidal_height=poloidal_height,
+    #     half_width=half_width,
+    #     tilt=tilt,
+    #     flattening=flattening,
+    #     pancaking=pancaking,
+    #     skew=skew,
+    #     twist=twist,
+    #     flux=flux,
+    #     sigma=sigma,
+    #     polarity=polarity,
+    #     chirality=chirality,
+    #     spline_s_phi_kind=spline_s_phi_kind,
+    #     spline_s_phi_n=spline_s_phi_n)
 
-    tt = np.arange(0.0, period+step, step)
+    # tt = np.arange(0.0, period+step, step)
 
-    bb = evo.insitu(
-        tt, 
-        x=np.mean(p[:,0]),
-        y=np.mean(p[:,1]),
-        z=np.mean(p[:,2])
-    )
+    # bb = evo.insitu(
+    #     tt, 
+    #     x=np.mean(p[:,0]),
+    #     y=np.mean(p[:,1]),
+    #     z=np.mean(p[:,2])
+    # )
 
-    nonzero_indices = np.nonzero(np.sqrt(bb[:,0]**2+bb[:,1]**2+bb[:,2]**2))[0]
+    # nonzero_indices = np.nonzero(np.sqrt(bb[:,0]**2+bb[:,1]**2+bb[:,2]**2))[0]
 
-    if nonzero_indices.size >= 2:
-        tt = tt[nonzero_indices[0]:nonzero_indices[-1]+1]
-        bb = bb[nonzero_indices[0]:nonzero_indices[-1]+1,:]
+    # if nonzero_indices.size >= 2:
+    #     tt = tt[nonzero_indices[0]:nonzero_indices[-1]+1]
+    #     bb = bb[nonzero_indices[0]:nonzero_indices[-1]+1,:]
 
-    tt = np.array([datetime.utcfromtimestamp(tt) for tt in tt+t0])
-    bb = u.T.to(u.nT, bb)
+    # tt = np.array([datetime.utcfromtimestamp(tt) for tt in tt+t0])
+    # bb = u.T.to(u.nT, bb)
 
     b = u.T.to(u.nT, b)
 
-    m = np.logical_or(
-        t <= datetime(2010, 12, 15, 1, 5),
-        t >= datetime(2010, 12, 15, 4)
-    )
-    t = t[m]
-    b = b[m,:]
+    # m = np.logical_or(
+    #     t <= datetime(2010, 12, 15, 1, 5),
+    #     t >= datetime(2010, 12, 15, 4)
+    # )
+    # t = t[m]
+    # b = b[m,:]
 
 
     cdas.set_cache(True, 'data')
     data = cdas.get_data(
         'istp_public', 
         'STA_L2_PLA_1DMAX_1MIN', 
-        d1-dd*0.8, d2+dd*0.8, 
+        # d1-dd*0.8, d2+dd*0.8, 
+        d1, d2, 
         ['proton_number_density', 'proton_bulk_speed', 'proton_temperature'],
         cdf=True
     )
@@ -220,9 +284,8 @@ def demo_insitu(
 
 
     pa = table.vstack([
-        ascii_.read('data/STA_L2_SWEA_PAD_20101214_V04.cef',data_start=129),
-        ascii_.read('data/STA_L2_SWEA_PAD_20101215_V04.cef',data_start=129),
-        ascii_.read('data/STA_L2_SWEA_PAD_20101216_V04.cef',data_start=129)
+        ascii_.read('data/STA_L2_SWEA_PAD_20110606_V04.cef',data_start=152),
+        ascii_.read('data/STA_L2_SWEA_PAD_20110607_V04.cef',data_start=152),
     ])
     pa_time = np.array(pa.columns[0])
     pa_time = np.array([datetime.strptime(t, "%Y-%m-%dT%H:%M:%S.%fZ") for t in pa_time])
@@ -232,8 +295,9 @@ def demo_insitu(
     print(table.Table(pa.columns[20:36])[0])
     print(table.Table(pa.columns[36:52])[0])
     pa = np.array(table.Table(pa.columns[52:244]))
-    pa = np.array([np.array(list(pa[i])) for i in range(pa.size)])
-    m = np.logical_and(pa_time >= d1-0.8*dd, pa_time <= d2+0.8*dd)
+    pa = np.array([np.array(list(pa[i]), dtype=float) for i in range(pa.size)])
+    # m = np.logical_and(pa_time >= d1-0.8*dd, pa_time <= d2+0.8*dd)
+    m = np.logical_and(pa_time >= d1, pa_time <= d2)
     pa_time = pa_time[m]
     pa = pa[m,:]
     print(pa.shape)
@@ -259,13 +323,13 @@ def demo_insitu(
     plt.subplots_adjust(hspace=0.001)
     ax = fig.add_subplot(gs[0])
     ax.plot(t, np.sqrt(b[:,0]**2+b[:,1]**2+b[:,2]**2), 'k', label='B')
-    ax.plot(tt, np.sqrt(bb[:,0]**2+bb[:,1]**2+bb[:,2]**2), color=BLIND_PALETTE['reddish-purple'], linewidth=4, linestyle='dashed')
+    # ax.plot(tt, np.sqrt(bb[:,0]**2+bb[:,1]**2+bb[:,2]**2), color=BLIND_PALETTE['reddish-purple'], linewidth=4, linestyle='dashed')
     ax.plot(t, b[:,0], color=BLIND_PALETTE['vermillion'], label='Bx')
-    ax.plot(tt, bb[:,0], color=BLIND_PALETTE['reddish-purple'], linewidth=4, linestyle='dashed')
+    # ax.plot(tt, bb[:,0], color=BLIND_PALETTE['reddish-purple'], linewidth=4, linestyle='dashed')
     ax.plot(t, b[:,1], color=BLIND_PALETTE['bluish-green'], label='By')
-    ax.plot(tt, bb[:,1], color=BLIND_PALETTE['reddish-purple'], linewidth=4, linestyle='dashed')
+    # ax.plot(tt, bb[:,1], color=BLIND_PALETTE['reddish-purple'], linewidth=4, linestyle='dashed')
     ax.plot(t, b[:,2], color=BLIND_PALETTE['blue'], label='Bz')
-    ax.plot(tt, bb[:,2], color=BLIND_PALETTE['reddish-purple'], linewidth=4, linestyle='dashed', label='FRi3D')
+    # ax.plot(tt, bb[:,2], color=BLIND_PALETTE['reddish-purple'], linewidth=4, linestyle='dashed', label='FRi3D')
     plt.setp(ax.get_xticklabels(), visible=False)
     ax.legend()
     ax.set_ylabel('$B$ $[nT]$')
@@ -283,8 +347,10 @@ def demo_insitu(
         cmap='RdBu_r', 
         norm=LogNorm(), 
         extent=[
-            mdates.date2num(d1-0.8*dd),
-            mdates.date2num(d2+0.8*dd),
+            # mdates.date2num(d1-0.8*dd),
+            # mdates.date2num(d2+0.8*dd),
+            mdates.date2num(d1),
+            mdates.date2num(d2),
             0.0, 180.0
         ]
     )
@@ -490,8 +556,12 @@ def demo_map(
 # [ -8.35255421e-04   1.04195088e+00   1.55072350e+10   1.16531074e+00
 #    3.09957231e-03   6.16988347e-01   5.10604056e-01   4.21465864e+00
 #    4.66728444e+14]
-demo_fit2insitu()
+# demo_fit2insitu()
 
 # demo_insitu()
 
 # demo_map()
+
+# demo_insitu()
+fit2insitu2()
+

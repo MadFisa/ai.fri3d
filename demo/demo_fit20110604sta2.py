@@ -4,7 +4,7 @@ from ai.fri3d import Evolution
 from astropy import units as u
 from datetime import datetime, timedelta
 import numpy as np
-from ai.shared.data import getSTB
+from ai.shared.data import getSTA
 from matplotlib import pyplot as plt
 from matplotlib import transforms
 from matplotlib import dates as mdates
@@ -15,96 +15,92 @@ from astropy import table
 from matplotlib.colors import LogNorm
 from matplotlib import gridspec
 
-
 u.nT = u.def_unit('nT', 1e-9*u.T)
 
 def demo_fit2remote():
     fit2remote(
         cor2a=True,
-        cor2a_img='data/cor2a_20111001_233900.png',
+        cor2a_img='data/cor2a_20101212_083900.png',
         cor2a_aov=u.deg.to(u.rad, 4.0),
-        cor2a_xc=3.43595e7-7.15174e7,
-        cor2a_yc=2.31816e7-3.21944e7,
-        sta_r=u.au.to(u.m, 0.967106),
-        sta_lon=u.deg.to(u.rad, 103.933),
-        sta_lat=u.deg.to(u.rad, -4.464),
-        sta_datetime=datetime(2011,10,1,23,39),
+        cor2a_xc=-1.16802e7,
+        cor2a_yc=-2.43284e7,
+        sta_r=u.au.to(u.m, 0.966087),
+        sta_lon=u.deg.to(u.rad, 85.198),
+        sta_lat=u.deg.to(u.rad, -7.346),
+        sta_datetime=datetime(2010,12,12,8,39),
 
         cor2b=True,
-        cor2b_img='data/cor2b_20111001_233900.png',
+        cor2b_img='data/cor2b_20101212_083900.png',
         cor2b_aov=u.deg.to(u.rad, 4.0),
-        cor2b_xc=9.89179e7-4.22797e7,
-        cor2b_yc=-7.36381e7+8.75883e7,
-        stb_r=u.au.to(u.m, 1.078776),
-        stb_lon=u.deg.to(u.rad, -97.833),
-        stb_lat=u.deg.to(u.rad, 1.598),
-        stb_datetime=datetime(2011,10,1,23,39),
+        cor2b_xc=-3.85197e7,
+        cor2b_yc=9.39991e7,
+        stb_r=u.au.to(u.m, 1.070067),
+        stb_lon=u.deg.to(u.rad, -87.282),
+        stb_lat=u.deg.to(u.rad, 7.281),
+        stb_datetime=datetime(2010,12,12,8,39),
         
         c3=True,
-        c3_img='data/c3_20111001_233916.png',
+        c3_img='data/c3_20101212_083934.png',
         c3_fov=u.R_sun.to(u.m, 30.0),
-        c3_xc=4.62916e8-1.94402e8,
-        c3_yc=1.64648e9-8.5263e8,
+        c3_xc=-2.07815e8,
+        c3_yc=-8.50331e8,
         soho_r=u.au.to(u.m, 1.0),
         soho_lat=u.deg.to(u.rad, 0.0),
         soho_lon=u.deg.to(u.rad, 0.0),
-        soho_datetime=datetime(2011,10,1,23,39,16),
+        soho_datetime=datetime(2010,12,12,8,39,34),
 
-        latitude=u.deg.to(u.rad, 5.5),
-        longitude=u.deg.to(u.rad, -95.0),
-        toroidal_height=u.R_sun.to(u.m, 14.9),
-        poloidal_height=u.R_sun.to(u.m, 4.5),
-        half_width=u.deg.to(u.rad, 75.0),
-        tilt=u.deg.to(u.rad, 21.0),
-        flattening=0.55,
-        pancaking=u.deg.to(u.rad, 27.0),
+        latitude=u.deg.to(u.rad, -14.5),
+        longitude=u.deg.to(u.rad, 55.0),
+        toroidal_height=u.R_sun.to(u.m, 12.5),
+        poloidal_height=u.R_sun.to(u.m, 3.5),
+        half_width=u.deg.to(u.rad, 55.0),
+        tilt=u.deg.to(u.rad, 16.0),
+        flattening=0.6,
+        pancaking=u.deg.to(u.rad, 23.0),
         skew=u.deg.to(u.rad, 0.0),
         
         spline_s_phi_kind='cubic',
         spline_s_phi_n=500)
 
 def demo_fit2insitu():
-    t, b, p = getSTB(
-        # datetime(2011, 10, 4, 2),
-        datetime(2011, 10, 4, 3, 30),
-        datetime(2011, 10, 4, 12, 40)
+    t, b, p = getSTA(
+        datetime(2011, 06, 15, 10, 20),
+        datetime(2011, 06, 16, 4)
     )
 
     fit2insitu(t, b, 
         x=np.mean(p[:,0]),
         y=np.mean(p[:,1]),
         z=np.mean(p[:,2]),
-        period=3.0*24.0*3600.0,
+        period=4.0*24.0*3600.0,
         step_coarse=3600.0,
         step_fine=600.0,
         latitude=np.array([
-            u.deg.to(u.rad, [-5.0, 10.0])
+            u.deg.to(u.rad, [-15.0, 0.0])
         ]),
         longitude=np.array([
-            u.deg.to(u.rad, [-110.0, -70.0])
+            u.deg.to(u.rad, [40.0, 70.0])
         ]), 
-        toroidal_height = lambda t: np.polyval(
+        toroidal_height=lambda t: np.polyval(
             np.array([
-                u.Unit('km/s').to(u.Unit('m/s'), 680.0), 
+                u.Unit('km/s').to(u.Unit('m/s'), 480.0), 
                 u.au.to(u.m, 0.5)
-            ]), 
-            t
+            ]), t
         ),
         poloidal_height=np.array([
-            u.Unit('km/s').to(u.Unit('m/s'), [0.0, 40.0]),
             u.au.to(u.m, [0.02, 0.2])
         ]), 
         half_width=np.array([
-            u.deg.to(u.rad, [60.0, 90.0])
+            u.deg.to(u.rad, [40.0, 70.0])
         ]), 
         tilt=np.array([
-            u.deg.to(u.rad, [5.0, 35.0])
+            u.deg.to(u.rad, [0.0, 30.0])
         ]), 
         flattening=np.array([
             [0.4, 0.8]
         ]), 
         pancaking=np.array([
-            u.deg.to(u.rad, [20.0, 40.0])
+            u.deg.to(u.rad, [10.0, 30.0])
         ]), 
         skew=u.deg.to(u.rad, 0.0),
         twist=np.array([
@@ -114,8 +110,8 @@ def demo_fit2insitu():
             [1e13, 1e15]
         ]),
         sigma=2.0,
-        polarity=1.0,
-        chirality=-1.0, 
+        polarity=-1.0,
+        chirality=1.0, 
         spline_s_phi_kind='linear',
         spline_s_phi_n=100,
         max_pre_time=2.0*3600.0,
@@ -124,40 +120,43 @@ def demo_fit2insitu():
         timestamp_mask=None)
 
 def demo_insitu(
-    t0=1317562200.0,
+    t0=1292253600.0+7200.0,
     period=3.0*24.0*3600.0,
     step=600.0,
-    latitude=lambda t: -5.13294711e-03,
-    longitude=lambda t: -1.28380991e+00,
+    latitude=lambda t: -8.35255421e-04,
+    longitude=lambda t: 1.04195088e+00,
     toroidal_height=lambda t: np.polyval(
         np.array([
-            u.Unit('km/s').to(u.Unit('m/s'), 680.0), 
+            u.Unit('km/s').to(u.Unit('m/s'), 480.0), 
             u.au.to(u.m, 0.5)
         ]), 
         t
     ),
-    poloidal_height=lambda t: np.polyval(
-        np.array([3.96482238e+04, 6.63635890e+09]),
-        t
-    ),
-    half_width=lambda t: 1.38802556e+00,
-    tilt=lambda t: 1.47944608e-01,
-    flattening=lambda t: 7.11867793e-01,
-    pancaking=lambda t: 6.31054126e-01,
+    poloidal_height=lambda t: 1.55072350e+10,
+    half_width=lambda t: 1.16531074e+00,
+    tilt=lambda t: 3.09957231e-03,
+    flattening=lambda t: 6.16988347e-01,
+    pancaking=lambda t: 5.10604056e-01,
     skew=lambda t: 0.0,
-    twist=lambda t: 1.14877898e+00,
-    flux=lambda t: 6.78825922e+14,
+    twist=lambda t: 4.21465864e+00,
+    flux=lambda t: 4.66728444e+14,
     sigma=lambda t: 2.0,
-    polarity=1.0,
-    chirality=-1.0,
+    polarity=-1.0,
+    chirality=1.0,
     spline_s_phi_kind='cubic',
     spline_s_phi_n=500):
 
-    d1 = datetime(2011, 10, 4, 3, 30)
-    d2 = datetime(2011, 10, 4, 12, 40)
+    # d1 = datetime(2010, 12, 15, 10, 20)
+    # d2 = datetime(2010, 12, 16, 4)
+    d1 = datetime(2010, 12, 15, 12, 20)
+    d2 = datetime(2010, 12, 16, 6)
     dd = d2-d1
 
-    t, b, p = getSTB(
+    print(d1-dd*0.8, d2+dd*0.8)
+
+    t, b, p = getSTA(
+        # datetime(2010, 12, 15, 19)-timedelta(hours=12),
+        # datetime(2010, 12, 15, 19)+timedelta(hours=12)
         d1-dd*0.8,
         d2+dd*0.8
     )
@@ -200,20 +199,30 @@ def demo_insitu(
 
     b = u.T.to(u.nT, b)
 
+    m = np.logical_or(
+        t <= datetime(2011, 12, 15, 1, 5),
+        t >= datetime(2011, 12, 15, 4)
+    )
+    t = t[m]
+    b = b[m,:]
+
 
     cdas.set_cache(True, 'data')
     data = cdas.get_data(
         'istp_public', 
-        'STB_L2_PLA_1DMAX_1MIN', 
+        'STA_L2_PLA_1DMAX_1MIN', 
         d1-dd*0.8, d2+dd*0.8, 
-        ['proton_number_density', 'proton_bulk_speed', 'proton_temperature']
+        ['proton_number_density', 'proton_bulk_speed', 'proton_temperature'],
+        cdf=True
     )
-    data['EPOCH'] = np.array(data['EPOCH'])
+    print(data.keys())
+    data['epoch'] = np.array(data['epoch'])
 
 
     pa = table.vstack([
-        ascii_.read('data/STB_L2_SWEA_PAD_20111003_V04.cef',data_start=129),
-        ascii_.read('data/STB_L2_SWEA_PAD_20111004_V04.cef',data_start=129)
+        ascii_.read('data/STA_L2_SWEA_PAD_20101214_V04.cef',data_start=129),
+        ascii_.read('data/STA_L2_SWEA_PAD_20101215_V04.cef',data_start=129),
+        ascii_.read('data/STA_L2_SWEA_PAD_20101216_V04.cef',data_start=129)
     ])
     pa_time = np.array(pa.columns[0])
     pa_time = np.array([datetime.strptime(t, "%Y-%m-%dT%H:%M:%S.%fZ") for t in pa_time])
@@ -239,7 +248,7 @@ def demo_insitu(
     pa = np.transpose(pa)
 
     
-    major = mdates.HourLocator([0, 12])
+    major = mdates.DayLocator()
     minor = mdates.HourLocator()
     majorFormat = mdates.DateFormatter('%Y-%m-%d %H:%M')
 
@@ -298,8 +307,8 @@ def demo_insitu(
     ax.yaxis.set_label_coords(-0.08, 0.5)
 
     ax = fig.add_subplot(gs[2])
-    m = data['SPEED'] >= 0.0
-    ax.plot(data['EPOCH'][m], data['SPEED'][m], 'k')
+    m = data['proton_bulk_speed'] >= 0.0
+    ax.plot(data['epoch'][m], data['proton_bulk_speed'][m], 'k')
     plt.setp(ax.get_xticklabels(), visible=False)
     ax.set_ylabel('$V_p$ $[km/s]$')
 
@@ -309,8 +318,8 @@ def demo_insitu(
     ax.yaxis.set_label_coords(-0.08, 0.5)
     
     ax = fig.add_subplot(gs[3])
-    m = data['DENSITY'] >= 0.0
-    ax.plot(data['EPOCH'][m], data['DENSITY'][m], 'k')
+    m = data['proton_number_density'] >= 0.0
+    ax.plot(data['epoch'][m], data['proton_number_density'][m], 'k')
     plt.setp(ax.get_xticklabels(), visible=False)
     ax.set_ylabel('$N_p$ $[cm^{-3}]$')
 
@@ -320,8 +329,8 @@ def demo_insitu(
     ax.yaxis.set_label_coords(-0.08, 0.5)
     
     ax = fig.add_subplot(gs[4])
-    m = data['TEMPERATURE'] >= 0.0
-    ax.plot(data['EPOCH'][m], data['TEMPERATURE'][m]/1e6, 'k')
+    m = data['proton_temperature'] >= 0.0
+    ax.plot(data['epoch'][m], data['proton_temperature'][m]/1e6, 'k')
     ax.set_ylabel('$T_p$ $[MK]$')
 
     ax.xaxis.set_major_locator(major)
@@ -332,40 +341,37 @@ def demo_insitu(
     plt.show()
 
 def demo_map(
-    t0=1317562200.0,
+    t0=1292253600.0+7200.0,
     period=3.0*24.0*3600.0,
     step=600.0,
-    latitude=lambda t: -5.13294711e-03,
-    longitude=lambda t: -1.28380991e+00,
+    latitude=lambda t: -8.35255421e-04,
+    longitude=lambda t: 1.04195088e+00,
     toroidal_height=lambda t: np.polyval(
         np.array([
-            u.Unit('km/s').to(u.Unit('m/s'), 680.0), 
+            u.Unit('km/s').to(u.Unit('m/s'), 480.0), 
             u.au.to(u.m, 0.5)
         ]), 
         t
     ),
-    poloidal_height=lambda t: np.polyval(
-        np.array([3.96482238e+04, 6.63635890e+09]),
-        t
-    ),
-    half_width=lambda t: 1.38802556e+00,
-    tilt=lambda t: 1.47944608e-01,
-    flattening=lambda t: 7.11867793e-01,
-    pancaking=lambda t: 6.31054126e-01,
+    poloidal_height=lambda t: 1.55072350e+10,
+    half_width=lambda t: 1.16531074e+00,
+    tilt=lambda t: 3.09957231e-03,
+    flattening=lambda t: 6.16988347e-01,
+    pancaking=lambda t: 5.10604056e-01,
     skew=lambda t: 0.0,
-    twist=lambda t: 1.14877898e+00,
-    flux=lambda t: 6.78825922e+14,
+    twist=lambda t: 4.21465864e+00,
+    flux=lambda t: 4.66728444e+14,
     sigma=lambda t: 2.0,
-    polarity=1.0,
-    chirality=-1.0,
+    polarity=-1.0,
+    chirality=1.0,
     spline_s_phi_kind='cubic',
     spline_s_phi_n=500):
     
-    d1 = datetime(2011, 10, 4, 3, 30)
-    d2 = datetime(2011, 10, 4, 12, 40)
+    d1 = datetime(2010, 12, 15, 12, 20)
+    d2 = datetime(2010, 12, 16, 6)
     dd = d2-d1
 
-    t, b, p = getSTB(
+    t, b, p = getSTA(
         d1-dd*0.8,
         d2+dd*0.8
     )
@@ -390,11 +396,11 @@ def demo_map(
 
     tt = np.arange(0.0, period+step, step)
 
-    dx = np.linspace(-0.1, 0.35, 500)
-    dy = np.linspace(-0.75, 0.6, 500)
+    dx = np.linspace(-0.2, 0.3, 500)
+    dy = np.linspace(-0.65, 0.4, 500)
 
-    # dx = np.linspace(-0.085, 0.075, 50)
-    # dy = np.linspace(-0.03, 0.06, 50)
+    # dx = np.linspace(-0.1, 0.12, 500)
+    # dy = np.linspace(-0.07, 0.07, 500)
 
     # p, _ = evo.impact(
     #     tt, 
@@ -403,7 +409,7 @@ def demo_map(
     #     z=np.mean(p[:,2])
     # )
     # print(u.m.to(u.au, p))
-    # 0.105627423912
+    # 0.123843505132
 
     bm = evo.map(
         tt, 
@@ -414,13 +420,7 @@ def demo_map(
         dy=u.au.to(u.m, dy)
     )
 
-    # dx = -dx+0.075
-    # dy = -dy
-
-    # dx = np.flipud(dx)
-    # dy = np.flipud(dy)
-
-    # plt.figure(figsize=(4,6))
+    # dx = -dx+0.12
 
     plt.contourf(
         dx, 
@@ -440,9 +440,9 @@ def demo_map(
     ddy = (max(dy)-min(dy))/10;
     ddx = ddy
     
-    xx = np.array([0.50409778,0.86294412,-0.03482637])
-    yy = np.array([0.01756655,0.03007145,0.99939338])
-    zz = np.array([0.86346792,-0.50440376,0.0])
+    xx = np.array([0.41223196,-0.89931677,0.14592516])
+    yy = np.array([0.0608059,-0.13265291,-0.98929563])
+    zz = np.array([0.90904755,0.41669239,0.0])
 
     xxx=[np.dot([1,0,0],xx), np.dot([1,0,0],yy), np.dot([1,0,0],zz)];
     yyy=[np.dot([0,1,0],xx), np.dot([0,1,0],yy), np.dot([0,1,0],zz)];
@@ -452,43 +452,44 @@ def demo_map(
     plt.plot((1+np.array([0,zzz[0]]))*ddx, (max(dy)/ddy-1+np.array([0,zzz[1]]))*ddy, '-y', linewidth=3)
 
     plt.axis('equal')
-
     plt.show()
+    
+
 
 #             remote  insitu
-# theta          5.5    -0.3
-# varphi       -95.0   -73.6
-# Rp                    0.044+t*36.7km/s
-# varphi_hw     75.0    79.5
-# gamma         21.0     8.5
-# n              0.55    0.71
-# theta_p       27.0    36.2
-# tau                    1.2
-# Phi                 6.8e14
+# theta        -14.5     0.0
+# varphi        55.0    59.7
+# Rp                     0.1
+# varphi_hw     55.0    66.8
+# gamma         16.0     0.2
+# n              0.6     0.62
+# theta_p       23.0    29.3
+# tau                    4.2
+# Phi                 4.7e14
 
 # demo_fit2remote()
 
 # Run 01.08
-# [ -1.41151664e-02  -1.41494278e+00   1.54493304e+10   1.16863167e+00
-#    1.68696879e-01   6.16380124e-01   4.15676262e-01   1.93219497e+00
-#    5.57677769e+14]
+# [ -1.39915561e-02   9.03661698e-01   1.49928626e+10   1.19992133e+00
+#    3.39431978e-02   5.59760053e-01   3.99451581e-01   6.22890240e+00
+#    3.35992244e+14]
 # Run 02.08
-# 1317556200.0
-# [  2.70502968e-02  -1.33790814e+00   1.22125871e+10   1.28981669e+00
-#    2.18918189e-01   7.44157800e-01   5.52014484e-01   1.20193832e+00
-#    5.88473470e+14]
+# 1292253600.0
+# [ -5.76484870e-04   1.08243448e+00   1.52375410e+10   9.24032770e-01
+#    1.64470079e-02   4.57895263e-01   4.83729672e-01   4.12708116e+00
+#    4.29414200e+14]
 # Run 03.08
-# 3.53156030898e-09
-# 1317555000.0
-# [ -4.57181375e-03  -1.29396113e+00   3.96861699e+04   6.65527090e+09
-#    1.35619279e+00   1.39100660e-01   7.10848444e-01   6.38561795e-01
-#    1.14614495e+00   6.92870250e+14]
+# 2.85856096239e-09
+# 1292253600.0
+# [ -1.15716548e-04   1.05198582e+00   1.55008157e+10   1.13520846e+00
+#    2.15829880e-04   6.10684704e-01   4.80098299e-01   4.37158605e+00
+#    4.36600741e+14]
 # Final
-# 3.52774378605e-09
-# 1317555000.0 
-# [ -5.13294711e-03  -1.28380991e+00   3.96482238e+04   6.63635890e+09
-#    1.38802556e+00   1.47944608e-01   7.11867793e-01   6.31054126e-01
-#    1.14877898e+00   6.78825922e+14]
+# 2.85139583297e-09
+# 1292253600.0
+# [ -8.35255421e-04   1.04195088e+00   1.55072350e+10   1.16531074e+00
+#    3.09957231e-03   6.16988347e-01   5.10604056e-01   4.21465864e+00
+#    4.66728444e+14]
 # demo_fit2insitu()
 
 # demo_insitu()

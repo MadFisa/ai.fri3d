@@ -5,6 +5,9 @@
 *.cdf
 *.gz
 
+# Data cache
+data/
+
 # Virtual environment
 py3env/
 

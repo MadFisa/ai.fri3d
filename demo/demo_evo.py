@@ -1,6 +1,7 @@
 
 from ai.fri3d import Evolution, FRi3D
 from astropy import units as u
+from astropy import constants as c
 from matplotlib import pyplot as plt
 import numpy as np
 from ai.shared.color import BLIND_PALETTE
@@ -45,7 +46,7 @@ def demo_evo():
 
 def demo_compare():
     fr = FRi3D(
-        latitude=u.deg.to(u.rad, 0.0), 
+        latitude=u.deg.to(u.rad, -20.0), 
         longitude=u.deg.to(u.rad, 0.0), 
         toroidal_height=u.au.to(u.m, 1.0), 
         poloidal_height=u.au.to(u.m, 0.15), 
@@ -54,8 +55,10 @@ def demo_compare():
         flattening=0.5, 
         pancaking=u.deg.to(u.rad, 30.0), 
         skew=u.deg.to(u.rad, 0.0), 
-        twist=3.0, 
+        twist=3.0/c.au.value, 
+        # twist=3.0, 
         flux=5e14,
+        sigma=1.0,
         polarity=1.0,
         chirality=1.0,
     )
@@ -79,25 +82,31 @@ def demo_compare():
     ax1.set_ylabel('B [nT]')
 
     evo = Evolution(
-        latitude=lambda t: u.deg.to(u.rad, 0.0),
-        longitude=lambda t: u.deg.to(u.rad, 0.0),
+        latitude=lambda t: u.deg.to(u.rad, -20.0),
+        longitude=lambda t: u.deg.to(u.rad, 20.0),
         poloidal_height=lambda t: u.au.to(u.m, 0.15),#+50e3*t,
         half_width=lambda t: u.deg.to(u.rad, 40.0),
         tilt=lambda t: u.deg.to(u.rad, 0.0),
         flattening=lambda t: 0.5,
         pancaking=lambda t: u.deg.to(u.rad, 30.0),
-        twist=lambda t: 3.0,
+        twist=lambda t: 3.0/c.au.value,
+        # twist=lambda t: 3.0,
+        flux=lambda t: 5e14,
+        sigma=lambda t: 1.0,
         polarity=1.0,
         chirality=1.0
     )
     b = evo.insitu(
-        np.linspace(0.0, 24.0*3600.0*2.0, 100), 
+        np.linspace(0.0, 24.0*3600.0*3.0, 100), 
         u.au.to(u.m, 1.0), 
         u.au.to(u.m, 0.0), 
         u.au.to(u.m, 0.0)
     )*u.T.to(u.nT)
 
-    nonzero_indices = np.nonzero(np.sqrt(b[:,0]**2+b[:,1]**2+b[:,2]**2))[0]
+    # nonzero_indices = np.nonzero(np.sqrt(b[:,0]**2+b[:,1]**2+b[:,2]**2))[0]
+    nonzero_indices = np.where(np.isfinite(
+        np.sqrt(b[:,0]**2+b[:,1]**2+b[:,2]**2)
+    ))[0]
 
     if nonzero_indices.size >= 2:
         b = b[nonzero_indices[0]:nonzero_indices[-1]+1,:]
@@ -110,14 +119,17 @@ def demo_compare():
         ax2.set_ylabel('B [nT]')
 
     evo = Evolution(
-        latitude=lambda t: u.deg.to(u.rad, 0.0),
+        latitude=lambda t: u.deg.to(u.rad, -20.0),
         longitude=lambda t: u.deg.to(u.rad, 0.0),
         poloidal_height=lambda t: u.au.to(u.m, 0.15)+50e3*t,
         half_width=lambda t: u.deg.to(u.rad, 40.0),
         tilt=lambda t: u.deg.to(u.rad, 0.0),
         flattening=lambda t: 0.5,
         pancaking=lambda t: u.deg.to(u.rad, 30.0),
-        twist=lambda t: 3.0,
+        twist=lambda t: 3.0/c.au.value,
+        # twist=lambda t: 3.0,
+        flux=lambda t: 5e14,
+        sigma=lambda t: 1.0,
         polarity=1.0,
         chirality=1.0
     )
@@ -128,7 +140,10 @@ def demo_compare():
         u.au.to(u.m, 0.0)
     )*u.T.to(u.nT)
 
-    nonzero_indices = np.nonzero(np.sqrt(b[:,0]**2+b[:,1]**2+b[:,2]**2))[0]
+    # nonzero_indices = np.nonzero(np.sqrt(b[:,0]**2+b[:,1]**2+b[:,2]**2))[0]
+    nonzero_indices = np.where(np.isfinite(
+        np.sqrt(b[:,0]**2+b[:,1]**2+b[:,2]**2)
+    ))[0]
 
     if nonzero_indices.size >= 2:
         b = b[nonzero_indices[0]:nonzero_indices[-1]+1,:]

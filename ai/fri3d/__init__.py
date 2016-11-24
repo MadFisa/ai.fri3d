@@ -250,7 +250,8 @@ class FRi3D:
 
     from ai.fri3d.shell import shell
     from ai.fri3d.line import line
-    from ai.fri3d.data import data, impact
+    from ai.fri3d.data import data
+    from ai.fri3d.impact import impact
 
 class Evolution:
     def __init__(self,
@@ -467,7 +468,7 @@ class Evolution:
                 fr.init()
             fr._spline_initial_axis_s_phi = lambda s: \
                 fr._unit_spline_initial_axis_s_phi(s/fr.toroidal_height)
-            impact, _, _, _ = fr.impact(x, y, z)
+            impact, _, _, _, _, _, _ = fr.impact(x, y, z)
             impacts.append(impact)
             times.append(t)
         impacts = np.array(impacts)
@@ -475,7 +476,10 @@ class Evolution:
         index = np.argmin(impacts)
         return (impacts[index], times[index])
 
-    def map(self, t, x, y, z):
+    def map(self, t, x, y, z, 
+        dx=u.au.to(u.m, np.linspace(-0.2, 0.2, 100)),
+        dy=u.au.to(u.m, np.linspace(-0.2, 0.2, 100))):
+        
         _, t = self.impact(t, x, y, z)
 
         fr = FRi3D()
@@ -502,4 +506,44 @@ class Evolution:
         fr.toroidal_height = self.toroidal_height(t)
         fr.init()
 
-        return 0
+        _, xa, ya, za, xt, yt, zt = fr.impact(x, y, z)
+        vtan = np.array([np.mean(xt), np.mean(yt), np.mean(zt)])
+        if np.dot(vtan, fr.data(xa, ya, za)) < 0.0:
+            vtan = -vtan
+        # vtan = fr.data(xa, ya, za)
+        # vtan /= np.linalg.norm(vtan)
+        vsc = np.array([x, y, z])
+        vsc /= np.linalg.norm(vsc)
+
+        vmcy = np.cross(vtan, vsc)
+        vmcy /= np.linalg.norm(vmcy)
+        if vmcy[0] < 0.0:
+            vmcy = -vmcy
+        vmcx = np.cross(vmcy, vtan)
+        vmcx /= np.linalg.norm(vmcx)
+
+        print(vmcx, vmcy, vtan)
+
+        xg = np.zeros([dx.size, dy.size])
+        yg = np.zeros([dx.size, dy.size])
+        zg = np.zeros([dx.size, dy.size])
+
+        for i in range(dx.size):
+            for k in range(dy.size):
+                p = np.array([x, y, z])+dx[i]*vmcx+dy[k]*vmcy
+                xg[i,k] = p[0]
+                yg[i,k] = p[1]
+                zg[i,k] = p[2]
+        print(
+            xg.shape, xg.flatten().shape,
+            yg.shape, yg.flatten().shape,
+            zg.shape, zg.flatten().shape
+        )
+        b = fr.data(xg.flatten(), yg.flatten(), zg.flatten())
+        print(b.shape)
+        bmap = np.zeros(b.shape[0])
+        for i in range(b.shape[0]):
+            bmap[i] = np.dot(b[i,:], vtan)
+        bmap = np.reshape(bmap, [dx.size, dy.size])
+
+        return bmap.T
