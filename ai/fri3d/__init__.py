@@ -409,6 +409,7 @@ class Evolution:
         fr.spline_s_phi_kind = self.spline_s_phi_kind
         fr.spline_s_phi_n = self.spline_s_phi_n
         b = []
+        v = []
         for i, t in enumerate(t):
             fr.latitude = self.latitude(t)
             fr.longitude = self.longitude(t)
@@ -432,11 +433,17 @@ class Evolution:
             # valid if flattening, half width and flux stay constant
             fr._spline_initial_axis_s_phi = lambda s: \
                 fr._unit_spline_initial_axis_s_phi(s/fr.toroidal_height)
-            b_ = fr.data(x, y, z)
+            b_, c_ = fr.data(x, y, z)
             if b_.size == 0:
                 b_ = np.array([0.0, 0.0, 0.0])
+            if c_.size == 0:
+                c_ = np.array([0.0, 0.0])
             b.append(b_.ravel())
-        return np.array(b)
+            v.append(
+                c_[0]*(self.toroidal_height(t)-self.toroidal_height(t-1))+
+                c_[1]*(self.poloidal_height(t)-self.poloidal_height(t-1))
+            )
+        return (np.array(b), np.array(v))
 
     def impact(self, t, x, y, z):
         fr = FRi3D()

@@ -63,15 +63,16 @@ def demo_compare():
         chirality=1.0,
     )
 
-    b = fr.data(
+    b, _ = fr.data(
         x=u.au.to(u.m)*np.linspace(1.15, 0.85, 57),
         y=u.au.to(u.m)*np.zeros(57),
         z=u.au.to(u.m)*np.zeros(57)
-    )*u.T.to(u.nT)
+    )
+    b = u.T.to(u.nT, b)
 
     fig = plt.figure()
     plt.subplots_adjust(hspace=0.001)
-    ax1 = fig.add_subplot(3,1,1)
+    ax1 = fig.add_subplot(5,1,1)
     ax1.plot(np.sqrt(b[:,0]**2+b[:,1]**2+b[:,2]**2), 'k', label='B', linewidth=2)
     ax1.plot(b[:,0], color=BLIND_PALETTE['vermillion'], label='Bx', linewidth=2)
     ax1.plot(b[:,1], color=BLIND_PALETTE['bluish-green'], label='By', linewidth=2)
@@ -96,12 +97,14 @@ def demo_compare():
         polarity=1.0,
         chirality=1.0
     )
-    b = evo.insitu(
+    b, v = evo.insitu(
         np.linspace(0.0, 24.0*3600.0*3.0, 100), 
         u.au.to(u.m, 1.0), 
         u.au.to(u.m, 0.0), 
         u.au.to(u.m, 0.0)
-    )*u.T.to(u.nT)
+    )
+    b = u.T.to(u.nT, b)
+    v = u.Unit("m/s").to(u.Unit("km/s"), v)
 
     # nonzero_indices = np.nonzero(np.sqrt(b[:,0]**2+b[:,1]**2+b[:,2]**2))[0]
     nonzero_indices = np.where(np.isfinite(
@@ -110,13 +113,17 @@ def demo_compare():
 
     if nonzero_indices.size >= 2:
         b = b[nonzero_indices[0]:nonzero_indices[-1]+1,:]
-        print(b.shape)
-        ax2 = fig.add_subplot(3,1,2,sharex=ax1)
+        v = v[nonzero_indices[0]:nonzero_indices[-1]+1]
+        # print(b.shape)
+        ax2 = fig.add_subplot(5,1,2,sharex=ax1)
         ax2.plot(np.sqrt(b[:,0]**2+b[:,1]**2+b[:,2]**2), 'k', linewidth=2)
         ax2.plot(b[:,0], color=BLIND_PALETTE['vermillion'], label='Bx', linewidth=2)
         ax2.plot(b[:,1], color=BLIND_PALETTE['bluish-green'], label='By', linewidth=2)
         ax2.plot(b[:,2], color=BLIND_PALETTE['blue'], label='Bz', linewidth=2)
         ax2.set_ylabel('B [nT]')
+        ax3 = fig.add_subplot(5,1,3,sharex=ax1)
+        ax3.plot(v, 'k', linewidth=2)
+        ax3.set_ylabel('Vp [km/s]')
 
     evo = Evolution(
         latitude=lambda t: u.deg.to(u.rad, -20.0),
@@ -133,12 +140,14 @@ def demo_compare():
         polarity=1.0,
         chirality=1.0
     )
-    b = evo.insitu(
+    b, v = evo.insitu(
         np.linspace(0.0, 24.0*3600.0*2.0, 100), 
         u.au.to(u.m, 1.0), 
         u.au.to(u.m, 0.0), 
         u.au.to(u.m, 0.0)
-    )*u.T.to(u.nT)
+    )
+    b = u.T.to(u.nT, b)
+    v = u.Unit("m/s").to(u.Unit("km/s"), v)
 
     # nonzero_indices = np.nonzero(np.sqrt(b[:,0]**2+b[:,1]**2+b[:,2]**2))[0]
     nonzero_indices = np.where(np.isfinite(
@@ -147,17 +156,19 @@ def demo_compare():
 
     if nonzero_indices.size >= 2:
         b = b[nonzero_indices[0]:nonzero_indices[-1]+1,:]
+        v = v[nonzero_indices[0]:nonzero_indices[-1]+1]
+        ax4 = fig.add_subplot(5,1,4,sharex=ax1)
+        ax4.plot(np.sqrt(b[:,0]**2+b[:,1]**2+b[:,2]**2), 'k', linewidth=2)
+        ax4.plot(b[:,0], color=BLIND_PALETTE['vermillion'], label='Bx', linewidth=2)
+        ax4.plot(b[:,1], color=BLIND_PALETTE['bluish-green'], label='By', linewidth=2)
+        ax4.plot(b[:,2], color=BLIND_PALETTE['blue'], label='Bz', linewidth=2)
+        ax4.set_ylabel('B [nT]')
+        ax5 = fig.add_subplot(5,1,5,sharex=ax1)
+        ax5.plot(v, 'k', linewidth=2)
+        ax5.set_ylabel('Vp [km/s]')
+        ax5.set_xlabel('time [arb. units]')
 
-        ax3 = fig.add_subplot(3,1,3,sharex=ax1)
-        ax3.plot(np.sqrt(b[:,0]**2+b[:,1]**2+b[:,2]**2), 'k', linewidth=2)
-        ax3.plot(b[:,0], color=BLIND_PALETTE['vermillion'], label='Bx', linewidth=2)
-        ax3.plot(b[:,1], color=BLIND_PALETTE['bluish-green'], label='By', linewidth=2)
-        ax3.plot(b[:,2], color=BLIND_PALETTE['blue'], label='Bz', linewidth=2)
-
-        ax3.set_xlabel('time [arb. units]')
-        ax3.set_ylabel('B [nT]')
-
-    xticklabels = ax1.get_xticklabels() + ax2.get_xticklabels()
+    xticklabels = ax1.get_xticklabels() + ax2.get_xticklabels() + ax3.get_xticklabels() + ax4.get_xticklabels()
     plt.setp(xticklabels, visible=False)
 
     plt.show()

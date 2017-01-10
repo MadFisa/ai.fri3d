@@ -72,6 +72,7 @@ def data(self, x, y, z, ds=1e-5):
     
     # get magnetic field along sc trajectory
     b = []
+    c = []
     for i in range(r.size):
         if r[i] <= 1.0:
             x_, y_, z_, b_ = self.line(
@@ -79,16 +80,22 @@ def data(self, x, y, z, ds=1e-5):
                 phi[i],
                 [s[i]-ds, s[i]+ds]
             )
-            print(
-                r_ax[i]/
-                self.toroidal_height*
+            vtc = r_ax[i]/self.toroidal_height
+            vpc = (
+                r_ax[i]/self.toroidal_height*
                 (np.sqrt(np.mean(x_)**2+np.mean(y_)**2+np.mean(z_)**2)-r_ax[i])/
-                self.poloidal_height*
-                np.cos(self._initial_axis_tan(phi_ax[i]))*
-                50+
-                self._initial_axis_r(phi_ax[i])/self.toroidal_height*
-                400
+                self.poloidal_height*np.cos(self._initial_axis_tan(phi_ax[i]))
             )
+            # print(
+            #     r_ax[i]/
+            #     self.toroidal_height*
+            #     (np.sqrt(np.mean(x_)**2+np.mean(y_)**2+np.mean(z_)**2)-r_ax[i])/
+            #     self.poloidal_height*
+            #     np.cos(self._initial_axis_tan(phi_ax[i]))*
+            #     50+
+            #     r_ax[i]/self.toroidal_height*
+            #     400
+            # )
             dr = np.array([
                 x_[1]-x_[0],
                 y_[1]-y_[0],
@@ -96,10 +103,15 @@ def data(self, x, y, z, ds=1e-5):
             ])
             dr /= np.linalg.norm(dr)
             b.append(dr*np.mean(b_)*self.polarity)
+            c.append(np.array([vtc, vpc]))
         else:
             b.append([np.nan, np.nan, np.nan])
+            c.append([np.nan, np.nan])
     b = np.array(b)
     if b.shape[0] == 1:
         b = b[0,:]
+    c = np.array(c)
+    if c.shape[0] == 1:
+        c = c[0,:]
 
-    return b
+    return (b, c)
