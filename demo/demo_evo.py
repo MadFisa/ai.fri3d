@@ -168,7 +168,12 @@ def demo_compare():
         ax5.set_ylabel('Vp [km/s]')
         ax5.set_xlabel('time [arb. units]')
 
-    xticklabels = ax1.get_xticklabels() + ax2.get_xticklabels() + ax3.get_xticklabels() + ax4.get_xticklabels()
+    xticklabels = (
+        ax1.get_xticklabels()+
+        ax2.get_xticklabels()+
+        ax3.get_xticklabels()+
+        ax4.get_xticklabels()
+    )
     plt.setp(xticklabels, visible=False)
 
     plt.show()

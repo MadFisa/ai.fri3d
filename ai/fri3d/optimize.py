@@ -15,7 +15,7 @@ from matplotlib import pyplot as plt
 import matplotlib.gridspec as gridspec
 from datetime import datetime
 
-db_prev = np.inf
+dd_prev = np.inf
 
 def fit2remote(
     cor2a=False,
@@ -269,7 +269,7 @@ def fit2remote(
 
     plt.show()
 
-def fit2insitu(t, b, 
+def fit2insitu(t, b, v,
     x=u.au.to(u.m, 1.0), 
     y=u.au.to(u.m, 0.0), 
     z=u.au.to(u.m, 0.0),
@@ -326,22 +326,29 @@ def fit2insitu(t, b,
     _, mask = np.unique(t, return_index=True)
     t = t[mask]
     b = b[mask,:]
-    f = interp1d(t, b, kind='linear', axis=0)
+    v = v[mask]
     t_real_fine_original = np.arange(t[0], t[-1], step_fine)
+    f = interp1d(t, b, kind='linear', axis=0)
     b_real_fine_original = f(t_real_fine_original)
+    f = interp1d(t, v, kind='linear', axis=0)
+    v_real_fine_original = f(t_real_fine_original)
 
     if timestamp_mask is not None:
         mask = timestamp_mask(t_real_fine_original)
         t_real_fine = t_real_fine_original[mask]
         b_real_fine = b_real_fine_original[mask,:]
+        v_real_fine = v_real_fine_original[mask]
     else:
         t_real_fine = t_real_fine_original
         b_real_fine = b_real_fine_original
+        v_real_fine = v_real_fine_original
 
-    db_prev = np.inf
+    # db_prev = np.inf
+    # dv_prev = np.inf
+    dd_prev = np.inf
 
     def F(p):
-        global db_prev
+        global dd_prev
         evo = Evolution()
         n = 0
         
@@ -455,31 +462,29 @@ def fit2insitu(t, b,
 
         t_model_coarse = np.arange(0.0, period+step_coarse, step_coarse)
 
-        b_model_coarse = evo.insitu(t_model_coarse, x, y, z)
+        b_model_coarse, v_model_coarse = evo.insitu(t_model_coarse, x, y, z)
 
         t_start = 0.0
-
-        # nonzero_indices = np.nonzero(np.sqrt(
-        #     b_model_coarse[:,0]**2+
-        #     b_model_coarse[:,1]**2+
-        #     b_model_coarse[:,2]**2
-        # ))[0]
 
         nonzero_indices = np.where(np.isfinite(np.sqrt(
             b_model_coarse[:,0]**2+
             b_model_coarse[:,1]**2+
             b_model_coarse[:,2]**2
         )))[0]
-
+        
         if nonzero_indices.size >= 2:
             t_model_coarse = \
                 t_model_coarse[nonzero_indices[0]:nonzero_indices[-1]+1]
             t_model_coarse -= t_model_coarse[0]
             b_model_coarse = \
                 b_model_coarse[nonzero_indices[0]:nonzero_indices[-1]+1,:]
+            v_model_coarse = \
+                v_model_coarse[nonzero_indices[0]:nonzero_indices[-1]+1]
             
             t_start -= nonzero_indices[0]*step_coarse
 
+            t_model_fine = np.arange(0.0, t_model_coarse[-1], step_fine)
+            
             f = interp1d(
                 t_model_coarse, 
                 b_model_coarse, 
@@ -487,8 +492,16 @@ def fit2insitu(t, b,
                 axis=0, 
                 fill_value='extrapolate'
             )
-            t_model_fine = np.arange(0.0, t_model_coarse[-1], step_fine)
             b_model_fine = f(t_model_fine)
+
+            f = interp1d(
+                t_model_coarse, 
+                v_model_coarse, 
+                kind='linear', 
+                axis=0, 
+                fill_value='extrapolate'
+            )
+            v_model_fine = f(t_model_fine)
 
             cor = (
                 correlate(b_model_fine[:,0], b_real_fine_original[:,0])+
@@ -517,21 +530,39 @@ def fit2insitu(t, b,
 
                 b_model_fine_ = \
                     b_model_fine[shift:shift+t_real_fine_original.size,:]
+                v_model_fine_ = \
+                    v_model_fine[shift:shift+t_real_fine_original.size]
 
                 if timestamp_mask is not None:
                     mask = timestamp_mask(t_model_fine)
                     t_model_fine = t_model_fine[mask]
                     b_model_fine = b_model_fine[mask,:]
+                    v_model_fine = v_model_fine[mask]
+
+                # print(
+                #     b_model_fine.shape, 
+                #     b_real_fine.shape,
+                #     v_model_fine.shape,
+                #     v_real_fine.shape
+                # )
 
                 db = np.mean([euclidean(
-                    b_model_fine_[i,:],
+                    b_model_fine[i,:],
                     b_real_fine[i,:]
                 ) for i in range(t_real_fine.size)])
-                if db < db_prev:
-                    db_prev = db
+                dv = np.mean([np.abs(
+                    v_model_fine[i]-v_real_fine[i]
+                ) for i in range(t_real_fine.size)])
+                dd = (
+                    db/np.amax(np.abs(b_real_fine_original))+
+                    dv/np.amax(np.abs(v_real_fine_original))
+                )
+
+                if dd < dd_prev:
+                    dd_prev = dd
                     
                     if verbose:
-                        print(db, t_start, p)
+                        print(dd, t_start, p)
 
                         d_real_fine = np.array(
                             [datetime.fromtimestamp(t) for t in t_real_fine]
@@ -541,7 +572,9 @@ def fit2insitu(t, b,
                         )
                         plt.close('all')
                         fig = plt.figure()
-                        plt.plot(
+                        plt.subplots_adjust(hspace=0.001)
+                        ax1 = fig.add_subplot(211)
+                        ax1.plot(
                             d_real_fine, 
                             np.sqrt(
                                 b_real_fine[:,0]**2+
@@ -550,22 +583,22 @@ def fit2insitu(t, b,
                             ), 
                             'k'
                         )
-                        plt.plot(
+                        ax1.plot(
                             d_real_fine,
                             b_real_fine[:,0], 
                             'r'
                         )
-                        plt.plot(
+                        ax1.plot(
                             d_real_fine,
                             b_real_fine[:,1], 
                             'g'
                         )
-                        plt.plot(
+                        ax1.plot(
                             d_real_fine,
                             b_real_fine[:,2], 
                             'b'
                         )
-                        plt.plot(
+                        ax1.plot(
                             d_model_fine, 
                             np.sqrt(
                                 b_model_fine[:,0]**2+
@@ -574,26 +607,39 @@ def fit2insitu(t, b,
                             ), 
                             '--k'
                         )
-                        plt.plot(
+                        ax1.plot(
                             d_model_fine,
                             b_model_fine[:,0],
                             '--r'
                         )
-                        plt.plot(
+                        ax1.plot(
                             d_model_fine,
                             b_model_fine[:,1],
                             '--g'
                         )
-                        plt.plot(
+                        ax1.plot(
                             d_model_fine,
                             b_model_fine[:,2],
                             '--b'
                         )
+                        ax2 = fig.add_subplot(212, sharex=ax1)
+                        ax2.plot(
+                            d_real_fine,
+                            v_real_fine,
+                            'k'
+                        )
+                        ax2.plot(
+                            d_model_fine,
+                            v_model_fine,
+                            '--k'
+                        )
+
+                        plt.setp(ax1.get_xticklabels(), visible=False)
                         plt.ion()
                         plt.draw()
                         plt.pause(0.001)
                         plt.show()
-                return db
+                return dd
         return np.inf
 
     bounds = []

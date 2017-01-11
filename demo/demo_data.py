@@ -1,6 +1,7 @@
 
 import numpy as np
 from astropy import units as u
+from astropy import constants as c
 from ai.fri3d import FRi3D
 from matplotlib import pyplot as plt
 
@@ -16,7 +17,7 @@ def demo_data(
     flattening=0.5, 
     pancaking=u.deg.to(u.rad, 30.0), 
     skew=u.deg.to(u.rad, 0.0), 
-    twist=3.0, 
+    twist=3.0/c.au.value, 
     flux=5e14,
     polarity=1.0,
     chirality=1.0,
@@ -40,13 +41,8 @@ def demo_data(
         chirality=chirality
     )
 
-    # print(fr.data(
-    #     x=u.au.to(u.m, 1.0), 
-    #     y=u.au.to(u.m, 0.0), 
-    #     z=u.au.to(u.m, 0.0)
-    # )*u.T.to(u.nT))
-
-    b = fr.data(x, y, z)*u.T.to(u.nT)
+    b, _ = fr.data(x, y, z)
+    b = u.T.to(u.nT, b)
 
     fig = plt.figure()
     plt.plot(np.sqrt(b[:,0]**2+b[:,1]**2+b[:,2]**2), 'k')

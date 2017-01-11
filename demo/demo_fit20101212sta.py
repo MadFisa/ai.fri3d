@@ -63,12 +63,12 @@ def demo_fit2remote():
         spline_s_phi_n=500)
 
 def demo_fit2insitu():
-    t, b, p = getSTA(
+    t, b, v, p = getSTA(
         datetime(2010, 12, 15, 10, 20),
         datetime(2010, 12, 16, 4)
     )
 
-    fit2insitu(t, b, 
+    fit2insitu(t, b, v,
         x=np.mean(p[:,0]),
         y=np.mean(p[:,1]),
         z=np.mean(p[:,2]),
