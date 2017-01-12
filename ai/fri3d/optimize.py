@@ -546,17 +546,30 @@ def fit2insitu(t, b, v,
                 #     v_real_fine.shape
                 # )
 
+                # print(
+                #     np.any(np.isnan(b_real_fine)),
+                #     np.any(np.isnan(v_real_fine))
+                # )
+
+                mask = np.logical_not(np.any(np.isnan(b_real_fine), axis=1))
                 db = np.mean([euclidean(
                     b_model_fine[i,:],
                     b_real_fine[i,:]
-                ) for i in range(t_real_fine.size)])
+                ) for i in np.arange(t_real_fine.size)[mask]])
+                mask = np.logical_not(np.isnan(v_real_fine))
                 dv = np.mean([np.abs(
                     v_model_fine[i]-v_real_fine[i]
-                ) for i in range(t_real_fine.size)])
+                ) for i in np.arange(t_real_fine.size)[mask]])
                 dd = (
-                    db/np.amax(np.abs(b_real_fine_original))+
-                    dv/np.amax(np.abs(v_real_fine_original))
+                    db/np.nanmax(np.abs(b_real_fine_original))+
+                    dv/np.nanmax(np.abs(v_real_fine_original))
                 )
+
+                # print(db, dv, dd)
+
+                # plt.plot(v_real_fine)
+                # plt.plot(v_model_fine)
+                # plt.show()
 
                 if dd < dd_prev:
                     dd_prev = dd

@@ -2,6 +2,7 @@
 from ai.fri3d.optimize import fit2remote, fit2insitu
 from ai.fri3d import Evolution
 from astropy import units as u
+from astropy import constants as c
 from datetime import datetime, timedelta
 import numpy as np
 from ai.shared.data import getSTA
@@ -81,12 +82,16 @@ def demo_fit2insitu():
         longitude=np.array([
             u.deg.to(u.rad, [40.0, 70.0])
         ]), 
-        toroidal_height=lambda t: np.polyval(
-            np.array([
-                u.Unit('km/s').to(u.Unit('m/s'), 480.0), 
-                u.au.to(u.m, 0.5)
-            ]), t
-        ),
+        # toroidal_height=lambda t: np.polyval(
+        #     np.array([
+        #         u.Unit('km/s').to(u.Unit('m/s'), 480.0), 
+        #         u.au.to(u.m, 0.5)
+        #     ]), t
+        # ),
+        toroidal_height=np.array([
+            u.Unit('km/s').to(u.Unit('m/s'), [450.0, 650.0]), 
+            u.au.to(u.m, [0.5, 0.5])
+        ]),
         poloidal_height=np.array([
             u.au.to(u.m, [0.02, 0.2])
         ]), 
@@ -104,7 +109,7 @@ def demo_fit2insitu():
         ]), 
         skew=u.deg.to(u.rad, 0.0),
         twist=np.array([
-            [1.0, 10.0]
+            [1.0/c.au.value, 10.0/c.au.value]
         ]), 
         flux=np.array([
             [1e13, 1e15]
