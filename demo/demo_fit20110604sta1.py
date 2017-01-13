@@ -2,6 +2,7 @@
 from ai.fri3d.optimize import fit2remote, fit2insitu
 from ai.fri3d import Evolution
 from astropy import units as u
+from astropy import constants as c
 from datetime import datetime, timedelta
 import numpy as np
 from ai.shared.data import getSTA
@@ -63,12 +64,12 @@ def demo_fit2remote():
         spline_s_phi_n=500)
 
 def demo_fit2insitu():
-    t, b, p = getSTA(
-        datetime(2010, 12, 15, 10, 20),
-        datetime(2010, 12, 16, 4)
+    t, b, v, p = getSTA(
+        datetime(2011, 6, 6, 16, 30),
+        datetime(2011, 6, 7, 1)
     )
 
-    fit2insitu(t, b, 
+    fit2insitu(t, b, v,
         x=np.mean(p[:,0]),
         y=np.mean(p[:,1]),
         z=np.mean(p[:,2]),
@@ -76,41 +77,39 @@ def demo_fit2insitu():
         step_coarse=3600.0,
         step_fine=600.0,
         latitude=np.array([
-            u.deg.to(u.rad, [-15.0, 0.0])
+            u.deg.to(u.rad, [-5.0, 25.0])
         ]),
         longitude=np.array([
-            u.deg.to(u.rad, [40.0, 70.0])
+            u.deg.to(u.rad, [120.0, 150.0])
         ]), 
-        toroidal_height=lambda t: np.polyval(
-            np.array([
-                u.Unit('km/s').to(u.Unit('m/s'), 480.0), 
-                u.au.to(u.m, 0.5)
-            ]), t
-        ),
+        toroidal_height=np.array([
+            u.Unit('km/s').to(u.Unit('m/s'), [800.0, 1200.0]), 
+            u.au.to(u.m, [0.5, 0.5])
+        ]),
         poloidal_height=np.array([
             u.au.to(u.m, [0.02, 0.2])
         ]), 
         half_width=np.array([
-            u.deg.to(u.rad, [40.0, 70.0])
+            u.deg.to(u.rad, [30.0, 70.0])
         ]), 
         tilt=np.array([
-            u.deg.to(u.rad, [0.0, 30.0])
+            u.deg.to(u.rad, [-30.0, 30.0])
         ]), 
         flattening=np.array([
-            [0.4, 0.8]
+            [0.4, 0.6]
         ]), 
         pancaking=np.array([
             u.deg.to(u.rad, [10.0, 30.0])
         ]), 
         skew=u.deg.to(u.rad, 0.0),
         twist=np.array([
-            [1.0, 10.0]
+            [1.0/c.au.value, 10.0/c.au.value]
         ]), 
         flux=np.array([
             [1e13, 1e15]
         ]),
         sigma=2.0,
-        polarity=-1.0,
+        polarity=1.0,
         chirality=1.0, 
         spline_s_phi_kind='linear',
         spline_s_phi_n=100,
@@ -494,4 +493,4 @@ def demo_map(
 
 # demo_insitu()
 
-demo_map()
+demo_fit2insitu()
