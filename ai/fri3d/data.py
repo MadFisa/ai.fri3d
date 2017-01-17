@@ -7,7 +7,7 @@ def data(self, x, y, z, ds=1e-5):
     y = np.array(y, copy=False, ndmin=1)
     z = np.array(z, copy=False, ndmin=1)
 
-    twist = self.twist*self._initial_axis_s(self.half_width)
+    # twist = self.twist*self._initial_axis_s(self.half_width)
 
     # reverse skew
     r, theta, phi = cs.cart2sp(x, y, z)
@@ -60,8 +60,8 @@ def data(self, x, y, z, ds=1e-5):
     )
     phi[p_in] = np.pi-phi[p_in]
     # reverse twist
-    # phi -= s*self.twist*np.pi*2.0*self.chirality
-    phi -= s*twist*np.pi*2.0*self.chirality
+    phi -= s*self.twist*np.pi*2.0*self.chirality
+    # phi -= s*twist*np.pi*2.0*self.chirality
     # reverse rotation to x
     phi -= np.pi/2.0
     # only inside FR

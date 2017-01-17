@@ -12,13 +12,13 @@ def line(self, r=0.0, phi=0.0, s=np.linspace(0.0, 1.0, 50)):
     s[s > 1.0-c.R_sun.value/s_max] = 1.0-c.R_sun.value/s_max
     s = np.unique(s)
 
-    twist = self.twist*self._initial_axis_s(self.half_width)
+    # twist = self.twist*self._initial_axis_s(self.half_width)
     
     phi = np.ones(s.size)*phi
 
     # twist
-    phi += s*twist*np.pi*2.0*self.chirality
-    # phi += s*self.twist*np.pi*2.0*self.chirality
+    # phi += s*twist*np.pi*2.0*self.chirality
+    phi += s*self.twist*np.pi*2.0*self.chirality
     # elongation
     z = s*self._initial_axis_s(self.half_width)
 

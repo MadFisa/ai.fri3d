@@ -15,6 +15,8 @@ from astropy.io import ascii as ascii_
 from astropy import table
 from matplotlib.colors import LogNorm
 from matplotlib import gridspec
+from scipy.interpolate import interp1d
+import time
 
 u.nT = u.def_unit('nT', 1e-9*u.T)
 
@@ -64,10 +66,28 @@ def demo_fit2remote():
         spline_s_phi_n=500)
 
 def demo_fit2insitu():
-    t, b, v, p = getSTA(
-        datetime(2011, 6, 6, 16, 30),
-        datetime(2011, 6, 7, 1)
+    t, b, _, p = getSTA(
+        datetime(2011, 6, 6, 12, 30),
+        datetime(2011, 6, 6, 15)
     )
+    cdas.set_cache(True, './data')
+    data = cdas.get_data(
+        'sp_phys', 
+        'STA_L2_PLA_1DMAX_1MIN', 
+        datetime(2011, 6, 6, 12, 30),
+        datetime(2011, 6, 6, 15),
+        ['proton_bulk_speed'],
+        cdf=True
+    )
+    mask = data['proton_bulk_speed'] > 0.0
+    f = interp1d(
+        np.array([time.mktime(x.timetuple()) for x in data['epoch'][mask]]), 
+        data['proton_bulk_speed'][mask], 
+        kind='linear',
+        fill_value='extrapolate'
+    )
+    v = f(np.array([time.mktime(x.timetuple()) for x in t]))
+    v = u.Unit('km/s').to(u.Unit('m/s'), v)
 
     fit2insitu(t, b, v,
         x=np.mean(p[:,0]),
@@ -77,17 +97,18 @@ def demo_fit2insitu():
         step_coarse=3600.0,
         step_fine=600.0,
         latitude=np.array([
-            u.deg.to(u.rad, [-5.0, 25.0])
+            u.deg.to(u.rad, [0.0, 30.0])
         ]),
         longitude=np.array([
-            u.deg.to(u.rad, [120.0, 150.0])
+            u.deg.to(u.rad, [100.0, 130.0])
         ]), 
         toroidal_height=np.array([
+            [-10.0, 0.0],
             u.Unit('km/s').to(u.Unit('m/s'), [800.0, 1200.0]), 
             u.au.to(u.m, [0.5, 0.5])
         ]),
         poloidal_height=np.array([
-            u.au.to(u.m, [0.02, 0.2])
+            u.au.to(u.m, [0.01, 0.1])
         ]), 
         half_width=np.array([
             u.deg.to(u.rad, [30.0, 70.0])
@@ -103,7 +124,7 @@ def demo_fit2insitu():
         ]), 
         skew=u.deg.to(u.rad, 0.0),
         twist=np.array([
-            [1.0/c.au.value, 10.0/c.au.value]
+            [0.0, 3.0]
         ]), 
         flux=np.array([
             [1e13, 1e15]
@@ -113,8 +134,8 @@ def demo_fit2insitu():
         chirality=1.0, 
         spline_s_phi_kind='linear',
         spline_s_phi_n=100,
-        max_pre_time=2.0*3600.0,
-        max_post_time=2.0*3600.0,
+        max_pre_time=0.5*3600.0,
+        max_post_time=0.5*3600.0,
         verbose=True,
         timestamp_mask=None)
 

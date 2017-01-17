@@ -565,7 +565,7 @@ def fit2insitu(t, b, v,
                     dv/np.nanmax(np.abs(v_real_fine_original))
                 )
 
-                # print(db, dv, dd)
+                print(db, dv, dd)
 
                 # plt.plot(v_real_fine)
                 # plt.plot(v_model_fine)
