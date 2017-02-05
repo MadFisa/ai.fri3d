@@ -20,50 +20,141 @@ import time
 
 u.nT = u.def_unit('nT', 1e-9*u.T)
 
+# theta       20.0
+# phi         125.0
+# Rt          7.0
+# Rp          2.0
+# thetaHW     30.0
+# gamma       35.0
+# n           0.4
+# thetaP      25.0
+
+# def demo_fit2remote():
+#     fit2remote(
+#         cor2a=True,
+#         cor2a_img='data/cor2a_20110604_222400.png',
+#         cor2a_aov=u.deg.to(u.rad, 4.0),
+#         cor2a_xc=-1.16802e7,
+#         cor2a_yc=-2.43284e7,
+#         sta_r=u.au.to(u.m, 0.957613),
+#         sta_lon=u.deg.to(u.rad, 94.666),
+#         sta_lat=u.deg.to(u.rad, 7.333),
+#         sta_datetime=datetime(2011,6,4,22,24),
+
+#         cor2b=True,
+#         cor2b_img='data/cor2b_20110604_222400.png',
+#         cor2b_aov=u.deg.to(u.rad, 4.0),
+#         cor2b_xc=-3.85197e7,
+#         cor2b_yc=9.39991e7,
+#         stb_r=u.au.to(u.m, 1.007948),
+#         stb_lon=u.deg.to(u.rad, -93.155),
+#         stb_lat=u.deg.to(u.rad, -7.245),
+#         stb_datetime=datetime(2011,6,4,22,24),
+        
+#         c3=True,
+#         c3_img='data/c3_20110604_222604.png',
+#         c3_fov=u.R_sun.to(u.m, 30.0),
+#         c3_xc=-2.07815e8,
+#         c3_yc=-8.50331e8,
+#         soho_r=u.au.to(u.m, 1.0),
+#         soho_lat=u.deg.to(u.rad, 0.0),
+#         soho_lon=u.deg.to(u.rad, 0.0),
+#         soho_datetime=datetime(2011,6,4,22,26,4),
+
+#         latitude=u.deg.to(u.rad, 20.0),
+#         longitude=u.deg.to(u.rad, 125.0),
+#         toroidal_height=u.R_sun.to(u.m, 7.0),
+#         poloidal_height=u.R_sun.to(u.m, 3.0),
+#         half_width=u.deg.to(u.rad, 30.0),
+#         tilt=u.deg.to(u.rad, 35.0),
+#         flattening=0.4,
+#         pancaking=u.deg.to(u.rad, 25.0),
+#         skew=u.deg.to(u.rad, 0.0),
+        
+#         spline_s_phi_kind='cubic',
+#         spline_s_phi_n=500)
+
+# theta       22.0
+# phi         125.0
+# Rt          12.0
+# Rp          4.0
+# thetaHW     35.0
+# gamma       35.0
+# n           0.4
+# thetaP      30.0
+
 def demo_fit2remote():
     fit2remote(
         cor2a=True,
-        cor2a_img='data/cor2a_20101212_083900.png',
+        cor2a_img='data/cor2a_20110604_225400.png',
         cor2a_aov=u.deg.to(u.rad, 4.0),
         cor2a_xc=-1.16802e7,
         cor2a_yc=-2.43284e7,
-        sta_r=u.au.to(u.m, 0.966087),
-        sta_lon=u.deg.to(u.rad, 85.198),
-        sta_lat=u.deg.to(u.rad, -7.346),
-        sta_datetime=datetime(2010,12,12,8,39),
+        sta_r=u.au.to(u.m, 0.957613),
+        sta_lon=u.deg.to(u.rad, 94.666),
+        sta_lat=u.deg.to(u.rad, 7.333),
+        sta_datetime=datetime(2011,6,4,22,54),
 
         cor2b=True,
-        cor2b_img='data/cor2b_20101212_083900.png',
+        cor2b_img='data/cor2b_20110604_225400.png',
         cor2b_aov=u.deg.to(u.rad, 4.0),
         cor2b_xc=-3.85197e7,
         cor2b_yc=9.39991e7,
-        stb_r=u.au.to(u.m, 1.070067),
-        stb_lon=u.deg.to(u.rad, -87.282),
-        stb_lat=u.deg.to(u.rad, 7.281),
-        stb_datetime=datetime(2010,12,12,8,39),
+        stb_r=u.au.to(u.m, 1.007948),
+        stb_lon=u.deg.to(u.rad, -93.155),
+        stb_lat=u.deg.to(u.rad, -7.245),
+        stb_datetime=datetime(2011,6,4,22,54),
         
         c3=True,
-        c3_img='data/c3_20101212_083934.png',
+        c3_img='data/c3_20110604_225534.png',
         c3_fov=u.R_sun.to(u.m, 30.0),
         c3_xc=-2.07815e8,
         c3_yc=-8.50331e8,
         soho_r=u.au.to(u.m, 1.0),
         soho_lat=u.deg.to(u.rad, 0.0),
         soho_lon=u.deg.to(u.rad, 0.0),
-        soho_datetime=datetime(2010,12,12,8,39,34),
+        soho_datetime=datetime(2011,6,4,22,55,34),
 
-        latitude=u.deg.to(u.rad, -14.5),
-        longitude=u.deg.to(u.rad, 55.0),
-        toroidal_height=u.R_sun.to(u.m, 12.5),
-        poloidal_height=u.R_sun.to(u.m, 3.5),
-        half_width=u.deg.to(u.rad, 55.0),
-        tilt=u.deg.to(u.rad, 16.0),
-        flattening=0.6,
-        pancaking=u.deg.to(u.rad, 23.0),
+        latitude=u.deg.to(u.rad, 25.0),
+        longitude=u.deg.to(u.rad, 125.0),
+        toroidal_height=u.R_sun.to(u.m, 12.0),
+        poloidal_height=u.R_sun.to(u.m, 4.0),
+        half_width=u.deg.to(u.rad, 35.0),
+        tilt=u.deg.to(u.rad, 35.0),
+        flattening=0.4,
+        pancaking=u.deg.to(u.rad, 30.0),
         skew=u.deg.to(u.rad, 0.0),
         
         spline_s_phi_kind='cubic',
         spline_s_phi_n=500)
+
+# 0.275564042979 1307287200.0 [  3.63941118e-01   2.09495164e+00  -2.06517175e-01   1.19034509e+06
+#    7.47989354e+10   1.52249315e+10   7.49200809e-01   3.93149080e-01
+#    4.33257718e-01   4.30047827e-01   1.50294339e+00   1.33753703e+14]
+
+# 0.255779532995 1307286600.0 [  3.93140412e-01   2.09770388e+00  -6.48433921e-02   1.19999540e+06
+#    7.47989354e+10   1.42774310e+10   7.60668810e-01   4.70469688e-01
+#    4.40465792e-01   4.65410526e-01   1.44487636e+00   1.36128083e+14]
+
+# 0.247121901797 1307286600.0 [  2.89251104e-01   2.06836731e+00  -2.33888431e-01   1.23500195e+06
+#    7.47989354e+10   1.21881663e+10   6.55987062e-01   4.18358884e-01
+#    4.25792852e-01   3.35969551e-01   1.75980424e+00   8.48948181e+13]
+
+# 0.238447116448 1307287200.0 [  2.92256175e-01   2.13357924e+00  -3.85845146e-01   1.29818672e+06
+#    7.47989354e+10   1.09761581e+10   7.50550756e-01   4.72097023e-01
+#    4.70745851e-01   4.78821828e-01   1.04345531e+00   1.09514269e+14]
+
+# theta       16.74504536
+# phi         122.24508571
+# at          -0.385845146
+# ! Vt        1298.18672
+# Rp          0.07337108508724248
+# thetaHW     43.00339063
+# gamma       27.04916694
+# n           0.470745851
+# thetaP      27.434469883139027
+# tau         1.04345531
+# F           1.09514269e+14
 
 def demo_fit2insitu():
     t, b, _, p = getSTA(
@@ -97,30 +188,30 @@ def demo_fit2insitu():
         step_coarse=3600.0,
         step_fine=600.0,
         latitude=np.array([
-            u.deg.to(u.rad, [-5.0, 25.0])
+            u.deg.to(u.rad, [15.0, 35.0])
         ]),
         longitude=np.array([
-            u.deg.to(u.rad, [120.0, 150.0])
+            u.deg.to(u.rad, [100.0, 140.0])
         ]), 
         toroidal_height=np.array([
-            [-10.0, 0.0],
-            u.Unit('km/s').to(u.Unit('m/s'), [800.0, 1200.0]), 
+            [-5.0, 0.0],
+            u.Unit('km/s').to(u.Unit('m/s'), [900.0, 1300.0]), 
             u.au.to(u.m, [0.5, 0.5])
         ]),
         poloidal_height=np.array([
             u.au.to(u.m, [0.02, 0.2])
         ]), 
         half_width=np.array([
-            u.deg.to(u.rad, [30.0, 70.0])
+            u.deg.to(u.rad, [30.0, 60.0])
         ]), 
         tilt=np.array([
-            u.deg.to(u.rad, [-30.0, 30.0])
+            u.deg.to(u.rad, [15.0, 35.0])
         ]), 
         flattening=np.array([
             [0.4, 0.6]
         ]), 
         pancaking=np.array([
-            u.deg.to(u.rad, [10.0, 30.0])
+            u.deg.to(u.rad, [15.0, 35.0])
         ]), 
         skew=u.deg.to(u.rad, 0.0),
         twist=np.array([
@@ -476,42 +567,6 @@ def demo_map(
     
 
 
-#             remote  insitu
-# theta        -14.5     0.0
-# varphi        55.0    59.7
-# Rp                     0.1
-# varphi_hw     55.0    66.8
-# gamma         16.0     0.2
-# n              0.6     0.62
-# theta_p       23.0    29.3
-# tau                    4.2
-# Phi                 4.7e14
-
-# demo_fit2remote()
-
-# Run 01.08
-# [ -1.39915561e-02   9.03661698e-01   1.49928626e+10   1.19992133e+00
-#    3.39431978e-02   5.59760053e-01   3.99451581e-01   6.22890240e+00
-#    3.35992244e+14]
-# Run 02.08
-# 1292253600.0
-# [ -5.76484870e-04   1.08243448e+00   1.52375410e+10   9.24032770e-01
-#    1.64470079e-02   4.57895263e-01   4.83729672e-01   4.12708116e+00
-#    4.29414200e+14]
-# Run 03.08
-# 2.85856096239e-09
-# 1292253600.0
-# [ -1.15716548e-04   1.05198582e+00   1.55008157e+10   1.13520846e+00
-#    2.15829880e-04   6.10684704e-01   4.80098299e-01   4.37158605e+00
-#    4.36600741e+14]
-# Final
-# 2.85139583297e-09
-# 1292253600.0
-# [ -8.35255421e-04   1.04195088e+00   1.55072350e+10   1.16531074e+00
-#    3.09957231e-03   6.16988347e-01   5.10604056e-01   4.21465864e+00
-#    4.66728444e+14]
-# demo_fit2insitu()
-
 # demo_insitu()
-
-demo_fit2insitu()
+demo_fit2remote()
+# demo_fit2insitu()

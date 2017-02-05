@@ -55,7 +55,10 @@ def _getData(datetime0, datetime1, sc):
             data[sc]['by'][mask],
             data[sc]['bz'][mask]
         ], axis=1)*u.nT.to(u.T)
-        v = data[sc]['vtot'][mask]*u.Unit("km/s").to(u.Unit("m/s"))
+        if 'vtot' in data[sc]:
+            v = data[sc]['vtot'][mask]*u.Unit("km/s").to(u.Unit("m/s"))
+        else:
+            v = np.nan*np.ones(t.shape)
         r = data[sc][sc+'_radius_in_km_heeq'][mask]*1e3
         theta = data[sc][sc+'_latitude_in_radians_heeq'][mask]
         phi = data[sc][sc+'_longitude_in_radians_heeq'][mask]

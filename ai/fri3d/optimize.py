@@ -320,7 +320,8 @@ def fit2insitu(t, b, v,
     max_pre_time=None,
     max_post_time=None,
     verbose=False,
-    timestamp_mask=None):
+    timestamp_mask=None,
+    fit_speed=True):
 
     t = np.array([time.mktime(x.timetuple()) for x in t])
     _, mask = np.unique(t, return_index=True)
@@ -517,7 +518,7 @@ def fit2insitu(t, b, v,
                 pre_time = t_real_fine_original[0]-t_model_fine[0]
                 post_time = t_model_fine[-1]-t_real_fine_original[-1]
 
-                print(pre_time, post_time)
+                # print(pre_time, post_time)
 
                 if pre_time < 0.0 or post_time < 0.0:
                     return np.inf
@@ -556,16 +557,19 @@ def fit2insitu(t, b, v,
                     b_model_fine[i,:],
                     b_real_fine[i,:]
                 ) for i in np.arange(t_real_fine.size)[mask]])
-                mask = np.logical_not(np.isnan(v_real_fine))
-                dv = np.mean([np.abs(
-                    v_model_fine[i]-v_real_fine[i]
-                ) for i in np.arange(t_real_fine.size)[mask]])
-                dd = (
-                    db/np.nanmax(np.abs(b_real_fine_original))+
-                    dv/np.nanmax(np.abs(v_real_fine_original))
-                )
+                if fit_speed == True:
+                    mask = np.logical_not(np.isnan(v_real_fine))
+                    dv = np.mean([np.abs(
+                        v_model_fine[i]-v_real_fine[i]
+                    ) for i in np.arange(t_real_fine.size)[mask]])
+                    dd = (
+                        db/np.nanmax(np.abs(b_real_fine_original))+
+                        dv/np.nanmax(np.abs(v_real_fine_original))
+                    )
+                else:
+                    dd = db/np.nanmax(np.abs(b_real_fine_original))
 
-                print(db, dv, dd)
+                # print(db, dv, dd)
 
                 # plt.plot(v_real_fine)
                 # plt.plot(v_model_fine)
