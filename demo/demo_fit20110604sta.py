@@ -8,7 +8,7 @@ from datetime import datetime
 import time
 import numpy as np
 
-def demo_shells(t):
+def demo_shells():
     
 # 0.297211009311 1307280600.0 [ -1.41713590e-01   1.78074116e+00   1.03461028e+06   7.47989354e+10
 #    6.85062459e+09   7.21880038e-01  -6.97403705e-01   4.01758992e-01
@@ -19,14 +19,19 @@ def demo_shells(t):
 #    5.21643254e-01   1.60766417e+00   2.43052878e+14]
 
     fr1 = FRi3D(
-        latitude=1.84632438e-02, 
-        longitude=1.75403112e+00, 
-        toroidal_height=np.polyval(
-            [9.78437981e+05, u.au.to(u.m, 0.5)], 
-            time.mktime(t.timetuple())-1307285100.0
-        ),
+        # latitude=1.84632438e-02, 
+        latitude=u.deg.to(u.rad, 5.0),
+        # longitude=1.75403112e+00, 
+        longitude=u.deg.to(u.rad, 120.0), 
+        # toroidal_height=u.au.to(u.m, 0.74),
+        toroidal_height=u.au.to(u.m, 1.2),
+        # toroidal_height=np.polyval(
+        #     [9.78437981e+05, u.au.to(u.m, 0.5)], 
+        #     time.mktime(t.timetuple())-(1307285100.0+10800)
+        # ),
         poloidal_height=5.10609750e+09, 
-        half_width=6.89402283e-01, 
+        # half_width=6.89402283e-01, 
+        half_width=u.deg.to(u.rad, 44),
         tilt=-8.64455026e-01, 
         flattening=3.06020000e-01, 
         pancaking=5.21643254e-01, 
@@ -49,10 +54,12 @@ def demo_shells(t):
     fr2 = FRi3D(
         latitude=2.92256175e-01, 
         longitude=2.13357924e+00, 
-        toroidal_height=np.polyval(
-            [-3.85845146e-01, 1.29818672e+06, u.au.to(u.m, 0.5)],
-            time.mktime(t.timetuple())-1307286600.0
-        ),
+        toroidal_height=u.au.to(u.m, 1.01),
+        # toroidal_height=u.au.to(u.m, 0.45),
+        # toroidal_height=np.polyval(
+        #     [-3.85845146e-01, 1.29818672e+06, u.au.to(u.m, 0.5)],
+        #     time.mktime(t.timetuple())-(1307286600.0+10800)
+        # ),
         poloidal_height=1.09761581e+10, 
         half_width=7.50550756e-01, 
         tilt=4.72097023e-01, 
@@ -75,4 +82,5 @@ def demo_shells(t):
 
     plt.show()
 
-demo_shells(datetime(2011,6,5,10,0,0))
+demo_shells()
+
