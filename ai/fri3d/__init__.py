@@ -433,7 +433,11 @@ class Evolution:
             # valid if flattening, half width and flux stay constant
             fr._spline_initial_axis_s_phi = lambda s: \
                 fr._unit_spline_initial_axis_s_phi(s/fr.toroidal_height)
-            b_, c_ = fr.data(x, y, z)
+            b_, c_ = fr.data(
+                x(t) if isinstance(x, LambdaType) else x, 
+                y(t) if isinstance(y, LambdaType) else y, 
+                z(t) if isinstance(z, LambdaType) else z
+            )
             if b_.size == 0:
                 b_ = np.array([0.0, 0.0, 0.0])
             if c_.size == 0:

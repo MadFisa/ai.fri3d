@@ -78,7 +78,8 @@ def _getData(datetime0, datetime1, sc):
         np.savez(fp, t=t, b=b, v=v, p=p)
 
     data = np.load(fp)
-    return (data['t'], data['b'], data['v'], data['p'])
+    # return (data['t'], data['b'], data['v'], data['p'])
+    return (data['t'], data['b'], data['p'])
 
 def getVEX(datetime0, datetime1):
     return _getData(datetime0=datetime0, datetime1=datetime1, sc='vex')
