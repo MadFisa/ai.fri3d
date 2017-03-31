@@ -7,6 +7,8 @@ def data(self, x, y, z, ds=1e-5):
     y = np.array(y, copy=False, ndmin=1)
     z = np.array(z, copy=False, ndmin=1)
 
+
+
     # twist = self.twist*self._initial_axis_s(self.half_width)
 
     # reverse skew
@@ -40,6 +42,11 @@ def data(self, x, y, z, ds=1e-5):
     # get s
     v_initial_axis_s = np.vectorize(self._initial_axis_s, otypes=[np.float64])
     s = v_initial_axis_s(phi_ax)/self._initial_axis_s(self.half_width)
+    # print('finished quad')
+    # return(
+    #     np.array([np.nan, np.nan, np.nan]),
+    #     np.array([np.nan, np.nan])
+    # )
     # get r[0,1] and phi[0,2pi] params
     x_ax, y_ax, z_ax = cs.sp2cart(r_ax, np.zeros(r_ax.size), phi_ax)
     dx = x-x_ax
@@ -80,30 +87,34 @@ def data(self, x, y, z, ds=1e-5):
                 phi[i],
                 [s[i]-ds, s[i]+ds]
             )
-            vtc = r_ax[i]/self.toroidal_height
-            vpc = (
-                r_ax[i]/self.toroidal_height*
-                (np.sqrt(np.mean(x_)**2+np.mean(y_)**2+np.mean(z_)**2)-r_ax[i])/
-                self.poloidal_height*np.cos(self._initial_axis_tan(phi_ax[i]))
-            )
-            # print(
-            #     r_ax[i]/
-            #     self.toroidal_height*
-            #     (np.sqrt(np.mean(x_)**2+np.mean(y_)**2+np.mean(z_)**2)-r_ax[i])/
-            #     self.poloidal_height*
-            #     np.cos(self._initial_axis_tan(phi_ax[i]))*
-            #     50+
-            #     r_ax[i]/self.toroidal_height*
-            #     400
-            # )
-            dr = np.array([
-                x_[1]-x_[0],
-                y_[1]-y_[0],
-                z_[1]-z_[0]
-            ])
-            dr /= np.linalg.norm(dr)
-            b.append(dr*np.mean(b_)*self.polarity)
-            c.append(np.array([vtc, vpc]))
+            if x_.size < 2 or y_.size < 2 or z_.size < 2:
+                b.append([np.nan, np.nan, np.nan])
+                c.append([np.nan, np.nan])
+            else:
+                vtc = r_ax[i]/self.toroidal_height
+                vpc = (
+                    r_ax[i]/self.toroidal_height*
+                    (np.sqrt(np.mean(x_)**2+np.mean(y_)**2+np.mean(z_)**2)-r_ax[i])/
+                    self.poloidal_height*np.cos(self._initial_axis_tan(phi_ax[i]))
+                )
+                # print(
+                #     r_ax[i]/
+                #     self.toroidal_height*
+                #     (np.sqrt(np.mean(x_)**2+np.mean(y_)**2+np.mean(z_)**2)-r_ax[i])/
+                #     self.poloidal_height*
+                #     np.cos(self._initial_axis_tan(phi_ax[i]))*
+                #     50+
+                #     r_ax[i]/self.toroidal_height*
+                #     400
+                # )
+                dr = np.array([
+                    x_[1]-x_[0],
+                    y_[1]-y_[0],
+                    z_[1]-z_[0]
+                ])
+                dr /= np.linalg.norm(dr)
+                b.append(dr*np.mean(b_)*self.polarity)
+                c.append(np.array([vtc, vpc]))
         else:
             b.append([np.nan, np.nan, np.nan])
             c.append([np.nan, np.nan])

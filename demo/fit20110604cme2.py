@@ -16,7 +16,7 @@ from astropy import table
 from matplotlib.colors import LogNorm
 from matplotlib import gridspec
 from scipy.interpolate import interp1d
-from scipy.optimize import differential_evolution, brute
+from scipy.optimize import differential_evolution
 import time
 import calendar
 from fastdtw import fastdtw
@@ -29,28 +29,28 @@ def fit2insitu():
     step = 600
 
     # COR & initial
-    latitude0 = u.deg.to(u.rad, 34.0)
-    longitude0 = u.deg.to(u.rad, 130.0)
+    latitude0 = u.deg.to(u.rad, 22.0)
+    longitude0 = u.deg.to(u.rad, 125.0)
     toroidal_height0 = u.R_sun.to(u.m, 12.0)
-    poloidal_height0 = u.R_sun.to(u.m, 3.0)
-    half_width0 = u.deg.to(u.rad, 44.0)
-    tilt0 = u.deg.to(u.rad, -35.0)
-    flattening0 = 0.3
-    pancaking0 = u.deg.to(u.rad, 18.0)
+    poloidal_height0 = u.R_sun.to(u.m, 4.0)
+    half_width0 = u.deg.to(u.rad, 35.0)
+    tilt0 = u.deg.to(u.rad, 35.0)
+    flattening0 = 0.4
+    pancaking0 = u.deg.to(u.rad, 30.0)
     skew = 0.0
     twist = np.array([0.1, 2.0])
     flux = np.array([1e13, 1e15])
     polarity = 1.0
     chirality = 1.0
-    d0 = datetime(2011, 6, 4, 8, 54)
+    d0 = datetime(2011, 6, 4, 22, 54)
     t0 = calendar.timegm(d0.timetuple())
 
     spline_s_phi_kind = 'cubic',
     spline_s_phi_n = 500
 
     # MESSENGER
-    d0_mes = datetime(2011, 6, 4, 17, 9)
-    d1_mes = datetime(2011, 6, 4, 17, 10)
+    d0_mes = datetime(2011, 6, 5, 4, 40)
+    d1_mes = datetime(2011, 6, 5, 9, 29)
     t0_mes = calendar.timegm(d0_mes.timetuple())
     t1_mes = calendar.timegm(d1_mes.timetuple())
     d_mes, b_mes, _, p_mes = getMES(d0_mes, d1_mes)
@@ -60,8 +60,8 @@ def fit2insitu():
     delta_mes = 10*3600
 
     # VEX
-    d0_vex = datetime(2011, 6, 5, 8, 45)
-    d1_vex = datetime(2011, 6, 5, 11, 50)
+    d0_vex = datetime(2011, 6, 5, 15, 30)
+    d1_vex = datetime(2011, 6, 5, 22, 30)
     t0_vex = calendar.timegm(d0_vex.timetuple())
     t1_vex = calendar.timegm(d1_vex.timetuple())
     d_vex, b_vex, _, p_vex = getVEX(d0_vex, d1_vex)
@@ -73,8 +73,8 @@ def fit2insitu():
     delta_vex = 10*3600
 
     # STA
-    d0_sta = datetime(2011, 6, 6, 12, 25)
-    d1_sta = datetime(2011, 6, 6, 14, 10)
+    d0_sta = datetime(2011, 6, 6, 16, 30)
+    d1_sta = datetime(2011, 6, 7, 1)
     t0_sta = calendar.timegm(d0_sta.timetuple())
     t1_sta = calendar.timegm(d1_sta.timetuple())
     d_sta, b_sta, v_sta, p_sta = getSTA(d0_sta, d1_sta)
@@ -92,49 +92,10 @@ def fit2insitu():
     di = datetime(2011, 6, 5, 11, 30)
     ti = calendar.timegm(di.timetuple())
 
-    # evo = Evolution()
-
-    # tm_mes = np.arange(
-    #     t0_mes-delta_mes, 
-    #     t0_mes+delta_mes, 
-    #     step, 
-    #     dtype=np.int
-    # )
-    # fx_mes = interp1d(
-    #     t_mes, 
-    #     p_mes[:,0], 
-    #     kind='linear', 
-    #     axis=0, 
-    #     fill_value='extrapolate'
-    # )
-    # fy_mes = interp1d(
-    #     t_mes, 
-    #     p_mes[:,1], 
-    #     kind='linear', 
-    #     axis=0, 
-    #     fill_value='extrapolate'
-    # )
-    # fz_mes = interp1d(
-    #     t_mes, 
-    #     p_mes[:,2], 
-    #     kind='linear', 
-    #     axis=0, 
-    #     fill_value='extrapolate'
-    # )
-    # bm_mes, vm_mes = evo.insitu(
-    #     tm_mes, 
-    #     fx_mes, 
-    #     fy_mes, 
-    #     fz_mes
-    # )
-    # print('finished')
-
-    
     def F(p):
         global res_prev
-
         evo = Evolution()
-        
+
         theta0 = latitude0
         theta1 = p[0]
         atheta = p[1]
@@ -157,13 +118,11 @@ def fit2insitu():
         if v0Rt < v1Rt:
             return np.inf
 
-        # with kink
         # evo.toroidal_height = lambda t: (
         #     (1.0-np.exp(-aRt*(t-t0)))*(v0Rt*(t-t0)+(dRt-Rt0))+Rt0
         #     if t <= ti else
         #     (1.0-np.exp(-aRt*(ti-t0)))*(v0Rt*(ti-t0)+(dRt-Rt0))+Rt0+v1Rt*(t-ti)
         # )
-        # without kink
         evo.toroidal_height = lambda t: (
             (v0Rt-v1Rt)/aRt*(1.0-np.exp(-aRt*(t-t0)))+v1Rt*(t-t0)+Rt0
         )
@@ -237,11 +196,7 @@ def fit2insitu():
         bt_delta_mes = np.inf
         if nzi_mes.size > 0 and nzi_mes[0] != 0:
             pre_delta_mes = np.abs(tm_mes[nzi_mes[0]]-t0_mes)
-            # bt_delta_mes = fastdtw(
-            #     np.array([tm_mes[nzi_mes[0]], np.mean(btm_mes[nzi_mes])]),
-            #     np.array([t_mes[0], bt_mes])
-            # )[0]
-            # bt_delta_mes = np.abs(np.mean(btm_mes[nzi_mes])-bt_mes)
+            # bt_delta_mes = np.abs(np.mean(btm_mes)-bt_mes)
         else:
             return np.inf
 
@@ -288,10 +243,10 @@ def fit2insitu():
             pre_delta_vex = np.abs(tm_vex[nzi_vex[0]]-t0_vex)
             post_delta_vex = np.abs(tm_vex[nzi_vex[-1]]-t1_vex)
             # b_delta_vex = fastdtw(
-            #     np.concatenate((np.array([tm_vex]).T, bm_vex), axis=1)[nzi_vex,:], 
-            #     np.concatenate((np.array([t_vex]).T, b_vex), axis=1),
+            #     bm_vex[nzi_vex,:], 
+            #     b_vex, 
             #     dist=euclidean
-            # )[0]
+            # )
         else:
             return np.inf
 
@@ -338,27 +293,24 @@ def fit2insitu():
                 nzi_sta[-1] != tm_sta.size-1):
             pre_delta_sta = np.abs(tm_sta[nzi_sta[0]]-t0_sta)
             post_delta_sta = np.abs(tm_sta[nzi_sta[-1]]-t1_sta)
-            # print(np.mean(bm_sta[nzi_sta,:]), np.mean(b_sta))
-            # b_delta_sta = fastdtw(
-            #     np.concatenate((np.array([tm_sta]).T, bm_sta), axis=1)[nzi_sta,:], 
-            #     np.concatenate((np.array([t_sta]).T, b_sta), axis=1),
-            #     dist=euclidean
-            # )[0]
             # b_delta_sta = fastdtw(
             #     bm_sta[nzi_sta,:], 
             #     b_sta, 
             #     dist=euclidean
-            # )[0]
+            # )
         else:
             return np.inf
 
+        # res = (
+        #     pre_delta_mes+
+        #     pre_delta_vex+post_delta_vex+
+        #     pre_delta_sta+post_delta_sta
+        # )
         res = (
             pre_delta_mes+
-            pre_delta_vex+post_delta_vex+
-            pre_delta_sta+post_delta_sta
+            max(pre_delta_vex, post_delta_vex)+
+            max(pre_delta_sta, post_delta_sta)
         )
-
-        # res = bt_delta_mes+b_delta_vex+b_delta_sta
 
         if res < res_prev:
             res_prev = res
@@ -368,21 +320,19 @@ def fit2insitu():
             print(
                 u.rad.to(u.deg, p[0]),
                 p[1],
-                p[2],
+                u.rad.to(u.deg, p[2]),
                 p[3],
                 u.Unit('m/s').to(u.Unit('km/s'), p[4]),
                 # u.m.to(u.R_sun, p[5]),
                 u.Unit('m/s').to(u.Unit('km/s'), p[6]),
                 u.m.to(u.au, p[7]),
                 p[8],
-                p[9],
+                u.rad.to(u.deg, p[9]),
                 # p[10],
                 # p[11],
             )
 
         return res
-
-
 
     # 0: theta1
     # 1: atheta
@@ -397,44 +347,28 @@ def fit2insitu():
     # 10: tau
     # 11: F
 
-    # geometrical fit
     bounds = [
-        u.deg.to(u.rad, (-5.0, 5.0)),
+        u.deg.to(u.rad, (0.0, 20.0)),
         (5e-5, 5e-4),
         u.deg.to(u.rad, (-10.0, 10.0))/(t0_sta-t0),
         (5e-5, 5e-4),
-        u.Unit('km/s').to(u.Unit('m/s'), (900.0, 2000.0)),
-        # u.R_sun.to(u.m, (10.0, 100.0)),
-        u.R_sun.to(u.m, (10.0, 10.0)), # unused
+        u.Unit('km/s').to(u.Unit('m/s'), (900.0, 3500.0)),
+        u.R_sun.to(u.m, (10.0, 10.0)),
         u.Unit('km/s').to(u.Unit('m/s'), (900.0, 2000.0)),
         u.au.to(u.m, (0.01, 0.1)),
         (5e-5, 5e-4),
-        u.deg.to(u.rad, (-20.0, 20.0))/(t0_sta-t0),
+        u.deg.to(u.rad, (-10.0, 10.0))/(t0_sta-t0),
         (0.5, 0.5),
         (1e14, 1e14),
     ]
-    # magnetic fit
-
-
 
     res = differential_evolution(F, bounds=bounds)
-    # res = brute(F, ranges=bounds)
 
     print(res.x)
 
     return res
 
-# MESSENGER:  0
-# VEX:  0 300
-# STA:  0 300
-# 1.44296092648 0.000296481808713 1.45608426469e-05 7.42960774822e-05 975.113541117 28.0197506113 939.840274071 0.0370297508952 0.000295727248329 -1.96526853878e-05
-# [  2.51844191e-02   2.96481809e-04   2.54134646e-07   7.42960775e-05
-#    9.75113541e+05   1.94879607e+10   9.39840274e+05   5.53957189e+09
-#    2.95727248e-04  -3.43004067e-07   5.00000000e-01   1.00000000e+14]
-
-
 fit2insitu()
-    
 
 def fitshell():
     theta0 = u.deg.to(u.rad, 34.0)

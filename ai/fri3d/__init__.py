@@ -1,7 +1,7 @@
 
 import numpy as np
 from scipy.interpolate import interp1d
-from scipy.integrate import quad
+from scipy.integrate import quad, fixed_quad, quadrature, romberg
 from scipy.optimize import minimize_scalar
 from astropy import constants as c
 from astropy import units as u
@@ -245,7 +245,24 @@ class FRi3D:
 
     # length of axis at a given phi
     def _initial_axis_s(self, phi):
-        s = quad(self._initial_axis_ds, -self.half_width, phi)
+        # print(quad(self._initial_axis_ds, -self.half_width, phi))
+        # # print(fixed_quad(self._initial_axis_ds, -self.half_width, phi, n=100))
+        # print(fixed_quad(
+        #     self._initial_axis_ds, 
+        #     -self.half_width, 
+        #     phi,
+        #     n=1000
+        # ))
+        # for i in range(10000):
+        s = fixed_quad(self._initial_axis_ds, -self.half_width, phi, n=1000)
+        # s = quadrature(
+        #     self._initial_axis_ds, 
+        #     -self.half_width, 
+        #     phi,
+        #     rtol=1e-5,
+        #     maxiter=200
+        # )
+        # print(s)
         return s[0]
 
     from ai.fri3d.shell import shell
@@ -433,10 +450,18 @@ class Evolution:
             # valid if flattening, half width and flux stay constant
             fr._spline_initial_axis_s_phi = lambda s: \
                 fr._unit_spline_initial_axis_s_phi(s/fr.toroidal_height)
+            # print(
+                # 'Latitude: ', u.rad.to(u.deg, fr.latitude),
+                # 'Longitude: ', u.rad.to(u.deg, fr.longitude),
+                # 'Toroidal height: ', u.m.to(u.au, fr.toroidal_height),
+                # 'Poloidal height: ', u.m.to(u.au, fr.poloidal_height),
+                # 'Half width: ', u.rad.to(u.deg, fr.half_width),
+                # 'Tilt: ', u.rad.to(u.deg, fr.tilt),
+            # )
             b_, c_ = fr.data(
-                x(t) if isinstance(x, LambdaType) else x, 
-                y(t) if isinstance(y, LambdaType) else y, 
-                z(t) if isinstance(z, LambdaType) else z
+                x(t) if callable(x) else x, 
+                y(t) if callable(y) else y, 
+                z(t) if callable(z) else z
             )
             if b_.size == 0:
                 b_ = np.array([0.0, 0.0, 0.0])
