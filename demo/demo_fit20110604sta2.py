@@ -573,6 +573,6 @@ def demo_map(
     
 
 
-demo_insitu()
-# demo_fit2remote()
+# demo_insitu()
+demo_fit2remote()
 # demo_fit2insitu()

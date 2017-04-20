@@ -169,14 +169,14 @@ def demo_fit2remote():
         soho_lon=u.deg.to(u.rad, 0.0),
         soho_datetime=datetime(2011,6,4,9,4,54),
 
-        latitude=u.deg.to(u.rad, 34.0),
-        longitude=u.deg.to(u.rad, 130.0),
-        toroidal_height=u.R_sun.to(u.m, 12.0),
-        poloidal_height=u.R_sun.to(u.m, 3.0),
-        half_width=u.deg.to(u.rad, 44.0),
-        tilt=u.deg.to(u.rad, -35.0),
-        flattening=0.3,
-        pancaking=u.deg.to(u.rad, 18.0),
+        latitude=u.deg.to(u.rad, 30.0),
+        longitude=u.deg.to(u.rad, 110.0),
+        toroidal_height=u.R_sun.to(u.m, 12.5),
+        poloidal_height=u.R_sun.to(u.m, 3.5),
+        half_width=u.deg.to(u.rad, 40.0),
+        tilt=u.deg.to(u.rad, 37.0),
+        flattening=0.4,
+        pancaking=u.deg.to(u.rad, 25.0),
         skew=u.deg.to(u.rad, 0.0),
         
         spline_s_phi_kind='cubic',
@@ -637,6 +637,6 @@ def demo_map(
     
 
 
-# demo_fit2remote()
+demo_fit2remote()
 # demo_fit2insitu()
-demo_insitu()
+# demo_insitu()
