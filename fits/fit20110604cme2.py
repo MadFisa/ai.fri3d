@@ -16,7 +16,7 @@ from astropy import table
 from matplotlib.colors import LogNorm
 from matplotlib import gridspec
 from scipy.interpolate import interp1d
-from scipy.optimize import differential_evolution, fmin_l_bfgs_b
+from scipy.optimize import differential_evolution, fmin_l_bfgs_b, basinhopping
 import time
 import calendar
 from fastdtw import fastdtw
@@ -558,7 +558,15 @@ def fit2insitu():
         1e14,
     ]
 
-    # res = fmin_l_bfgs_b(F, x0=x0, approx_grad=True, bounds=bounds)
+    x0 = [
+        9.90311992e-05, 1.73605129e+06, 1.36061929e+06, 1.81845722e+06,
+        2.26907906e+00, 6.55758356e-01, 1.58978808e-01, 2.31885762e+00,
+        5.46691783e+09, 4.64146029e-01, 6.06241660e-01, 4.67502888e-01,
+        6.71357126e-01, 9.10815435e+14, 4.57120756e-01, 2.13824198e+00,
+        8.93240859e+09, 6.20747419e-01, 4.16708844e-01, 3.82116808e-01,
+        5.59157374e-01, 1.42273842e+14
+    ]
+
     res = differential_evolution(F, bounds=bounds)
     
     # print(res.x)
