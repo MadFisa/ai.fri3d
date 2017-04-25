@@ -16,7 +16,7 @@ from astropy import table
 from matplotlib.colors import LogNorm
 from matplotlib import gridspec
 from scipy.interpolate import interp1d
-from scipy.optimize import differential_evolution
+from scipy.optimize import differential_evolution, brute
 import time
 import calendar
 from fastdtw import fastdtw
@@ -29,97 +29,71 @@ def fit2insitu():
     step = 600
 
     # COR & initial
-    latitude0 = u.deg.to(u.rad, 22.0)
-    longitude0 = u.deg.to(u.rad, 125.0)
-    toroidal_height0 = u.R_sun.to(u.m, 12.0)
-    poloidal_height0 = u.R_sun.to(u.m, 4.0)
-    half_width0 = u.deg.to(u.rad, 35.0)
-    tilt0 = u.deg.to(u.rad, 35.0)
+    latitude0 = u.deg.to(u.rad, 30.0)
+    longitude0 = u.deg.to(u.rad, 110.0)
+    toroidal_height0 = u.R_sun.to(u.m, 12.5)
+    poloidal_height0 = u.R_sun.to(u.m, 3.5)
+    half_width0 = u.deg.to(u.rad, 40.0)
+    tilt0 = u.deg.to(u.rad, 37.0)
     flattening0 = 0.4
-    pancaking0 = u.deg.to(u.rad, 30.0)
+    pancaking0 = u.deg.to(u.rad, 25.0)
     skew = 0.0
     twist = np.array([0.1, 2.0])
     flux = np.array([1e13, 1e15])
-    polarity = 1.0
+    polarity = -1.0
     chirality = 1.0
-    d0 = datetime(2011, 6, 4, 22, 54)
+    d0 = datetime(2011, 6, 4, 8, 54)
     t0 = calendar.timegm(d0.timetuple())
 
     spline_s_phi_kind = 'cubic',
     spline_s_phi_n = 500
 
     # MESSENGER
-    d0_mes = datetime(2011, 6, 5, 4, 40)
-    d1_mes = datetime(2011, 6, 5, 9, 29)
+    d0_mes = datetime(2011, 6, 4, 17, 9)
+    d1_mes = datetime(2011, 6, 4, 17, 10)
     t0_mes = calendar.timegm(d0_mes.timetuple())
     t1_mes = calendar.timegm(d1_mes.timetuple())
     d_mes, b_mes, _, p_mes = getMES(d0_mes, d1_mes)
-    print(np.mean(u.rad.to(u.deg, np.arctan2(p_mes[:,1], p_mes[:,0]))))
-    print(
-        np.mean(
-            u.rad.to(
-                u.deg, 
-                np.arctan2(p_mes[:,2], np.sqrt(p_mes[:,0]**2+p_mes[:,1]**2))
-            )
-        )
-    )
     t_mes = np.array([calendar.timegm(x.timetuple()) for x in d_mes])
-    # bt_mes = u.nT.to(u.T, 80.0)
     bt_mes = np.mean(np.sqrt(b_mes[:,0]**2+b_mes[:,1]**2+b_mes[:,2]**2))
     delta_mes = 10*3600
 
     # VEX
-    d0_vex = datetime(2011, 6, 5, 15, 30)
-    d1_vex = datetime(2011, 6, 5, 22, 30)
+    d0_vex = datetime(2011, 6, 5, 8, 45)
+    d1_vex = datetime(2011, 6, 5, 11, 50)
     t0_vex = calendar.timegm(d0_vex.timetuple())
     t1_vex = calendar.timegm(d1_vex.timetuple())
     d_vex, b_vex, _, p_vex = getVEX(d0_vex, d1_vex)
-    print(np.mean(u.rad.to(u.deg, np.arctan2(p_vex[:,1], p_vex[:,0]))))
-    print(
-        np.mean(
-            u.rad.to(
-                u.deg, 
-                np.arctan2(p_vex[:,2], np.sqrt(p_vex[:,0]**2+p_vex[:,1]**2))
-            )
-        )
-    )
     t_vex = np.array([calendar.timegm(x.timetuple()) for x in d_vex])
     bt_vex = np.sqrt(b_vex[:,0]**2+b_vex[:,1]**2+b_vex[:,2]**2)
     delta_vex = 10*3600
 
-    dc_vex = datetime(2011, 6, 5, 19)
-    tc_vex = calendar.timegm(dc_vex.timetuple())
-    # btac_vex = np.mean(bt_vex[t_vex > tc_vex])
-    btac_vex = bt_vex[t_vex > tc_vex][0]
-    for i in range(t_vex.size):
-        if t_vex[i] > tc_vex:
-            break
-        b_vex[i,:] *= btac_vex/bt_vex[i]
-        bt_vex[i] = btac_vex
+    print(
+        np.median(u.rad.to(u.deg, np.arctan(b_vex[:,1]/b_vex[:,0]))),
+        np.median(u.rad.to(u.deg, np.arctan(b_vex[:,2]/np.sqrt(b_vex[:,0]**2+b_vex[:,1]**2))))
+    )
 
-    # plt.plot(d_vex, bt_vex, 'k')
-    # plt.plot(d_vex, b_vex[:,0], 'r')
-    # plt.plot(d_vex, b_vex[:,1], 'g')
-    # plt.plot(d_vex, b_vex[:,2], 'b')
+    # plt.plot(u.rad.to(u.deg, np.arctan(b_vex[:,1]/b_vex[:,0])))
+    # plt.plot(u.rad.to(u.deg, np.arctan(b_vex[:,2]/np.sqrt(b_vex[:,0]**2+b_vex[:,1]**2))))
     # plt.show()
 
     # STA
-    d0_sta = datetime(2011, 6, 6, 16, 30)
-    d1_sta = datetime(2011, 6, 7, 1)
+    d0_sta = datetime(2011, 6, 6, 12, 25)
+    d1_sta = datetime(2011, 6, 6, 14, 10)
     t0_sta = calendar.timegm(d0_sta.timetuple())
     t1_sta = calendar.timegm(d1_sta.timetuple())
     d_sta, b_sta, v_sta, p_sta = getSTA(d0_sta, d1_sta)
-    print(np.mean(u.rad.to(u.deg, np.arctan2(p_sta[:,1], p_sta[:,0]))))
-    print(
-        np.mean(
-            u.rad.to(
-                u.deg, 
-                np.arctan2(p_sta[:,2], np.sqrt(p_sta[:,0]**2+p_sta[:,1]**2))
-            )
-        )
-    )
     t_sta = np.array([calendar.timegm(x.timetuple()) for x in d_sta])
     bt_sta = np.sqrt(b_sta[:,0]**2+b_sta[:,1]**2+b_sta[:,2]**2)
+    
+    print(
+        np.median(u.rad.to(u.deg, np.arctan(b_sta[:,1]/b_sta[:,0]))),
+        np.median(u.rad.to(u.deg, np.arctan(b_sta[:,2]/np.sqrt(b_sta[:,0]**2+b_sta[:,1]**2))))
+    )
+    
+    # plt.plot(u.rad.to(u.deg, np.arctan(b_sta[:,1]/b_sta[:,0])))
+    # plt.plot(u.rad.to(u.deg, np.arctan(b_sta[:,2]/np.sqrt(b_sta[:,0]**2+b_sta[:,1]**2))))
+    # plt.show()
 
     cdas.set_cache(True, './data')
     data = cdas.get_data(
@@ -139,7 +113,7 @@ def fit2insitu():
     )
 
     v_sta = u.Unit('km/s').to(u.Unit('m/s'), f(t_sta))
-    
+
     delta_sta = 10*3600
 
     di = datetime(2011, 6, 5, 11, 30)
@@ -496,33 +470,59 @@ def fit2insitu():
             # print('STEREO-A: ', fit_t_sta, fit_b_sta, fit_bt_sta, fit_v_sta)
             print('AVERAGE: ', res)
             print(p)
+            # print(
+            #     u.rad.to(u.deg, evo.latitude(t0_sta)),
+            #     u.rad.to(u.deg, evo.longitude(t0_sta)),
+            #     u.rad.to(u.deg, evo.tilt(t0_sta))
+            # )
             print(
                 u.rad.to(u.deg, evo.latitude(t0_vex)),
                 u.rad.to(u.deg, evo.longitude(t0_vex)),
                 u.rad.to(u.deg, evo.tilt(t0_vex))
             )
             # print(
-            #     u.rad.to(u.deg, evo.latitude(t0_sta)),
-            #     u.rad.to(u.deg, evo.longitude(t0_sta)),
-            #     u.rad.to(u.deg, evo.tilt(t0_sta))
+                # u.rad.to(u.deg, p[0]),
+                # p[1],
+                # u.rad.to(u.deg, p[2]),
+                # p[3],
+                # u.Unit('m/s').to(u.Unit('km/s'), p[4]),
+                # # u.m.to(u.R_sun, p[5]),
+                # u.Unit('m/s').to(u.Unit('km/s'), p[6]),
+                # u.m.to(u.au, p[7]),
+                # p[8],
+                # u.rad.to(u.deg, p[9]),
+            #     p[10],
+            #     p[11],
+            #     p[12],
             # )
-            
+
+            # tm_vex = t_vex[nzi_vex]
+            # bm_vex = bm_vex[nzi_vex,:]
+            # tm_sta = t_sta[nzi_sta]
+            # bm_sta = bm_sta[nzi_sta,:]
+
+            # print(
+            #     (np.abs(tm_vex[0]-t_vex[0])+np.abs(tm_vex[-1]-t_vex[-1]))/
+            #     (t_vex[-1]-t_vex[0])
+            # )
+
             d_vex = np.array(
                 [datetime.utcfromtimestamp(t) for t in t_vex]
             )
             dm_vex = np.array(
                 [datetime.utcfromtimestamp(t) for t in tm_vex]
             )
-            # d_sta = np.array(
-            #     [datetime.utcfromtimestamp(t) for t in t_sta]
-            # )
-            # dm_sta = np.array(
-            #     [datetime.utcfromtimestamp(t) for t in tm_sta]
-            # )
+            """
+            d_sta = np.array(
+                [datetime.utcfromtimestamp(t) for t in t_sta]
+            )
+            dm_sta = np.array(
+                [datetime.utcfromtimestamp(t) for t in tm_sta]
+            )
+            """
             plt.close('all')
             fig = plt.figure()
             # plt.subplots_adjust(hspace=0.001)
-            
             ax1 = fig.add_subplot(211)
             ax1.plot(t_vex, bt_vex, 'k')
             ax1.plot(t_vex, b_vex[:,0], 'r')
@@ -532,15 +532,17 @@ def fit2insitu():
             ax1.plot(tm_vex, bm_vex[:,0], '--r')
             ax1.plot(tm_vex, bm_vex[:,1], '--g')
             ax1.plot(tm_vex, bm_vex[:,2], '--b')
-            # ax2 = fig.add_subplot(212)
-            # ax2.plot(t_sta, bt_sta, 'k')
-            # ax2.plot(t_sta, b_sta[:,0], 'r')
-            # ax2.plot(t_sta, b_sta[:,1], 'g')
-            # ax2.plot(t_sta, b_sta[:,2], 'b')
-            # ax2.plot(tm_sta, btm_sta, '--k')
-            # ax2.plot(tm_sta, bm_sta[:,0], '--r')
-            # ax2.plot(tm_sta, bm_sta[:,1], '--g')
-            # ax2.plot(tm_sta, bm_sta[:,2], '--b')
+            """
+            ax2 = fig.add_subplot(212)
+            ax2.plot(t_sta, bt_sta, 'k')
+            ax2.plot(t_sta, b_sta[:,0], 'r')
+            ax2.plot(t_sta, b_sta[:,1], 'g')
+            ax2.plot(t_sta, b_sta[:,2], 'b')
+            ax2.plot(tm_sta, btm_sta, '--k')
+            ax2.plot(tm_sta, bm_sta[:,0], '--r')
+            ax2.plot(tm_sta, bm_sta[:,1], '--g')
+            ax2.plot(tm_sta, bm_sta[:,2], '--b')
+            """
             # plt.setp(ax1.get_xticklabels(), visible=False)
             plt.ion()
             plt.draw()
@@ -562,57 +564,90 @@ def fit2insitu():
     # 10: tau
     # 11: F
 
+    # geometrical fit
+    # bounds = [
+    #     u.deg.to(u.rad, (-5.0, 5.0)),
+    #     (5e-5, 5e-4),
+    #     u.deg.to(u.rad, (-10.0, 10.0))/(t0_sta-t0),
+    #     (5e-5, 5e-4),
+    #     u.Unit('km/s').to(u.Unit('m/s'), (900.0, 2000.0)),
+    #     # u.R_sun.to(u.m, (10.0, 100.0)),
+    #     u.R_sun.to(u.m, (10.0, 10.0)), # unused
+    #     u.Unit('km/s').to(u.Unit('m/s'), (900.0, 2000.0)),
+    #     u.au.to(u.m, (0.01, 0.1)),
+    #     (5e-5, 5e-4),
+    #     u.deg.to(u.rad, (-20.0, 20.0))/(t0_sta-t0),
+    #     (0.5, 0.5),
+    #     (1e14, 1e14),
+    # ]
+    
     bounds = [
-        u.deg.to(u.rad, (15.0, 22.0)),
+        u.deg.to(u.rad, (0.0, 30.0)),
         # u.deg.to(u.rad, (60.0, 90.0)),
-        u.deg.to(u.rad, (115.0, 135.0)),
+        u.deg.to(u.rad, (105.0, 125.0)),
         (5e-5, 5e-4),
-        u.Unit('km/s').to(u.Unit('m/s'), (900.0, 3500.0)),
+        u.Unit('km/s').to(u.Unit('m/s'), (900.0, 2000.0)),
         u.Unit('km/s').to(u.Unit('m/s'), (900.0, 2000.0)),
         u.au.to(u.m, (0.01, 0.1)),
-        u.deg.to(u.rad, (25.0, 45.0)),
-        (0.0, 2.0),
+        u.deg.to(u.rad, (35.0, 55.0)),
+        (0.0, 0.3),
         (1e13, 1e15),
         # (0.3, 0.5),
     ]
 
-    # geometrical fit
+
     # bounds = [
-    #     u.deg.to(u.rad, (0.0, 20.0)),
+    #     u.deg.to(u.rad, (-10.0, 30.0)),
     #     (5e-5, 5e-4),
-    #     u.deg.to(u.rad, (-10.0, 10.0))/(t0_sta-t0),
+    #     u.deg.to(u.rad, (-20.0, 20.0))/(t0_sta-t0),
     #     (5e-5, 5e-4),
-    #     u.Unit('km/s').to(u.Unit('m/s'), (900.0, 3500.0)),
+    #     u.Unit('km/s').to(u.Unit('m/s'), (900.0, 2000.0)),
     #     u.Unit('km/s').to(u.Unit('m/s'), (900.0, 2000.0)),
     #     u.au.to(u.m, (0.01, 0.1)),
     #     (5e-5, 5e-4),
-    #     u.deg.to(u.rad, (-10.0, 10.0))/(t0_sta-t0),
-    #     u.deg.to(u.rad, (0.0, 10.0))/(t0_sta-t0),
-    #     (0.2, 3.0),
-    #     (0.2, 3.0),
+    #     u.deg.to(u.rad, (-20.0, 20.0))/(t0_sta-t0),
+    #     (0.0, 1.0),
+    #     (1e13, 1e15),
+    #     # (1.5, 2.5),
     #     # (1e13, 1e15),
     #     # (1e13, 1e15),
-    #     # (1e13, 1e15),
-    #     # (1.0, 3.0),
+    #     # (2.0, 2.0),
     # ]
+
+    """
+    fix everything except Rt
+    """
 
     # magnetic fit
     # bounds = [
-    #     (3.82485311e-02, 3.82485311e-02),
-    #     (2.86256451e-04, 2.86256451e-04),
-    #     (9.30759651e-07, 9.30759651e-07),
-    #     (9.31364197e-05, 9.31364197e-05),
-    #     (1.73001822e+06, 1.73001822e+06),
-    #     u.R_sun.to(u.m, (10.0, 10.0)), # not used
-    #     (1.29742507e+06, 1.29742507e+06),
-    #     (1.47351980e+10, 1.47351980e+10),
-    #     (6.41357228e-05, 6.41357228e-05),
-    #     (5.67009731e-07, 5.67009731e-07),
-    #     (0.5, 2.5),
+    #     (-2.04958689e-02, -2.04958689e-02),
+    #     (3.06500305e-04, 3.06500305e-04),
+    #     (3.46095731e-07, 3.46095731e-07),
+    #     (1.42307095e-04, 1.42307095e-04),
+    #     (1.55585227e+06, 1.55585227e+06),
+    #     (1.05521505e+06, 1.05521505e+06),
+    #     (6.72004614e+09, 6.72004614e+09),
+    #     (4.03800688e-04, 4.03800688e-04),
+    #     (-5.62764276e-07, -5.62764276e-07),
+    #     (0.0, 5.0),
     #     (1e13, 1e15),
-    #     (1.0, 3.0),
+    #     (2.0, 2.0),
     # ]
-
+    # bounds = [
+    #     (0.0, 1.0),
+    #     (1.5, 2.5),
+    # ]
+    # args = [
+    #     -2.04958689e-02,
+    #     3.06500305e-04,
+    #     3.46095731e-07,
+    #     1.42307095e-04,
+    #     1.55585227e+06,
+    #     1.05521505e+06,
+    #     6.72004614e+09,
+    #     4.03800688e-04,
+    #     -5.62764276e-07,
+    # ]
 
 
 
@@ -624,14 +659,6 @@ def fit2insitu():
     print(res.x)
 
     return res
-
-# MESSENGER:  0
-# VEX:  3000 0
-# STA:  0 0
-# 2.19147940736 0.000286256450714 5.33285997461e-05 9.31364197379e-05 1730.01821538 1297.42507118 0.0984987149627 6.41357227586e-05 3.248726452e-05
-# [  3.82485311e-02   2.86256451e-04   9.30759651e-07   9.31364197e-05
-#    1.73001822e+06   6.95508000e+09   1.29742507e+06   1.47351980e+10
-#    6.41357228e-05   5.67009731e-07   5.00000000e-01   1.00000000e+14]
 
 fit2insitu()
 
