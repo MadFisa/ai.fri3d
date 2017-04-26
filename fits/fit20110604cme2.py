@@ -21,8 +21,11 @@ import time
 import calendar
 from fastdtw import fastdtw
 from scipy.spatial.distance import euclidean
+from sklearn import preprocessing
 
 res_prev = np.inf
+
+
 
 def fit2insitu():
 
@@ -98,35 +101,42 @@ def fit2insitu():
     di = datetime(2011, 6, 5, 11, 30)
     ti = calendar.timegm(di.timetuple())
 
+    scaler = preprocessing.MinMaxScaler()
+    
     def F(p):
         global res_prev
+        p = scaler.inverse_transform(np.array([p]))[0].tolist()
         """
         SHARED
         0, 1, 2, 3: toroidal_height
         4: sigma
         5: twist
+        MES
+        6: flux
         MES & VEX
-        6: latitude
-        7: longitude
-        8: poloidal_height
-        9: half_width
-        10: tilt
-        11: flattening
-        12: pancaking
-        13: flux
+        7: latitude
+        8: longitude
+        9: poloidal_height
+        10: half_width
+        11: tilt
+        12: flattening
+        13: pancaking
+        VEX
+        14: flux
         STA
-        14: latitude
-        15: longitude
-        16: poloidal_height
-        17: half_width
-        18: tilt
-        19: flattening
-        20: pancaking
-        21: flux
+        15: latitude
+        16: longitude
+        17: poloidal_height
+        18: half_width
+        19: tilt
+        20: flattening
+        21: pancaking
+        22: flux
         """
         evo = Evolution()
         if p[1] < p[2]:
-            return np.inf
+            # return np.inf
+            return 1.0
         evo.toroidal_height = lambda t: (
             (p[1]-p[2])/p[0]*(1.0-np.exp(-p[0]*(t-t0)))+p[2]*(t-t0)+
             toroidal_height_cor
@@ -141,14 +151,14 @@ def fit2insitu():
         evo.polarity = polarity
         evo.chirality = chirality
 
-        evo.latitude = lambda t: p[6]
-        evo.longitude = lambda t: p[7]
-        evo.poloidal_height = lambda t: p[8]
-        evo.half_width = lambda t: p[9]
-        evo.tilt = lambda t: p[10]
-        evo.flattening = lambda t: p[11]
-        evo.pancaking = lambda t: p[12]
-        evo.flux = lambda t: p[13]
+        evo.latitude = lambda t: p[7]
+        evo.longitude = lambda t: p[8]
+        evo.poloidal_height = lambda t: p[9]
+        evo.half_width = lambda t: p[10]
+        evo.tilt = lambda t: p[11]
+        evo.flattening = lambda t: p[12]
+        evo.pancaking = lambda t: p[13]
+        evo.flux = lambda t: p[6]
         
         tm_mes = np.arange(
             t_mes[0]-delta_mes, 
@@ -200,7 +210,10 @@ def fit2insitu():
                 np.mean(btm_mes)
             )
         else:
-            return np.inf
+            # return np.inf
+            return 1.0
+
+        evo.flux = lambda t: p[14]
 
         tm_vex = np.arange(
             t_vex[0]-delta_vex, 
@@ -280,16 +293,17 @@ def fit2insitu():
                 ) for i in np.arange(bf_vex.shape[0])]
             )/np.pi/2.0
         else:
-            return np.inf
+            # return np.inf
+            return 1.0
         
-        evo.latitude = lambda t: p[14]
-        evo.longitude = lambda t: p[15]
-        evo.poloidal_height = lambda t: p[16]
-        evo.half_width = lambda t: p[17]
-        evo.tilt = lambda t: p[18]
-        evo.flattening = lambda t: p[19]
-        evo.pancaking = lambda t: p[20]
-        evo.flux = lambda t: p[21]
+        evo.latitude = lambda t: p[15]
+        evo.longitude = lambda t: p[16]
+        evo.poloidal_height = lambda t: p[17]
+        evo.half_width = lambda t: p[18]
+        evo.tilt = lambda t: p[19]
+        evo.flattening = lambda t: p[20]
+        evo.pancaking = lambda t: p[21]
+        evo.flux = lambda t: p[22]
 
         tm_sta = np.arange(
             t_sta[0]-delta_sta, 
@@ -384,7 +398,8 @@ def fit2insitu():
                 vmf_sta[i]
             ) for i in np.arange(vf_sta.shape[0])])/np.median(vf_sta)
         else:
-            return np.inf
+            # return np.inf
+            return 1.0
         
         res = np.mean(
             [
@@ -393,6 +408,9 @@ def fit2insitu():
                 fit_t_sta, fit_b_sta, fit_bt_sta, fit_vt_sta
             ]
         )
+
+        if res == np.inf:
+            res = 1.0
         
         if res < res_prev:
             res_prev = res
@@ -415,22 +433,23 @@ def fit2insitu():
             )
             print('SHARED sigma = ', p[4])
             print('SHARED twist = ', p[5])
-            print('MESSENGER latitude = ', u.rad.to(u.deg, p[6]))
-            print('MESSENGER longitude = ', u.rad.to(u.deg, p[7]))
-            print('MESSENGER poloidal_height = ', u.m.to(u.au, p[8]))
-            print('MESSENGER half_width = ', u.rad.to(u.deg, p[9]))
-            print('MESSENGER tilt = ', u.rad.to(u.deg, p[10]))
-            print('MESSENGER flattening = ', p[11])
-            print('MESSENGER pancaking = ', u.rad.to(u.deg, p[12]))
-            print('MESSENGER flux = ', p[13])
-            print('STEREO-A latitude = ', u.rad.to(u.deg, p[14]))
-            print('STEREO-A longitude = ', u.rad.to(u.deg, p[15]))
-            print('STEREO-A poloidal_height = ', u.m.to(u.au, p[16]))
-            print('STEREO-A half_width = ', u.rad.to(u.deg, p[17]))
-            print('STEREO-A tilt = ', u.rad.to(u.deg, p[18]))
-            print('STEREO-A flattening = ', p[19])
-            print('STEREO-A pancaking = ', u.rad.to(u.deg, p[20]))
-            print('STEREO-A flux = ', p[21])
+            print('MESSENGER flux = ', p[6])
+            print('Venus Express latitude = ', u.rad.to(u.deg, p[7]))
+            print('Venus Express longitude = ', u.rad.to(u.deg, p[8]))
+            print('Venus Express poloidal_height = ', u.m.to(u.au, p[9]))
+            print('Venus Express half_width = ', u.rad.to(u.deg, p[10]))
+            print('Venus Express tilt = ', u.rad.to(u.deg, p[11]))
+            print('Venus Express flattening = ', p[12])
+            print('Venus Express pancaking = ', u.rad.to(u.deg, p[13]))
+            print('Venus Express flux = ', p[14])
+            print('STEREO-A latitude = ', u.rad.to(u.deg, p[15]))
+            print('STEREO-A longitude = ', u.rad.to(u.deg, p[16]))
+            print('STEREO-A poloidal_height = ', u.m.to(u.au, p[17]))
+            print('STEREO-A half_width = ', u.rad.to(u.deg, p[18]))
+            print('STEREO-A tilt = ', u.rad.to(u.deg, p[19]))
+            print('STEREO-A flattening = ', p[20])
+            print('STEREO-A pancaking = ', u.rad.to(u.deg, p[21]))
+            print('STEREO-A flux = ', p[22])
             
             print(p)
 
@@ -481,93 +500,128 @@ def fit2insitu():
     0, 1, 2, 3: toroidal_height
     4: sigma
     5: twist
+    MES
+    6: flux
     MES & VEX
-    6: latitude
-    7: longitude
-    8: poloidal_height
-    9: half_width
-    10: tilt
-    11: flattening
-    12: pancaking
-    13: flux
+    7: latitude
+    8: longitude
+    9: poloidal_height
+    10: half_width
+    11: tilt
+    12: flattening
+    13: pancaking
+    VEX
+    14: flux
     STA
-    14: latitude
-    15: longitude
-    16: poloidal_height
-    17: half_width
-    18: tilt
-    19: flattening
-    20: pancaking
-    21: flux
+    15: latitude
+    16: longitude
+    17: poloidal_height
+    18: half_width
+    19: tilt
+    20: flattening
+    21: pancaking
+    22: flux
     """
 
     bounds = [
         # SHARED
         (5e-5, 5e-4),
-        tuple(u.Unit('km/s').to(u.Unit('m/s'), (900.0, 3500.0)).tolist()),
-        tuple(u.Unit('km/s').to(u.Unit('m/s'), (900.0, 2000.0)).tolist()),
-        tuple(u.Unit('km/s').to(u.Unit('m/s'), (900.0, 2000.0)).tolist()),
+        tuple(u.Unit('km/s').to(u.Unit('m/s'), (2000.0, 3000.0)).tolist()),
+        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 2000.0)).tolist()),
+        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 2000.0)).tolist()),
         (1.5, 2.5),
         (0.0, 2.0),
+        # MES
+        (1e13, 1e15),
         # MES & VEX
-        tuple(u.deg.to(u.rad, (0.0, 30.0)).tolist()),
-        tuple(u.deg.to(u.rad, (90.0, 140.0)).tolist()),
+        tuple(u.deg.to(u.rad, (0.0, 20.0)).tolist()),
+        tuple(u.deg.to(u.rad, (110.0, 130.0)).tolist()),
         tuple(u.au.to(u.m, (0.01, 0.1)).tolist()),
         tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
-        tuple(u.deg.to(u.rad, (20.0, 50.0)).tolist()),
-        (0.2, 0.6),
+        tuple(u.deg.to(u.rad, (30.0, 50.0)).tolist()),
+        (0.3, 0.5),
         tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
         (1e13, 1e15),
         # STA
-        tuple(u.deg.to(u.rad, (0.0, 30.0)).tolist()),
-        tuple(u.deg.to(u.rad, (90.0, 140.0)).tolist()),
+        tuple(u.deg.to(u.rad, (0.0, 20.0)).tolist()),
+        tuple(u.deg.to(u.rad, (110.0, 130.0)).tolist()),
         tuple(u.au.to(u.m, (0.01, 0.1)).tolist()),
         tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
-        tuple(u.deg.to(u.rad, (20.0, 50.0)).tolist()),
-        (0.2, 0.6),
+        tuple(u.deg.to(u.rad, (30.0, 50.0)).tolist()),
+        (0.3, 0.5),
         tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
         (1e13, 1e15),
     ]
+    
+    scaler.fit(np.array(bounds).T)
+
     # print(bounds)
 
-    x0 = [
-        # SHARED
-        9.31364197e-05,
-        u.Unit('km/s').to(u.Unit('m/s'), 1730.0),
-        u.Unit('km/s').to(u.Unit('m/s'), 1297.4),
-        u.Unit('km/s').to(u.Unit('m/s'), 1297.4),
-        2.0,
-        1.0,
-        # MES & VEX
-        latitude_cor,
-        longitude_cor,
-        u.au.to(u.m, 0.05),
-        half_width_cor,
-        tilt_cor,
-        flattening_cor,
-        pancaking_cor,
-        1e14,
-        # MES & VEX
-        latitude_cor,
-        longitude_cor,
-        u.au.to(u.m, 0.05),
-        half_width_cor,
-        tilt_cor,
-        flattening_cor,
-        pancaking_cor,
-        1e14,
-    ]
+    # x0 = [
+    #     # SHARED
+    #     9.31364197e-05,
+    #     u.Unit('km/s').to(u.Unit('m/s'), 1730.0),
+    #     u.Unit('km/s').to(u.Unit('m/s'), 1297.4),
+    #     u.Unit('km/s').to(u.Unit('m/s'), 1297.4),
+    #     2.0,
+    #     1.0,
+    #     #MES
+    #     1e14,
+    #     # MES & VEX
+    #     latitude_cor,
+    #     longitude_cor,
+    #     u.au.to(u.m, 0.05),
+    #     half_width_cor,
+    #     tilt_cor,
+    #     flattening_cor,
+    #     pancaking_cor,
+    #     1e14,
+    #     # MES & VEX
+    #     latitude_cor,
+    #     longitude_cor,
+    #     u.au.to(u.m, 0.05),
+    #     half_width_cor,
+    #     tilt_cor,
+    #     flattening_cor,
+    #     pancaking_cor,
+    #     1e14,
+    # ]
 
     x0 = [
-        9.90311992e-05, 1.73605129e+06, 1.36061929e+06, 1.81845722e+06,
-        2.26907906e+00, 6.55758356e-01, 1.58978808e-01, 2.31885762e+00,
-        5.46691783e+09, 4.64146029e-01, 6.06241660e-01, 4.67502888e-01,
-        6.71357126e-01, 9.10815435e+14, 4.57120756e-01, 2.13824198e+00,
-        8.93240859e+09, 6.20747419e-01, 4.16708844e-01, 3.82116808e-01,
-        5.59157374e-01, 1.42273842e+14
+        1.31666757e-04, 2.37902437e+06, 1.48360526e+06, 1.59657883e+06,
+        2.07623090e+00, 1.74626129e+00, 5.42002380e+14, 3.11186647e-01,
+        2.20582548e+00, 1.02981156e+10, 5.17779002e-01, 6.37336083e-01,
+        3.23500739e-01, 4.16565540e-01, 3.70338622e+14, 1.25820426e-01,
+        2.25558433e+00, 1.52234965e+09, 5.40723447e-01, 5.80782197e-01,
+        3.12601757e-01, 5.33754730e-01, 1.10498329e+13
     ]
 
-    res = differential_evolution(F, bounds=bounds)
+    # print(scaler.transform(np.array([x0])))
+
+    # print(scaler.transform(np.array(bounds).T).T.tolist())
+
+    # res = differential_evolution(F, bounds=bounds)
+    # res = fmin_l_bfgs_b(
+    #     F, 
+    #     x0=scaler.transform(np.array([x0]))[0].tolist(), 
+    #     approx_grad=True,
+    #     bounds=scaler.transform(np.array(bounds).T).T.tolist(),
+    #     epsilon=0.001
+    # )
+    res = basinhopping(
+        F,
+        x0=scaler.transform(np.array([x0]))[0].tolist(),
+        T=0.05,
+        stepsize=0.01,
+        minimizer_kwargs=dict(
+            method='L-BFGS-B',
+            bounds=scaler.transform(np.array(bounds).T).T.tolist(),
+            options=dict(
+                eps=0.001
+            )
+        ),
+        interval=20
+    )
     
     # print(res.x)
 
