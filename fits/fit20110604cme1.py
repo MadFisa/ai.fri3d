@@ -16,30 +16,32 @@ from astropy import table
 from matplotlib.colors import LogNorm
 from matplotlib import gridspec
 from scipy.interpolate import interp1d
-from scipy.optimize import differential_evolution, brute
+from scipy.optimize import differential_evolution, fmin_l_bfgs_b, basinhopping
 import time
 import calendar
 from fastdtw import fastdtw
 from scipy.spatial.distance import euclidean
+from sklearn import preprocessing
+from scipy.signal import savgol_filter
 
 res_prev = np.inf
+
+
 
 def fit2insitu():
 
     step = 600
 
     # COR & initial
-    latitude0 = u.deg.to(u.rad, 30.0)
-    longitude0 = u.deg.to(u.rad, 110.0)
-    toroidal_height0 = u.R_sun.to(u.m, 12.5)
-    poloidal_height0 = u.R_sun.to(u.m, 3.5)
-    half_width0 = u.deg.to(u.rad, 40.0)
-    tilt0 = u.deg.to(u.rad, 37.0)
-    flattening0 = 0.4
-    pancaking0 = u.deg.to(u.rad, 25.0)
+    latitude_cor = u.deg.to(u.rad, 30.0)
+    longitude_cor = u.deg.to(u.rad, 110.0)
+    toroidal_height_cor = u.R_sun.to(u.m, 12.5)
+    poloidal_height_cor = u.R_sun.to(u.m, 3.5)
+    half_width_cor = u.deg.to(u.rad, 40.0)
+    tilt_cor = u.deg.to(u.rad, 37.0)
+    flattening_cor = 0.4
+    pancaking_cor = u.deg.to(u.rad, 25.0)
     skew = 0.0
-    twist = np.array([0.1, 2.0])
-    flux = np.array([1e13, 1e15])
     polarity = -1.0
     chirality = 1.0
     d0 = datetime(2011, 6, 4, 8, 54)
@@ -56,7 +58,7 @@ def fit2insitu():
     d_mes, b_mes, _, p_mes = getMES(d0_mes, d1_mes)
     t_mes = np.array([calendar.timegm(x.timetuple()) for x in d_mes])
     bt_mes = np.mean(np.sqrt(b_mes[:,0]**2+b_mes[:,1]**2+b_mes[:,2]**2))
-    delta_mes = 10*3600
+    delta_mes = 30*3600
 
     # VEX
     d0_vex = datetime(2011, 6, 5, 8, 45)
@@ -64,37 +66,21 @@ def fit2insitu():
     t0_vex = calendar.timegm(d0_vex.timetuple())
     t1_vex = calendar.timegm(d1_vex.timetuple())
     d_vex, b_vex, _, p_vex = getVEX(d0_vex, d1_vex)
+    b_vex = savgol_filter(b_vex, int(d_vex.size/2.0//2*2+1), 3, axis=0)
     t_vex = np.array([calendar.timegm(x.timetuple()) for x in d_vex])
     bt_vex = np.sqrt(b_vex[:,0]**2+b_vex[:,1]**2+b_vex[:,2]**2)
-    delta_vex = 10*3600
-
-    print(
-        np.median(u.rad.to(u.deg, np.arctan(b_vex[:,1]/b_vex[:,0]))),
-        np.median(u.rad.to(u.deg, np.arctan(b_vex[:,2]/np.sqrt(b_vex[:,0]**2+b_vex[:,1]**2))))
-    )
-
-    # plt.plot(u.rad.to(u.deg, np.arctan(b_vex[:,1]/b_vex[:,0])))
-    # plt.plot(u.rad.to(u.deg, np.arctan(b_vex[:,2]/np.sqrt(b_vex[:,0]**2+b_vex[:,1]**2))))
-    # plt.show()
+    delta_vex = 30*3600
 
     # STA
     d0_sta = datetime(2011, 6, 6, 12, 25)
     d1_sta = datetime(2011, 6, 6, 14, 10)
     t0_sta = calendar.timegm(d0_sta.timetuple())
     t1_sta = calendar.timegm(d1_sta.timetuple())
-    d_sta, b_sta, v_sta, p_sta = getSTA(d0_sta, d1_sta)
+    d_sta, b_sta, _, p_sta = getSTA(d0_sta, d1_sta)
+    b_sta = savgol_filter(b_sta, int(d_sta.size/2.0//2*2+1), 3, axis=0)
     t_sta = np.array([calendar.timegm(x.timetuple()) for x in d_sta])
     bt_sta = np.sqrt(b_sta[:,0]**2+b_sta[:,1]**2+b_sta[:,2]**2)
     
-    print(
-        np.median(u.rad.to(u.deg, np.arctan(b_sta[:,1]/b_sta[:,0]))),
-        np.median(u.rad.to(u.deg, np.arctan(b_sta[:,2]/np.sqrt(b_sta[:,0]**2+b_sta[:,1]**2))))
-    )
-    
-    # plt.plot(u.rad.to(u.deg, np.arctan(b_sta[:,1]/b_sta[:,0])))
-    # plt.plot(u.rad.to(u.deg, np.arctan(b_sta[:,2]/np.sqrt(b_sta[:,0]**2+b_sta[:,1]**2))))
-    # plt.show()
-
     cdas.set_cache(True, './data')
     data = cdas.get_data(
         'sp_phys', 
@@ -111,118 +97,74 @@ def fit2insitu():
         kind='linear',
         fill_value='extrapolate'
     )
-
     v_sta = u.Unit('km/s').to(u.Unit('m/s'), f(t_sta))
+    v_sta = savgol_filter(v_sta, int(v_sta.size/2.0//2*2+1), 3)
 
-    delta_sta = 10*3600
+    delta_sta = 30*3600
 
     di = datetime(2011, 6, 5, 11, 30)
     ti = calendar.timegm(di.timetuple())
 
+    scaler = preprocessing.MinMaxScaler()
+    
     def F(p):
         global res_prev
+        p = scaler.inverse_transform(np.array([p]))[0].tolist()
+        """
+        SHARED
+        0, 1, 2, 3: toroidal_height
+        4: sigma
+        5: twist
+        MES
+        6: flux
+        MES & VEX
+        7: latitude
+        8: longitude
+        9: poloidal_height
+        10: half_width
+        11: tilt
+        12: flattening
+        13: pancaking
+        VEX
+        14: flux
+        STA
+        15: latitude
+        16: longitude
+        17: poloidal_height
+        18: half_width
+        19: tilt
+        20: flattening
+        21: pancaking
+        22: flux
+        """
         evo = Evolution()
-
-        # theta0 = latitude0
-        # theta1 = p[0]
-        # atheta = p[1]
-        # theta1 = p[0]
-        # atheta = p[1]
-
-        # evo.latitude = lambda t: (
-        #     (theta0-theta1)*np.exp(-atheta*(t-t0))+theta1
-        # )
-        evo.latitude = lambda t: p[0]
-
-        # phi0 = longitude0
-        # vphi = p[2]
-        # vphi = p[2]
-
-        # evo.longitude = lambda t: phi0+vphi*(t-t0)
-        evo.longitude = lambda t: p[1]
-
-        Rt0 = toroidal_height0
-        # aRt = p[3]
-        # v0Rt = p[4]
-        # v1Rt = p[5]
-        # aRt = p[3]
-        # v0Rt = p[4]
-        # v1Rt = p[5]
-
-        aRt = p[2]
-        v0Rt = p[3]
-        v1Rt = p[4]
-
-        if v0Rt < v1Rt:
-            return np.inf
-
-        # evo.toroidal_height = lambda t: (
-        #     (1.0-np.exp(-aRt*(t-t0)))*(v0Rt*(t-t0)+(dRt-Rt0))+Rt0
-        #     if t <= ti else
-        #     (1.0-np.exp(-aRt*(ti-t0)))*(v0Rt*(ti-t0)+(dRt-Rt0))+Rt0+v1Rt*(t-ti)
-        # )
+        if p[1] < p[2]:
+            # return np.inf
+            return np.nan
+            # return 1.0
         evo.toroidal_height = lambda t: (
-            (v0Rt-v1Rt)/aRt*(1.0-np.exp(-aRt*(t-t0)))+v1Rt*(t-t0)+Rt0
+            (p[1]-p[2])/p[0]*(1.0-np.exp(-p[0]*(t-t0)))+p[2]*(t-t0)+
+            toroidal_height_cor
+            if t <= ti else
+            (p[1]-p[2])/p[0]*(1.0-np.exp(-p[0]*(ti-t0)))+p[2]*(ti-t0)+
+            toroidal_height_cor+
+            p[3]*(t-ti)
         )
-
-        # Rp0 = poloidal_height0
-        # Rp1 = p[6]
-        # aRp = p[7]
-        # Rp1 = p[6]
-        # aRp = p[7]
-        
-        # evo.poloidal_height = lambda t: (Rp0-Rp1)*np.exp(-aRp*(t-t0))+Rp1
-        evo.poloidal_height = lambda t: p[5]
-
-        phihw0 = half_width0
-        vphihw = 0.0
-
-        evo.half_width = lambda t: vphihw*(t-t0)+phihw0
-
-        # gamma0 = tilt0
-        # vgamma = p[8]
-        # vgamma = p[8]
-        
-        # evo.tilt = lambda t: vgamma*(t-t0)+gamma0
-        evo.tilt = lambda t: p[6]
-
-        evo.flattening = lambda t: flattening0
-        # evo.flattening = lambda t: p[9]
-
-        thetap0 = pancaking0
-        # vthetap = p[9]
-        # vthetap = args[9]
-
-        # evo.pancaking = lambda t: vthetap*(t-t0)+thetap0
-        evo.pancaking = lambda t: thetap0
-
+        evo.sigma = lambda t: p[4]
+        evo.twist = lambda t: p[5]
         evo.skew = lambda t: skew
-
-        # tau_vex = p[10]
-        # tau_sta = p[11]
-        # evo.twist = lambda t: tau_vex
-
-        # tau = p[9]
-        # evo.twist = lambda t: tau
-        evo.twist = lambda t: p[7]
-
-        # F_mes = p[12]
-        # F_vex = p[13]
-        # F_sta = p[14]
-        # F_mes = F_vex = F_sta = 5e14
-        # F = p[10]
-        # evo.flux = lambda t: F
-        evo.flux = lambda t: p[8]
-
-        # evo.sigma = lambda t: p[15]
-        evo.sigma = lambda t: 2.0
-
         evo.polarity = polarity
         evo.chirality = chirality
-        # evo.spline_s_phi_kind = spline_s_phi_kind
-        # evo.spline_s_phi_n = spline_s_phi_n
 
-        """
+        evo.latitude = lambda t: p[7]
+        evo.longitude = lambda t: p[8]
+        evo.poloidal_height = lambda t: p[9]
+        evo.half_width = lambda t: p[10]
+        evo.tilt = lambda t: p[11]
+        evo.flattening = lambda t: p[12]
+        evo.pancaking = lambda t: p[13]
+        evo.flux = lambda t: p[6]
+        
         tm_mes = np.arange(
             t_mes[0]-delta_mes, 
             t_mes[0]+delta_mes, 
@@ -263,26 +205,22 @@ def fit2insitu():
         fit_bt_mes = np.inf
 
         if nzi_mes.size > 1 and nzi_mes[0] != 0:
-            # pre_delta_mes = np.abs(tm_mes[nzi_mes[0]]-t0_mes)
-
             tm_mes = tm_mes[nzi_mes]
             bm_mes = bm_mes[nzi_mes,:]
             btm_mes = btm_mes[nzi_mes]
 
             fit_t_mes = np.abs(tm_mes[0]-t_mes[0])/(t_vex[-1]-t_vex[0])
             fit_bt_mes = (
-                np.abs(np.mean(btm_mes)-bt_mes)/
-                np.mean(btm_mes)
+                np.abs(np.median(btm_mes)-bt_mes)/
+                np.median(btm_mes)
             )
-            # print('MES | ', fit_t_mes, fit_b_mes)
-
-            # m = np.logical_not(np.isnan(btm_mes))
-            # bt_delta_mes = np.abs(np.mean(btm_mes[nzi_mes])-bt_mes)
-            # bt_rel_mes = bt_delta_mes/np.mean(btm_mes[nzi_mes])
-            # print(np.mean(btm_mes[m]), bt_mes)
         else:
-            return np.inf
-        """
+            # return np.inf
+            return np.nan
+            # return 1.0
+
+        evo.flux = lambda t: p[14]
+
         tm_vex = np.arange(
             t_vex[0]-delta_vex, 
             t_vex[-1]+delta_vex, 
@@ -350,7 +288,7 @@ def fit2insitu():
             btf_vex = np.sqrt(bf_vex[:,0]**2+bf_vex[:,1]**2+bf_vex[:,2]**2)
             bmf_vex = f(t_vex[m])
             btmf_vex = np.sqrt(bmf_vex[:,0]**2+bmf_vex[:,1]**2+bmf_vex[:,2]**2)
-            fit_bt_vex = np.median(np.abs(btf_vex-btmf_vex))/np.median(btf_vex)
+            fit_bt_vex = np.median(np.abs(btf_vex-btmf_vex)/btf_vex)
             fit_b_vex = np.median(
                 [np.abs(
                     np.arccos(
@@ -361,8 +299,19 @@ def fit2insitu():
                 ) for i in np.arange(bf_vex.shape[0])]
             )/np.pi/2.0
         else:
-            return np.inf
-        """
+            # return np.inf
+            return np.nan
+            # return 1.0
+        
+        evo.latitude = lambda t: p[15]
+        evo.longitude = lambda t: p[16]
+        evo.poloidal_height = lambda t: p[17]
+        evo.half_width = lambda t: p[18]
+        evo.tilt = lambda t: p[19]
+        evo.flattening = lambda t: p[20]
+        evo.pancaking = lambda t: p[21]
+        evo.flux = lambda t: p[22]
+
         tm_sta = np.arange(
             t_sta[0]-delta_sta, 
             t_sta[-1]+delta_sta, 
@@ -402,7 +351,7 @@ def fit2insitu():
         fit_t_sta = np.inf
         fit_b_sta = np.inf
         fit_bt_sta = np.inf
-        fit_v_sta = np.inf
+        fit_vt_sta = np.inf
 
         if (nzi_sta.size > 1 and 
                 nzi_sta[0] != 0 and 
@@ -432,7 +381,7 @@ def fit2insitu():
             btf_sta = np.sqrt(bf_sta[:,0]**2+bf_sta[:,1]**2+bf_sta[:,2]**2)
             bmf_sta = f(t_sta[m])
             btmf_sta = np.sqrt(bmf_sta[:,0]**2+bmf_sta[:,1]**2+bmf_sta[:,2]**2)
-            fit_bt_sta = np.median(np.abs(btf_sta-btmf_sta))/np.median(btf_sta)
+            fit_bt_sta = np.median(np.abs(btf_sta-btmf_sta)/btf_sta)
             fit_b_sta = np.median(
                 [np.abs(
                     np.arccos(
@@ -451,60 +400,64 @@ def fit2insitu():
             )
             vf_sta = v_sta[m]
             vmf_sta = f(t_sta[m])
-            fit_v_sta = np.median([euclidean(
-                vf_sta[i],
-                vmf_sta[i]
-            ) for i in np.arange(vf_sta.shape[0])])/np.median(vf_sta)
-
+            fit_vt_sta = np.median(np.abs(vf_sta-vmf_sta)/vf_sta)
         else:
-            return np.inf
-        """
+            # return np.inf
+            return np.nan
+            # return 1.0
         
-        res = np.mean([fit_t_vex, fit_b_vex, fit_bt_vex])
-        # res = np.mean([fit_t_sta, fit_b_sta, fit_bt_sta, fit_v_sta])
+        res = np.mean(
+            [
+                fit_t_mes, fit_bt_mes, 
+                fit_t_vex, fit_b_vex, fit_bt_vex,
+                fit_t_sta, fit_b_sta, fit_bt_sta, fit_vt_sta
+            ]
+        )
+
+        if res == np.inf:
+            # res = 1.0
+            res = np.nan
         
         if res < res_prev:
             res_prev = res
-            # print('MESSENGER: ', fit_t_mes, fit_bt_mes)
+            print('MESSENGER: ', fit_t_mes, fit_bt_mes)
             print('VEX: ', fit_t_vex, fit_b_vex, fit_bt_vex)
-            # print('STEREO-A: ', fit_t_sta, fit_b_sta, fit_bt_sta, fit_v_sta)
+            print('STEREO-A: ', fit_t_sta, fit_b_sta, fit_bt_sta, fit_vt_sta)
             print('AVERAGE: ', res)
-            print(p)
-            # print(
-            #     u.rad.to(u.deg, evo.latitude(t0_sta)),
-            #     u.rad.to(u.deg, evo.longitude(t0_sta)),
-            #     u.rad.to(u.deg, evo.tilt(t0_sta))
-            # )
+            print('toroidal_height decay = ', p[0])
             print(
-                u.rad.to(u.deg, evo.latitude(t0_vex)),
-                u.rad.to(u.deg, evo.longitude(t0_vex)),
-                u.rad.to(u.deg, evo.tilt(t0_vex))
+                'SHARED toroidal_height speed = ', 
+                u.Unit('m/s').to(u.Unit('km/s'), p[1])
             )
-            # print(
-                # u.rad.to(u.deg, p[0]),
-                # p[1],
-                # u.rad.to(u.deg, p[2]),
-                # p[3],
-                # u.Unit('m/s').to(u.Unit('km/s'), p[4]),
-                # # u.m.to(u.R_sun, p[5]),
-                # u.Unit('m/s').to(u.Unit('km/s'), p[6]),
-                # u.m.to(u.au, p[7]),
-                # p[8],
-                # u.rad.to(u.deg, p[9]),
-            #     p[10],
-            #     p[11],
-            #     p[12],
-            # )
-
-            # tm_vex = t_vex[nzi_vex]
-            # bm_vex = bm_vex[nzi_vex,:]
-            # tm_sta = t_sta[nzi_sta]
-            # bm_sta = bm_sta[nzi_sta,:]
-
-            # print(
-            #     (np.abs(tm_vex[0]-t_vex[0])+np.abs(tm_vex[-1]-t_vex[-1]))/
-            #     (t_vex[-1]-t_vex[0])
-            # )
+            print(
+                'SHARED toroidal_height speed = ', 
+                u.Unit('m/s').to(u.Unit('km/s'), p[2])
+            )
+            print(
+                'SHARED toroidal_height speed = ', 
+                u.Unit('m/s').to(u.Unit('km/s'), p[3])
+            )
+            print('SHARED sigma = ', p[4])
+            print('SHARED twist = ', p[5])
+            print('MESSENGER flux = ', p[6])
+            print('Venus Express latitude = ', u.rad.to(u.deg, p[7]))
+            print('Venus Express longitude = ', u.rad.to(u.deg, p[8]))
+            print('Venus Express poloidal_height = ', u.m.to(u.au, p[9]))
+            print('Venus Express half_width = ', u.rad.to(u.deg, p[10]))
+            print('Venus Express tilt = ', u.rad.to(u.deg, p[11]))
+            print('Venus Express flattening = ', p[12])
+            print('Venus Express pancaking = ', u.rad.to(u.deg, p[13]))
+            print('Venus Express flux = ', p[14])
+            print('STEREO-A latitude = ', u.rad.to(u.deg, p[15]))
+            print('STEREO-A longitude = ', u.rad.to(u.deg, p[16]))
+            print('STEREO-A poloidal_height = ', u.m.to(u.au, p[17]))
+            print('STEREO-A half_width = ', u.rad.to(u.deg, p[18]))
+            print('STEREO-A tilt = ', u.rad.to(u.deg, p[19]))
+            print('STEREO-A flattening = ', p[20])
+            print('STEREO-A pancaking = ', u.rad.to(u.deg, p[21]))
+            print('STEREO-A flux = ', p[22])
+            
+            print(p)
 
             d_vex = np.array(
                 [datetime.utcfromtimestamp(t) for t in t_vex]
@@ -512,17 +465,16 @@ def fit2insitu():
             dm_vex = np.array(
                 [datetime.utcfromtimestamp(t) for t in tm_vex]
             )
-            """
             d_sta = np.array(
                 [datetime.utcfromtimestamp(t) for t in t_sta]
             )
             dm_sta = np.array(
                 [datetime.utcfromtimestamp(t) for t in tm_sta]
             )
-            """
             plt.close('all')
             fig = plt.figure()
-            # plt.subplots_adjust(hspace=0.001)
+            plt.subplots_adjust(hspace=0.001)
+            
             ax1 = fig.add_subplot(211)
             ax1.plot(t_vex, bt_vex, 'k')
             ax1.plot(t_vex, b_vex[:,0], 'r')
@@ -532,7 +484,6 @@ def fit2insitu():
             ax1.plot(tm_vex, bm_vex[:,0], '--r')
             ax1.plot(tm_vex, bm_vex[:,1], '--g')
             ax1.plot(tm_vex, bm_vex[:,2], '--b')
-            """
             ax2 = fig.add_subplot(212)
             ax2.plot(t_sta, bt_sta, 'k')
             ax2.plot(t_sta, b_sta[:,0], 'r')
@@ -542,8 +493,7 @@ def fit2insitu():
             ax2.plot(tm_sta, bm_sta[:,0], '--r')
             ax2.plot(tm_sta, bm_sta[:,1], '--g')
             ax2.plot(tm_sta, bm_sta[:,2], '--b')
-            """
-            # plt.setp(ax1.get_xticklabels(), visible=False)
+            plt.setp(ax1.get_xticklabels(), visible=False)
             plt.ion()
             plt.draw()
             plt.pause(0.001)
@@ -551,200 +501,76 @@ def fit2insitu():
 
         return res
 
-    # 0: theta1
-    # 1: atheta
-    # 2: vphi
-    # 3: aRt
-    # 4: v0Rt
-    # 5: dRt
-    # 6: v1Rt
-    # 7: Rp1
-    # 8: aRp
-    # 9: vgamma
-    # 10: tau
-    # 11: F
+    """
+    SHARED
+    0, 1, 2, 3: toroidal_height
+    4: sigma
+    5: twist
+    MES
+    6: flux
+    MES & VEX
+    7: latitude
+    8: longitude
+    9: poloidal_height
+    10: half_width
+    11: tilt
+    12: flattening
+    13: pancaking
+    VEX
+    14: flux
+    STA
+    15: latitude
+    16: longitude
+    17: poloidal_height
+    18: half_width
+    19: tilt
+    20: flattening
+    21: pancaking
+    22: flux
+    """
 
-    # geometrical fit
-    # bounds = [
-    #     u.deg.to(u.rad, (-5.0, 5.0)),
-    #     (5e-5, 5e-4),
-    #     u.deg.to(u.rad, (-10.0, 10.0))/(t0_sta-t0),
-    #     (5e-5, 5e-4),
-    #     u.Unit('km/s').to(u.Unit('m/s'), (900.0, 2000.0)),
-    #     # u.R_sun.to(u.m, (10.0, 100.0)),
-    #     u.R_sun.to(u.m, (10.0, 10.0)), # unused
-    #     u.Unit('km/s').to(u.Unit('m/s'), (900.0, 2000.0)),
-    #     u.au.to(u.m, (0.01, 0.1)),
-    #     (5e-5, 5e-4),
-    #     u.deg.to(u.rad, (-20.0, 20.0))/(t0_sta-t0),
-    #     (0.5, 0.5),
-    #     (1e14, 1e14),
-    # ]
-    
     bounds = [
-        u.deg.to(u.rad, (0.0, 30.0)),
-        # u.deg.to(u.rad, (60.0, 90.0)),
-        u.deg.to(u.rad, (105.0, 125.0)),
-        (5e-5, 5e-4),
-        u.Unit('km/s').to(u.Unit('m/s'), (900.0, 2000.0)),
-        u.Unit('km/s').to(u.Unit('m/s'), (900.0, 2000.0)),
-        u.au.to(u.m, (0.01, 0.1)),
-        u.deg.to(u.rad, (35.0, 55.0)),
-        (0.0, 0.3),
-        (1e13, 1e15),
-        # (0.3, 0.5),
+        # SHARED
+        (1e-3, 1e-2),
+        tuple(u.Unit('km/s').to(u.Unit('m/s'), (900.0, 1500.0)).tolist()),
+        tuple(u.Unit('km/s').to(u.Unit('m/s'), (900.0, 1500.0)).tolist()),
+        tuple(u.Unit('km/s').to(u.Unit('m/s'), (900.0, 1500.0)).tolist()),
+        (1.6, 2.0),
+        (0.0, 1.0),
+        # MES
+        (1e14, 1e15),
+        # MES & VEX
+        tuple(u.deg.to(u.rad, (0.0, 30.0)).tolist()),
+        tuple(u.deg.to(u.rad, (110.0, 140.0)).tolist()),
+        tuple(u.au.to(u.m, (0.01, 0.1)).tolist()),
+        tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
+        tuple(u.deg.to(u.rad, (30.0, 50.0)).tolist()),
+        (0.3, 0.5),
+        tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
+        (1e14, 1e15),
+        # STA
+        tuple(u.deg.to(u.rad, (0.0, 30.0)).tolist()),
+        tuple(u.deg.to(u.rad, (110.0, 140.0)).tolist()),
+        tuple(u.au.to(u.m, (0.01, 0.1)).tolist()),
+        tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
+        tuple(u.deg.to(u.rad, (30.0, 70.0)).tolist()),
+        (0.3, 0.5),
+        tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
+        (1e13, 1e14),
     ]
+    
+    scaler.fit(np.array(bounds).T)
 
-
-    # bounds = [
-    #     u.deg.to(u.rad, (-10.0, 30.0)),
-    #     (5e-5, 5e-4),
-    #     u.deg.to(u.rad, (-20.0, 20.0))/(t0_sta-t0),
-    #     (5e-5, 5e-4),
-    #     u.Unit('km/s').to(u.Unit('m/s'), (900.0, 2000.0)),
-    #     u.Unit('km/s').to(u.Unit('m/s'), (900.0, 2000.0)),
-    #     u.au.to(u.m, (0.01, 0.1)),
-    #     (5e-5, 5e-4),
-    #     u.deg.to(u.rad, (-20.0, 20.0))/(t0_sta-t0),
-    #     (0.0, 1.0),
-    #     (1e13, 1e15),
-    #     # (1.5, 2.5),
-    #     # (1e13, 1e15),
-    #     # (1e13, 1e15),
-    #     # (2.0, 2.0),
-    # ]
-
-    """
-    fix everything except Rt
-    """
-
-    # magnetic fit
-    # bounds = [
-    #     (-2.04958689e-02, -2.04958689e-02),
-    #     (3.06500305e-04, 3.06500305e-04),
-    #     (3.46095731e-07, 3.46095731e-07),
-    #     (1.42307095e-04, 1.42307095e-04),
-    #     (1.55585227e+06, 1.55585227e+06),
-    #     (1.05521505e+06, 1.05521505e+06),
-    #     (6.72004614e+09, 6.72004614e+09),
-    #     (4.03800688e-04, 4.03800688e-04),
-    #     (-5.62764276e-07, -5.62764276e-07),
-    #     (0.0, 5.0),
-    #     (1e13, 1e15),
-    #     (2.0, 2.0),
-    # ]
-    # bounds = [
-    #     (0.0, 1.0),
-    #     (1.5, 2.5),
-    # ]
-    # args = [
-    #     -2.04958689e-02,
-    #     3.06500305e-04,
-    #     3.46095731e-07,
-    #     1.42307095e-04,
-    #     1.55585227e+06,
-    #     1.05521505e+06,
-    #     6.72004614e+09,
-    #     4.03800688e-04,
-    #     -5.62764276e-07,
-    # ]
-
-
-
-    # res = differential_evolution(F, bounds=bounds, args=args, 
-    #     popsize=10, mutation=(1.0,1.9), recombination=0.2)
-    res = differential_evolution(F, bounds=bounds)
-    # res = brute(F, ranges=bounds)
-
-    print(res.x)
-
+    res = differential_evolution(
+        F, 
+        bounds=scaler.transform(np.array(bounds).T).T.tolist(),
+        strategy='best2bin',
+        popsize=10,
+        mutation=(0.1, 1.0),
+        recombination=0.1,
+        polish=False
+    )
+    
     return res
 
 fit2insitu()
-
-def fitshell():
-    theta0 = u.deg.to(u.rad, 34.0)
-    phi0 = u.deg.to(u.rad, 130.0)
-    Rt0 = u.R_sun.to(u.m, 12.0)
-    Rp0 = u.R_sun.to(u.m, 3.0)
-    thetaHW0 = u.deg.to(u.rad, 44.0)
-    gamma0 = u.deg.to(u.rad, -35.0)
-    n0 = 0.3
-    thetaP0 = u.deg.to(u.rad, 18.0)
-
-    polarity = 1.0
-    chirality = 1.0
-    spline_s_phi_kind='cubic',
-    spline_s_phi_n=500
-
-    t0 = datetime(2011, 6, 4, 8, 54)
-
-    theta = lambda t: (theta0-theta1)*np.exp(-atheta*(t-t0))+theta1
-    gamma = lambda t: agamma*t+gamma0
-    Rp = lambda t: (Rp0-Rp1)*np.exp(-aRp*(t-t0))+Rp1
-    Rt = lambda t: aRt*t+Rt0 if t <= ti else bRt*t+aRt*ti+Rt0
-
-    # To fit
-    # theta1
-    # atheta
-    # agamma
-    # Rp1
-    # aRp
-    # aRt
-    # bRt
-
-    # flux
-    # twist
-    # sigma
-
-    step = 600
-
-    t1 = datetime(2011, 6, 7, 18)
-
-    t = np.arange(
-        calendar.timegm(t0.timetuple()),
-        calendar.timegm(t1.timetuple()),
-        step
-    )
-
-    fr = FRi3D()
-    fr.polarity = polarity
-    fr.chirality = chirality
-    fr.spline_s_phi_kind = spline_s_phi_kind
-    fr.spline_s_phi_n = spline_s_phi_n
-    b = []
-    v = []
-
-    for i, t in enumerate(t):
-        fr.latitude = self.latitude(t)
-        fr.longitude = self.longitude(t)
-        fr.toroidal_height = self.toroidal_height(t)
-        fr.poloidal_height = self.poloidal_height(t)
-        fr.half_width = self.half_width(t)
-        fr.tilt = self.tilt(t)
-        fr.flattening = self.flattening(t)
-        fr.pancaking = self.pancaking(t)
-        fr.skew = self.skew(t)
-        fr.twist = self.twist(t)
-        fr.flux = self.flux(t)
-        fr.sigma = self.sigma(t)
-        if i == 0:
-            fr.toroidal_height = 1.0
-            fr.init()
-            fr._unit_spline_initial_axis_s_phi = \
-                fr._spline_initial_axis_s_phi
-            fr.toroidal_height = self.toroidal_height(t)
-            fr.init()
-        # valid if flattening, half width and flux stay constant
-        fr._spline_initial_axis_s_phi = lambda s: \
-            fr._unit_spline_initial_axis_s_phi(s/fr.toroidal_height)
-        b_, c_ = fr.data(x, y, z)
-        if b_.size == 0:
-            b_ = np.array([0.0, 0.0, 0.0])
-        if c_.size == 0:
-            c_ = np.array([0.0, 0.0])
-        b.append(b_.ravel())
-        v.append(
-            c_[0]*(self.toroidal_height(t)-self.toroidal_height(t-1))+
-            c_[1]*(self.poloidal_height(t)-self.poloidal_height(t-1))
-        )

@@ -22,6 +22,7 @@ import calendar
 from fastdtw import fastdtw
 from scipy.spatial.distance import euclidean
 from sklearn import preprocessing
+from scipy.signal import savgol_filter
 
 res_prev = np.inf
 
@@ -65,6 +66,7 @@ def fit2insitu():
     t0_vex = calendar.timegm(d0_vex.timetuple())
     t1_vex = calendar.timegm(d1_vex.timetuple())
     d_vex, b_vex, _, p_vex = getVEX(d0_vex, d1_vex)
+    b_vex = savgol_filter(b_vex, int(d_vex.size/2.0//2*2+1), 3, axis=0)
     t_vex = np.array([calendar.timegm(x.timetuple()) for x in d_vex])
     bt_vex = np.sqrt(b_vex[:,0]**2+b_vex[:,1]**2+b_vex[:,2]**2)
     delta_vex = 30*3600
@@ -74,7 +76,8 @@ def fit2insitu():
     d1_sta = datetime(2011, 6, 7, 1)
     t0_sta = calendar.timegm(d0_sta.timetuple())
     t1_sta = calendar.timegm(d1_sta.timetuple())
-    d_sta, b_sta, v_sta, p_sta = getSTA(d0_sta, d1_sta)
+    d_sta, b_sta, _, p_sta = getSTA(d0_sta, d1_sta)
+    b_sta = savgol_filter(b_sta, int(d_sta.size/2.0//2*2+1), 3, axis=0)
     t_sta = np.array([calendar.timegm(x.timetuple()) for x in d_sta])
     bt_sta = np.sqrt(b_sta[:,0]**2+b_sta[:,1]**2+b_sta[:,2]**2)
 
@@ -95,6 +98,7 @@ def fit2insitu():
         fill_value='extrapolate'
     )
     v_sta = u.Unit('km/s').to(u.Unit('m/s'), f(t_sta))
+    v_sta = savgol_filter(v_sta, int(v_sta.size/2.0//2*2+1), 3)
     
     delta_sta = 30*3600
 
@@ -136,7 +140,8 @@ def fit2insitu():
         evo = Evolution()
         if p[1] < p[2]:
             # return np.inf
-            return 1.0
+            return np.nan
+            # return 1.0
         evo.toroidal_height = lambda t: (
             (p[1]-p[2])/p[0]*(1.0-np.exp(-p[0]*(t-t0)))+p[2]*(t-t0)+
             toroidal_height_cor
@@ -206,12 +211,13 @@ def fit2insitu():
 
             fit_t_mes = np.abs(tm_mes[0]-t_mes[0])/(t_vex[-1]-t_vex[0])
             fit_bt_mes = (
-                np.abs(np.mean(btm_mes)-bt_mes)/
-                np.mean(btm_mes)
+                np.abs(np.median(btm_mes)-bt_mes)/
+                np.median(btm_mes)
             )
         else:
             # return np.inf
-            return 1.0
+            return np.nan
+            # return 1.0
 
         evo.flux = lambda t: p[14]
 
@@ -282,7 +288,7 @@ def fit2insitu():
             btf_vex = np.sqrt(bf_vex[:,0]**2+bf_vex[:,1]**2+bf_vex[:,2]**2)
             bmf_vex = f(t_vex[m])
             btmf_vex = np.sqrt(bmf_vex[:,0]**2+bmf_vex[:,1]**2+bmf_vex[:,2]**2)
-            fit_bt_vex = np.median(np.abs(btf_vex-btmf_vex))/np.median(btf_vex)
+            fit_bt_vex = np.median(np.abs(btf_vex-btmf_vex)/btf_vex)
             fit_b_vex = np.median(
                 [np.abs(
                     np.arccos(
@@ -294,7 +300,8 @@ def fit2insitu():
             )/np.pi/2.0
         else:
             # return np.inf
-            return 1.0
+            return np.nan
+            # return 1.0
         
         evo.latitude = lambda t: p[15]
         evo.longitude = lambda t: p[16]
@@ -374,7 +381,7 @@ def fit2insitu():
             btf_sta = np.sqrt(bf_sta[:,0]**2+bf_sta[:,1]**2+bf_sta[:,2]**2)
             bmf_sta = f(t_sta[m])
             btmf_sta = np.sqrt(bmf_sta[:,0]**2+bmf_sta[:,1]**2+bmf_sta[:,2]**2)
-            fit_bt_sta = np.median(np.abs(btf_sta-btmf_sta))/np.median(btf_sta)
+            fit_bt_sta = np.median(np.abs(btf_sta-btmf_sta)/btf_sta)
             fit_b_sta = np.median(
                 [np.abs(
                     np.arccos(
@@ -393,13 +400,11 @@ def fit2insitu():
             )
             vf_sta = v_sta[m]
             vmf_sta = f(t_sta[m])
-            fit_vt_sta = np.median([euclidean(
-                vf_sta[i],
-                vmf_sta[i]
-            ) for i in np.arange(vf_sta.shape[0])])/np.median(vf_sta)
+            fit_vt_sta = np.median(np.abs(vf_sta-vmf_sta)/vf_sta)
         else:
             # return np.inf
-            return 1.0
+            return np.nan
+            # return 1.0
         
         res = np.mean(
             [
@@ -410,7 +415,8 @@ def fit2insitu():
         )
 
         if res == np.inf:
-            res = 1.0
+            # res = 1.0
+            res = np.nan
         
         if res < res_prev:
             res_prev = res
@@ -453,45 +459,45 @@ def fit2insitu():
             
             print(p)
 
-            # d_vex = np.array(
-            #     [datetime.utcfromtimestamp(t) for t in t_vex]
-            # )
-            # dm_vex = np.array(
-            #     [datetime.utcfromtimestamp(t) for t in tm_vex]
-            # )
-            # d_sta = np.array(
-            #     [datetime.utcfromtimestamp(t) for t in t_sta]
-            # )
-            # dm_sta = np.array(
-            #     [datetime.utcfromtimestamp(t) for t in tm_sta]
-            # )
-            # plt.close('all')
-            # fig = plt.figure()
-            # plt.subplots_adjust(hspace=0.001)
+            d_vex = np.array(
+                [datetime.utcfromtimestamp(t) for t in t_vex]
+            )
+            dm_vex = np.array(
+                [datetime.utcfromtimestamp(t) for t in tm_vex]
+            )
+            d_sta = np.array(
+                [datetime.utcfromtimestamp(t) for t in t_sta]
+            )
+            dm_sta = np.array(
+                [datetime.utcfromtimestamp(t) for t in tm_sta]
+            )
+            plt.close('all')
+            fig = plt.figure()
+            plt.subplots_adjust(hspace=0.001)
             
-            # ax1 = fig.add_subplot(211)
-            # ax1.plot(t_vex, bt_vex, 'k')
-            # ax1.plot(t_vex, b_vex[:,0], 'r')
-            # ax1.plot(t_vex, b_vex[:,1], 'g')
-            # ax1.plot(t_vex, b_vex[:,2], 'b')
-            # ax1.plot(tm_vex, btm_vex, '--k')
-            # ax1.plot(tm_vex, bm_vex[:,0], '--r')
-            # ax1.plot(tm_vex, bm_vex[:,1], '--g')
-            # ax1.plot(tm_vex, bm_vex[:,2], '--b')
-            # ax2 = fig.add_subplot(212)
-            # ax2.plot(t_sta, bt_sta, 'k')
-            # ax2.plot(t_sta, b_sta[:,0], 'r')
-            # ax2.plot(t_sta, b_sta[:,1], 'g')
-            # ax2.plot(t_sta, b_sta[:,2], 'b')
-            # ax2.plot(tm_sta, btm_sta, '--k')
-            # ax2.plot(tm_sta, bm_sta[:,0], '--r')
-            # ax2.plot(tm_sta, bm_sta[:,1], '--g')
-            # ax2.plot(tm_sta, bm_sta[:,2], '--b')
-            # plt.setp(ax1.get_xticklabels(), visible=False)
-            # plt.ion()
-            # plt.draw()
-            # plt.pause(0.001)
-            # plt.show()
+            ax1 = fig.add_subplot(211)
+            ax1.plot(t_vex, bt_vex, 'k')
+            ax1.plot(t_vex, b_vex[:,0], 'r')
+            ax1.plot(t_vex, b_vex[:,1], 'g')
+            ax1.plot(t_vex, b_vex[:,2], 'b')
+            ax1.plot(tm_vex, btm_vex, '--k')
+            ax1.plot(tm_vex, bm_vex[:,0], '--r')
+            ax1.plot(tm_vex, bm_vex[:,1], '--g')
+            ax1.plot(tm_vex, bm_vex[:,2], '--b')
+            ax2 = fig.add_subplot(212)
+            ax2.plot(t_sta, bt_sta, 'k')
+            ax2.plot(t_sta, b_sta[:,0], 'r')
+            ax2.plot(t_sta, b_sta[:,1], 'g')
+            ax2.plot(t_sta, b_sta[:,2], 'b')
+            ax2.plot(tm_sta, btm_sta, '--k')
+            ax2.plot(tm_sta, bm_sta[:,0], '--r')
+            ax2.plot(tm_sta, bm_sta[:,1], '--g')
+            ax2.plot(tm_sta, bm_sta[:,2], '--b')
+            plt.setp(ax1.get_xticklabels(), visible=False)
+            plt.ion()
+            plt.draw()
+            plt.pause(0.001)
+            plt.show()
 
         return res
 
@@ -525,106 +531,63 @@ def fit2insitu():
 
     bounds = [
         # SHARED
-        (5e-5, 5e-4),
-        tuple(u.Unit('km/s').to(u.Unit('m/s'), (2000.0, 3000.0)).tolist()),
-        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 2000.0)).tolist()),
-        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 2000.0)).tolist()),
-        (1.5, 2.5),
-        (0.0, 2.0),
+        (1e-3, 1e-2),
+        tuple(u.Unit('km/s').to(u.Unit('m/s'), (2400.0, 2600.0)).tolist()),
+        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1500.0, 1700.0)).tolist()),
+        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1100.0, 1300.0)).tolist()),
+        (1.6, 2.0),
+        (0.9, 1.3),
         # MES
-        (1e13, 1e15),
+        (1e14, 1e15),
         # MES & VEX
         tuple(u.deg.to(u.rad, (0.0, 20.0)).tolist()),
         tuple(u.deg.to(u.rad, (110.0, 130.0)).tolist()),
-        tuple(u.au.to(u.m, (0.01, 0.1)).tolist()),
+        tuple(u.au.to(u.m, (0.03, 0.09)).tolist()),
         tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
         tuple(u.deg.to(u.rad, (30.0, 50.0)).tolist()),
         (0.3, 0.5),
         tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
-        (1e13, 1e15),
+        (1e14, 1e15),
         # STA
         tuple(u.deg.to(u.rad, (0.0, 20.0)).tolist()),
         tuple(u.deg.to(u.rad, (110.0, 130.0)).tolist()),
-        tuple(u.au.to(u.m, (0.01, 0.1)).tolist()),
+        tuple(u.au.to(u.m, (0.02, 0.06)).tolist()),
         tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
         tuple(u.deg.to(u.rad, (30.0, 50.0)).tolist()),
         (0.3, 0.5),
         tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
-        (1e13, 1e15),
+        (1e13, 1e14),
     ]
     
     scaler.fit(np.array(bounds).T)
 
-    # print(bounds)
+    x0 = [0.0012586916416986423, 2444002.7422559243, 1547845.9583524799, 1194746.5296720322, 1.8223714090039305, 1.2384413492572999, 675577937864485.2, 0.07461232452845426, 2.098935897713696, 11722889185.787663, 0.4487002673163215, 0.8594261117035951, 0.3756881370549535, 0.6349368433913544, 549947380479405.1, 0.10282435140382482, 2.2243779886461166, 7345243868.796222, 0.6170123309208321, 0.5744943494439477, 0.4511159612130795, 0.5347397433295806, 52989014798912.96]
 
-    # x0 = [
-    #     # SHARED
-    #     9.31364197e-05,
-    #     u.Unit('km/s').to(u.Unit('m/s'), 1730.0),
-    #     u.Unit('km/s').to(u.Unit('m/s'), 1297.4),
-    #     u.Unit('km/s').to(u.Unit('m/s'), 1297.4),
-    #     2.0,
-    #     1.0,
-    #     #MES
-    #     1e14,
-    #     # MES & VEX
-    #     latitude_cor,
-    #     longitude_cor,
-    #     u.au.to(u.m, 0.05),
-    #     half_width_cor,
-    #     tilt_cor,
-    #     flattening_cor,
-    #     pancaking_cor,
-    #     1e14,
-    #     # MES & VEX
-    #     latitude_cor,
-    #     longitude_cor,
-    #     u.au.to(u.m, 0.05),
-    #     half_width_cor,
-    #     tilt_cor,
-    #     flattening_cor,
-    #     pancaking_cor,
-    #     1e14,
-    # ]
-
-    x0 = [
-        1.31666757e-04, 2.37902437e+06, 1.48360526e+06, 1.59657883e+06,
-        2.07623090e+00, 1.74626129e+00, 5.42002380e+14, 3.11186647e-01,
-        2.20582548e+00, 1.02981156e+10, 5.17779002e-01, 6.37336083e-01,
-        3.23500739e-01, 4.16565540e-01, 3.70338622e+14, 1.25820426e-01,
-        2.25558433e+00, 1.52234965e+09, 5.40723447e-01, 5.80782197e-01,
-        3.12601757e-01, 5.33754730e-01, 1.10498329e+13
-    ]
-
-    # print(scaler.transform(np.array([x0])))
-
-    # print(scaler.transform(np.array(bounds).T).T.tolist())
-
-    # res = differential_evolution(F, bounds=bounds)
-    # res = fmin_l_bfgs_b(
-    #     F, 
-    #     x0=scaler.transform(np.array([x0]))[0].tolist(), 
-    #     approx_grad=True,
-    #     bounds=scaler.transform(np.array(bounds).T).T.tolist(),
-    #     epsilon=0.001
-    # )
-    res = basinhopping(
-        F,
-        x0=scaler.transform(np.array([x0]))[0].tolist(),
-        T=0.05,
-        stepsize=0.01,
-        minimizer_kwargs=dict(
-            method='L-BFGS-B',
-            bounds=scaler.transform(np.array(bounds).T).T.tolist(),
-            options=dict(
-                eps=0.001
-            )
-        ),
-        interval=20
+    res = differential_evolution(
+        F, 
+        bounds=scaler.transform(np.array(bounds).T).T.tolist(),
+        strategy='best2bin',
+        popsize=10,
+        mutation=(0.1, 1.0),
+        recombination=0.1,
+        polish=False
     )
+    # res = basinhopping(
+    #     F,
+    #     x0=scaler.transform(np.array([x0]))[0].tolist(),
+    #     T=0.1,
+    #     stepsize=0.05,
+    #     minimizer_kwargs=dict(
+    #         method='L-BFGS-B',
+    #         # method='TNC',
+    #         bounds=scaler.transform(np.array(bounds).T).T.tolist(),
+    #         options=dict(
+    #             eps=0.05
+    #         )
+    #     ),
+    #     interval=10
+    # )
     
-    # print(res.x)
-
     return res
 
 fit2insitu()
