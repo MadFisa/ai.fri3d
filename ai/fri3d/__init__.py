@@ -288,7 +288,7 @@ class Evolution:
         polarity=1.0,
         chirality=1.0,
         spline_s_phi_kind='cubic',
-        spline_s_phi_n=500):
+        spline_s_phi_n=200):
         
         self.latitude = latitude
         self.longitude = longitude
