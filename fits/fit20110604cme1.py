@@ -29,6 +29,8 @@ import errno
 import os
 import signal
 
+from skopt import gp_minimize
+
 res_prev = np.inf
 num_eval = 0
 
@@ -76,7 +78,7 @@ def fit2insitu():
     bt_mes = np.mean(np.sqrt(b_mes[:,0]**2+b_mes[:,1]**2+b_mes[:,2]**2))
     ta_mes = t0_mes+3600
     pa_mes = np.mean(p_mes, axis=0)
-    delta_mes = 20*3600
+    delta_mes = 40*3600
 
     # VEX
     d0_vex = datetime(2011, 6, 5, 8, 45)
@@ -91,7 +93,7 @@ def fit2insitu():
     bt_vex = np.sqrt(b_vex[:,0]**2+b_vex[:,1]**2+b_vex[:,2]**2)
     ta_vex = np.mean(t_vex)
     pa_vex = np.mean(p_vex, axis=0)
-    delta_vex = 20*3600
+    delta_vex = 40*3600
 
     # STA
     d0_sta = datetime(2011, 6, 6, 12, 25)
@@ -128,7 +130,7 @@ def fit2insitu():
     p = np.polyfit(t_sta, v_sta, 1)
     v_sta = np.polyval(p, t_sta)
 
-    delta_sta = 20*3600
+    delta_sta = 40*3600
 
     di = datetime(2011, 6, 5, 11, 30)
     ti = calendar.timegm(di.timetuple())
@@ -201,30 +203,62 @@ def fit2insitu():
         print('CONSTRAINT = ', constraint)
         return constraint
 
+    # scales = np.array([
+    #     1e4,
+    #     1e-1/u.Unit('km/s').to(u.Unit('m/s'), 1.0),
+    #     1e-1/u.Unit('km/s').to(u.Unit('m/s'), 1.0),
+    #     1e-1/u.Unit('km/s').to(u.Unit('m/s'), 1.0),
+    #     1e1,
+    #     1e1,
+    #     1e-13,
+    #     1.0/u.deg.to(u.rad, 1.0),
+    #     1.0/u.deg.to(u.rad, 1.0),
+    #     1e3/u.au.to(u.m, 1.0),
+    #     1.0/u.deg.to(u.rad, 1.0),
+    #     1.0/u.deg.to(u.rad, 1.0),
+    #     1e1,
+    #     1.0/u.deg.to(u.rad, 1.0),
+    #     1e-13,
+    #     1.0/u.deg.to(u.rad, 1.0),
+    #     1.0/u.deg.to(u.rad, 1.0),
+    #     1e3/u.au.to(u.m, 1.0),
+    #     1.0/u.deg.to(u.rad, 1.0),
+    #     1.0/u.deg.to(u.rad, 1.0),
+    #     1e1,
+    #     1.0/u.deg.to(u.rad, 1.0),
+    #     1e-13
+    # ])
+
     scales = np.array([
         1e4,
-        1e-1/u.Unit('km/s').to(u.Unit('m/s'), 1.0),
-        1e-1/u.Unit('km/s').to(u.Unit('m/s'), 1.0),
-        1e-1/u.Unit('km/s').to(u.Unit('m/s'), 1.0),
+        1e-1/u.Unit('km/s').to(u.Unit('m/s'), 1.0)/5.0,
+        1e-1/u.Unit('km/s').to(u.Unit('m/s'), 1.0)/5.0,
+        1e-1/u.Unit('km/s').to(u.Unit('m/s'), 1.0)/5.0,
         1e1,
         1e1,
         1e-13,
-        1.0/u.deg.to(u.rad, 1.0),
-        1.0/u.deg.to(u.rad, 1.0),
-        1e3/u.au.to(u.m, 1.0),
-        1.0/u.deg.to(u.rad, 1.0),
-        1.0/u.deg.to(u.rad, 1.0),
+        1.0/u.deg.to(u.rad, 1.0)/5.0,
+        1.0/u.deg.to(u.rad, 1.0)/5.0,
+        1e3/u.au.to(u.m, 1.0)/5.0,
+        1.0/u.deg.to(u.rad, 1.0)/5.0,
+        1.0/u.deg.to(u.rad, 1.0)/5.0,
         1e1,
-        1.0/u.deg.to(u.rad, 1.0),
+        1.0/u.deg.to(u.rad, 1.0)/5.0,
         1e-13,
-        1.0/u.deg.to(u.rad, 1.0),
-        1.0/u.deg.to(u.rad, 1.0),
-        1e3/u.au.to(u.m, 1.0),
-        1.0/u.deg.to(u.rad, 1.0),
-        1.0/u.deg.to(u.rad, 1.0),
+        1.0/u.deg.to(u.rad, 1.0)/5.0,
+        1.0/u.deg.to(u.rad, 1.0)/5.0,
+        1e3/u.au.to(u.m, 1.0)/5.0,
+        1.0/u.deg.to(u.rad, 1.0)/5.0,
+        1.0/u.deg.to(u.rad, 1.0)/5.0,
         1e1,
-        1.0/u.deg.to(u.rad, 1.0),
+        1.0/u.deg.to(u.rad, 1.0)/5.0,
         1e-13
+    ])
+
+    weights = np.array([
+        1.5, 1.0,
+        2.0, 1.5, 1.0,
+        2.0, 1.5, 1.0, 1.0,
     ])
 
     def F(p):
@@ -431,6 +465,11 @@ def fit2insitu():
                     )
                 ) for i in np.arange(bf_vex.shape[0])]
             )/np.pi/2.0
+
+            if not np.isfinite(fit_b_vex):
+                fit_b_vex = 1.0
+            if not np.isfinite(fit_bt_vex):
+                fit_bt_vex = np.abs(np.median(bt_vex)-np.median(btm_vex))/np.median(bt_vex)
         else:
             # res = np.inf
             res = 10.0
@@ -528,6 +567,11 @@ def fit2insitu():
                 ) for i in np.arange(bf_sta.shape[0])]
             )/np.pi/2.0
 
+            if not np.isfinite(fit_b_sta):
+                fit_b_sta = 1.0
+            if not np.isfinite(fit_bt_sta):
+                fit_bt_sta = np.abs(np.median(bt_sta)-np.median(btm_sta))/np.median(bt_sta)
+
             f = interp1d(
                 tm_sta, 
                 vm_sta, 
@@ -537,6 +581,9 @@ def fit2insitu():
             vf_sta = v_sta[m]
             vmf_sta = f(t_sta[m])
             fit_vt_sta = np.median(np.abs(vf_sta-vmf_sta)/vf_sta)
+
+            if not np.isfinite(fit_vt_sta):
+                fit_vt_sta = np.abs(np.median(v_sta)-np.median(vm_sta))/np.median(v_sta)
         else:
             # return np.inf
             # res = np.inf
@@ -545,13 +592,20 @@ def fit2insitu():
             return res
             # return 1.0
         
-        res = np.mean(
-            [
-                fit_t_mes, fit_bt_mes, 
-                fit_t_vex, fit_b_vex, fit_bt_vex,
-                fit_t_sta, fit_b_sta, fit_bt_sta, fit_vt_sta
-            ]
-        )
+        res = np.mean(np.array([
+            fit_t_mes, fit_bt_mes, 
+            fit_t_vex, fit_b_vex, fit_bt_vex,
+            fit_t_sta, fit_b_sta, fit_bt_sta, fit_vt_sta
+        ])*weights)
+
+
+        # res = np.mean(
+        #     [
+        #         fit_t_mes, fit_bt_mes, 
+        #         fit_t_vex, fit_b_vex, fit_bt_vex,
+        #         fit_t_sta, fit_b_sta, fit_bt_sta, fit_vt_sta
+        #     ]
+        # )
 
         if not np.isfinite(res):
             # res = np.inf
@@ -564,7 +618,7 @@ def fit2insitu():
         
         if res < res_prev:
             res_prev = res
-            fp = open('./cme1_basinhopping_cobyla.txt', 'w')
+            fp = open('./cme1_gp.txt', 'w')
             print('MESSENGER: ', fit_t_mes, fit_bt_mes, file=fp)
             print('VEX: ', fit_t_vex, fit_b_vex, fit_bt_vex, file=fp)
             print('STEREO-A: ', fit_t_sta, fit_b_sta, fit_bt_sta, fit_vt_sta, file=fp)
@@ -708,100 +762,78 @@ def fit2insitu():
     # STEREO-A pancaking =  20.586420655821588
     # STEREO-A flux =  68398197167775.695
 
-    # bounds = [
-    #     # SHARED
-    #     np.log((5e-4, 5e-3)),
-    #     tuple(u.Unit('km/s').to(u.Unit('m/s'), (1900.0, 2100.0)).tolist()),
-    #     tuple(u.Unit('km/s').to(u.Unit('m/s'), (1150.0, 1350.0)).tolist()),
-    #     tuple(u.Unit('km/s').to(u.Unit('m/s'), (1100.0, 1300.0)).tolist()),
-    #     (1.6, 2.0),
-    #     (0.0, 1.0),
-    #     # MES
-    #     (3e14, 5e14),
-    #     # MES & VEX
-    #     tuple(u.deg.to(u.rad, (0.0, 30.0)).tolist()),
-    #     tuple(u.deg.to(u.rad, (110.0, 140.0)).tolist()),
-    #     tuple(u.au.to(u.m, (0.03, 0.1)).tolist()),
-    #     tuple(u.deg.to(u.rad, (30.0, 40.0)).tolist()),
-    #     tuple(u.deg.to(u.rad, (30.0, 50.0)).tolist()),
-    #     (0.3, 0.5),
-    #     tuple(u.deg.to(u.rad, (20.0, 30.0)).tolist()),
-    #     (3e14, 5e14),
-    #     # STA
-    #     tuple(u.deg.to(u.rad, (0.0, 30.0)).tolist()),
-    #     tuple(u.deg.to(u.rad, (110.0, 140.0)).tolist()),
-    #     tuple(u.au.to(u.m, (0.01, 0.05)).tolist()),
-    #     tuple(u.deg.to(u.rad, (30.0, 40.0)).tolist()),
-    #     tuple(u.deg.to(u.rad, (30.0, 70.0)).tolist()),
-    #     (0.3, 0.5),
-    #     tuple(u.deg.to(u.rad, (20.0, 30.0)).tolist()),
-    #     (6e13, 8e13),
-    # ]
-
-    
-
-    # bounds = [
-    #     # SHARED
-    #     np.log((1e-3, 1e-2)),
-    #     tuple(u.Unit('km/s').to(u.Unit('m/s'), (1900.0, 2100.0)).tolist()),
-    #     tuple(u.Unit('km/s').to(u.Unit('m/s'), (1150.0, 1350.0)).tolist()),
-    #     tuple(u.Unit('km/s').to(u.Unit('m/s'), (1100.0, 1300.0)).tolist()),
-    #     (1.8, 2.0),
-    #     (0.5, 1.0),
-    #     # MES
-    #     (1e14, 5e14),
-    #     # MES & VEX
-    #     tuple(u.deg.to(u.rad, (0.0, 30.0)).tolist()),
-    #     tuple(u.deg.to(u.rad, (110.0, 140.0)).tolist()),
-    #     tuple(u.au.to(u.m, (0.07, 0.08)).tolist()),
-    #     tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
-    #     tuple(u.deg.to(u.rad, (30.0, 50.0)).tolist()),
-    #     (0.3, 0.5),
-    #     tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
-    #     (1e14, 5e14),
-    #     # STA
-    #     tuple(u.deg.to(u.rad, (0.0, 30.0)).tolist()),
-    #     tuple(u.deg.to(u.rad, (110.0, 140.0)).tolist()),
-    #     tuple(u.au.to(u.m, (0.02, 0.03)).tolist()),
-    #     tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
-    #     tuple(u.deg.to(u.rad, (30.0, 50.0)).tolist()),
-    #     (0.3, 0.5),
-    #     tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
-    #     (5e13, 1e14),
-    # ]
+    bounds = [
+        # SHARED
+        (1e-3, 1e-2),
+        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1900.0, 2200.0)).tolist()),
+        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 1200.0)).tolist()),
+        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1800.0, 2200.0)).tolist()),
+        (1.5, 2.0),
+        (0.1, 1.0),
+        # MES
+        (1e14, 1e15),
+        # MES & VEX
+        tuple(u.deg.to(u.rad, (0.0, 30.0)).tolist()),
+        tuple(u.deg.to(u.rad, (110.0, 140.0)).tolist()),
+        tuple(u.au.to(u.m, (0.05, 0.1)).tolist()),
+        tuple(u.deg.to(u.rad, (20.0, 50.0)).tolist()),
+        tuple(u.deg.to(u.rad, (30.0, 60.0)).tolist()),
+        (0.1, 0.5),
+        tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
+        (1e14, 1e15),
+        # STA
+        tuple(u.deg.to(u.rad, (0.0, 30.0)).tolist()),
+        tuple(u.deg.to(u.rad, (110.0, 140.0)).tolist()),
+        tuple(u.au.to(u.m, (0.01, 0.05)).tolist()),
+        tuple(u.deg.to(u.rad, (20.0, 50.0)).tolist()),
+        tuple(u.deg.to(u.rad, (30.0, 60.0)).tolist()),
+        (0.1, 0.9),
+        tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
+        (1e13, 1e14),
+    ]
     
     # scaler.fit(np.array(bounds).T)
 
     x0 = np.array(
         [  
-            3.09587016e-03, 2.00529445e+06, 1.21373351e+06, 1.20525946e+06,
-            1.54122770e+00, 8.74255960e-01, 3.90970604e+14, 8.66471282e-02,
-            1.91878665e+00, 1.16205608e+10, 6.54641838e-01, 8.98755211e-01,
-            4.24700710e-01, 4.85331056e-01, 2.82583674e+14, 1.47575108e-01,
-            2.31549259e+00, 4.44623767e+09, 7.28287984e-01, 6.13641768e-01,
-            5.00841092e-01, 3.84512136e-01, 6.56547973e+13
+            3.18596095e-03, 2.02885855e+06, 1.10137755e+06, 1.93483979e+06,
+            1.54299268e+00, 5.69685737e-01, 4.15745797e+14, 9.53233363e-02,
+            1.95768770e+00, 1.21121608e+10, 7.55540119e-01, 9.60205562e-01,
+            1.42825441e-01, 5.47142290e-01, 3.34977230e+14, 2.73275071e-01,
+            2.43285868e+00, 5.38356134e+09, 9.87878035e-01, 6.13401379e-01,
+            8.62785166e-01, 3.86288785e-01, 6.36962686e+13
         ]
     )
-    res = basinhopping(
+    # res = basinhopping(
+    #     F,
+    #     x0=x0*scales,
+    #     niter=1000000,
+    #     T=0.01,
+    #     stepsize=1.0,
+    #     minimizer_kwargs=dict(
+    #         method='Nelder-Mead',
+    #         options=dict(
+    #             fatol=0.05,
+    #             maxiter=300,
+    #             maxfev=300,
+    #         ),
+    #         tol=0.05,
+    #         # method='Powell',
+    #         # bounds=scaler.transform(np.array(bounds).T).T.tolist()
+    #     ),
+    #     # callback=callback,
+    #     interval=10,
+    #     disp=True
+    # )
+
+    # print((np.tile(x0*scales, (50,1))+np.random.randn(50, x0.size)).tolist())
+
+    res = gp_minimize(
         F,
-        x0=x0*scales,
-        niter=1000000,
-        T=0.01,
-        stepsize=2.0,
-        minimizer_kwargs=dict(
-            method='Nelder-Mead',
-            options=dict(
-                fatol=0.05,
-                maxiter=300,
-                maxfev=300,
-            ),
-            tol=0.05,
-            # method='Powell',
-            # bounds=scaler.transform(np.array(bounds).T).T.tolist()
-        ),
-        # callback=callback,
-        interval=10,
-        disp=True
+        tuple((np.array(bounds)*scales[:,np.newaxis]).tolist()),
+        n_calls=500,
+        # x0=(np.tile(x0*scales, (50,1))+np.random.randn(50, x0.size)).tolist(),
+        n_jobs=4,
     )
 
     # res = basinhopping(
