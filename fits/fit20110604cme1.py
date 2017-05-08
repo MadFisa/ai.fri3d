@@ -16,7 +16,7 @@ from astropy import table
 from matplotlib.colors import LogNorm
 from matplotlib import gridspec
 from scipy.interpolate import interp1d
-from scipy.optimize import differential_evolution, fmin_l_bfgs_b, basinhopping, minimize
+from scipy.optimize import fmin_l_bfgs_b, basinhopping, minimize
 import time
 import calendar
 from fastdtw import fastdtw
@@ -30,6 +30,8 @@ import os
 import signal
 
 from skopt import gp_minimize
+
+from ai.fri3d.differentialevolution import differential_evolution
 
 res_prev = np.inf
 num_eval = 0
@@ -78,7 +80,7 @@ def fit2insitu():
     bt_mes = np.mean(np.sqrt(b_mes[:,0]**2+b_mes[:,1]**2+b_mes[:,2]**2))
     ta_mes = t0_mes+3600
     pa_mes = np.mean(p_mes, axis=0)
-    delta_mes = 40*3600
+    delta_mes = 10*3600
 
     # VEX
     d0_vex = datetime(2011, 6, 5, 8, 45)
@@ -93,7 +95,7 @@ def fit2insitu():
     bt_vex = np.sqrt(b_vex[:,0]**2+b_vex[:,1]**2+b_vex[:,2]**2)
     ta_vex = np.mean(t_vex)
     pa_vex = np.mean(p_vex, axis=0)
-    delta_vex = 40*3600
+    delta_vex = 10*3600
 
     # STA
     d0_sta = datetime(2011, 6, 6, 12, 25)
@@ -130,7 +132,7 @@ def fit2insitu():
     p = np.polyfit(t_sta, v_sta, 1)
     v_sta = np.polyval(p, t_sta)
 
-    delta_sta = 40*3600
+    delta_sta = 10*3600
 
     di = datetime(2011, 6, 5, 11, 30)
     ti = calendar.timegm(di.timetuple())
@@ -236,7 +238,7 @@ def fit2insitu():
         1e-1/u.Unit('km/s').to(u.Unit('m/s'), 1.0)/5.0,
         1e1,
         1e1,
-        1e-13,
+        # 1e-13,
         1.0/u.deg.to(u.rad, 1.0)/5.0,
         1.0/u.deg.to(u.rad, 1.0)/5.0,
         1e3/u.au.to(u.m, 1.0)/5.0,
@@ -244,7 +246,7 @@ def fit2insitu():
         1.0/u.deg.to(u.rad, 1.0)/5.0,
         1e1,
         1.0/u.deg.to(u.rad, 1.0)/5.0,
-        1e-13,
+        # 1e-13,
         1.0/u.deg.to(u.rad, 1.0)/5.0,
         1.0/u.deg.to(u.rad, 1.0)/5.0,
         1e3/u.au.to(u.m, 1.0)/5.0,
@@ -252,7 +254,7 @@ def fit2insitu():
         1.0/u.deg.to(u.rad, 1.0)/5.0,
         1e1,
         1.0/u.deg.to(u.rad, 1.0)/5.0,
-        1e-13
+        # 1e-13
     ])
 
     weights = np.array([
@@ -261,14 +263,17 @@ def fit2insitu():
         2.0, 1.5, 1.0, 1.0,
     ])
 
-    def F(p):
+    def F(params):
         global res_prev
         global num_eval
         num_eval += 1
         # print('NUMBER OF EVALUATIONS = ', num_eval)
         if num_eval%100 == 0:
             print('NUMBER OF EVALUATIONS = ', num_eval)
-        p = p/scales
+        p = params/scales
+        p = np.insert(p, 6, 1e14)
+        p = np.insert(p, 14, 1e14)
+        p = np.append(p, 1e14)
         # p = scaler.inverse_transform(np.array([p]))[0].tolist()
         # p[0] = np.exp(p[0])
         """
@@ -300,8 +305,8 @@ def fit2insitu():
         """
         evo = Evolution()
         if p[1] < p[2]:
-            # res = np.inf
-            res = 10.0
+            res = np.inf
+            # res = 10.0
             print(res)
             return res
             # return np.nan
@@ -378,9 +383,11 @@ def fit2insitu():
                 np.abs(np.median(btm_mes)-bt_mes)/
                 np.median(btm_mes)
             )
+            kappa_mes = bt_mes/np.median(btm_mes)
+            p[6] *= kappa_mes
         else:
-            # res = np.inf
-            res = 10.0
+            res = np.inf
+            # res = 10.0
             print(res)
             return res
             # return np.nan
@@ -470,9 +477,12 @@ def fit2insitu():
                 fit_b_vex = 1.0
             if not np.isfinite(fit_bt_vex):
                 fit_bt_vex = np.abs(np.median(bt_vex)-np.median(btm_vex))/np.median(bt_vex)
+
+            kappa_vex = np.median(bt_vex)/np.median(btm_vex)
+            p[14] *= kappa_vex
         else:
-            # res = np.inf
-            res = 10.0
+            res = np.inf
+            # res = 10.0
             print(res)
             return res
             # return np.nan
@@ -572,6 +582,9 @@ def fit2insitu():
             if not np.isfinite(fit_bt_sta):
                 fit_bt_sta = np.abs(np.median(bt_sta)-np.median(btm_sta))/np.median(bt_sta)
 
+            kappa_sta = np.median(bt_sta)/np.median(btm_sta)
+            p[22] *= kappa_sta
+
             f = interp1d(
                 tm_sta, 
                 vm_sta, 
@@ -586,17 +599,23 @@ def fit2insitu():
                 fit_vt_sta = np.abs(np.median(v_sta)-np.median(vm_sta))/np.median(v_sta)
         else:
             # return np.inf
-            # res = np.inf
-            res = 10.0
+            res = np.inf
+            # res = 10.0
             print(res)
             return res
             # return 1.0
         
         res = np.mean(np.array([
-            fit_t_mes, fit_bt_mes, 
-            fit_t_vex, fit_b_vex, fit_bt_vex,
-            fit_t_sta, fit_b_sta, fit_bt_sta, fit_vt_sta
-        ])*weights)
+            fit_t_mes, 
+            fit_t_vex, fit_b_vex,
+            fit_t_sta, fit_b_sta, fit_vt_sta
+        ]))
+
+        # res = np.mean(np.array([
+        #     fit_t_mes, fit_bt_mes, 
+        #     fit_t_vex, fit_b_vex, fit_bt_vex,
+        #     fit_t_sta, fit_b_sta, fit_bt_sta, fit_vt_sta
+        # ])*weights)
 
 
         # res = np.mean(
@@ -608,8 +627,8 @@ def fit2insitu():
         # )
 
         if not np.isfinite(res):
-            # res = np.inf
-            res = 10.0
+            res = np.inf
+            # res = 10.0
 
         # if res == np.inf:
             # res = 1.0
@@ -618,7 +637,7 @@ def fit2insitu():
         
         if res < res_prev:
             res_prev = res
-            fp = open('./cme1_gp.txt', 'w')
+            fp = open('./cme1_DE_custom_run2.txt', 'w')
             print('MESSENGER: ', fit_t_mes, fit_bt_mes, file=fp)
             print('VEX: ', fit_t_vex, fit_b_vex, fit_bt_vex, file=fp)
             print('STEREO-A: ', fit_t_sta, fit_b_sta, fit_bt_sta, fit_vt_sta, file=fp)
@@ -677,6 +696,11 @@ def fit2insitu():
             fig = plt.figure()
             plt.subplots_adjust(hspace=0.001)
             
+            btm_vex *= kappa_vex
+            bm_vex *= kappa_vex
+            btm_sta *= kappa_sta
+            bm_sta *= kappa_sta
+
             ax1 = fig.add_subplot(211)
             ax1.plot(t_vex, bt_vex, 'k')
             ax1.plot(t_vex, b_vex[:,0], 'r')
@@ -764,46 +788,46 @@ def fit2insitu():
 
     bounds = [
         # SHARED
-        (1e-3, 1e-2),
-        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1900.0, 2200.0)).tolist()),
-        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 1200.0)).tolist()),
-        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1800.0, 2200.0)).tolist()),
-        (1.5, 2.0),
-        (0.1, 1.0),
+        (1e-4, 1e-2),
+        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1500.0, 2500.0)).tolist()),
+        tuple(u.Unit('km/s').to(u.Unit('m/s'), (800.0, 1500.0)).tolist()),
+        tuple(u.Unit('km/s').to(u.Unit('m/s'), (800.0, 1500.0)).tolist()),
+        (1.6, 2.0),
+        (0.0, 1.0),
         # MES
-        (1e14, 1e15),
+        # (1e14, 1e15),
         # MES & VEX
         tuple(u.deg.to(u.rad, (0.0, 30.0)).tolist()),
         tuple(u.deg.to(u.rad, (110.0, 140.0)).tolist()),
-        tuple(u.au.to(u.m, (0.05, 0.1)).tolist()),
-        tuple(u.deg.to(u.rad, (20.0, 50.0)).tolist()),
-        tuple(u.deg.to(u.rad, (30.0, 60.0)).tolist()),
-        (0.1, 0.5),
-        tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
-        (1e14, 1e15),
-        # STA
-        tuple(u.deg.to(u.rad, (0.0, 30.0)).tolist()),
-        tuple(u.deg.to(u.rad, (110.0, 140.0)).tolist()),
-        tuple(u.au.to(u.m, (0.01, 0.05)).tolist()),
+        tuple(u.au.to(u.m, (0.01, 0.1)).tolist()),
         tuple(u.deg.to(u.rad, (20.0, 50.0)).tolist()),
         tuple(u.deg.to(u.rad, (30.0, 60.0)).tolist()),
         (0.1, 0.9),
         tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
-        (1e13, 1e14),
+        # (1e14, 1e15),
+        # STA
+        tuple(u.deg.to(u.rad, (-10.0, 30.0)).tolist()),
+        tuple(u.deg.to(u.rad, (90.0, 140.0)).tolist()),
+        tuple(u.au.to(u.m, (0.01, 0.1)).tolist()),
+        tuple(u.deg.to(u.rad, (20.0, 50.0)).tolist()),
+        tuple(u.deg.to(u.rad, (30.0, 60.0)).tolist()),
+        (0.1, 0.9),
+        tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
+        # (1e13, 1e14),
     ]
     
     # scaler.fit(np.array(bounds).T)
 
-    x0 = np.array(
-        [  
-            3.18596095e-03, 2.02885855e+06, 1.10137755e+06, 1.93483979e+06,
-            1.54299268e+00, 5.69685737e-01, 4.15745797e+14, 9.53233363e-02,
-            1.95768770e+00, 1.21121608e+10, 7.55540119e-01, 9.60205562e-01,
-            1.42825441e-01, 5.47142290e-01, 3.34977230e+14, 2.73275071e-01,
-            2.43285868e+00, 5.38356134e+09, 9.87878035e-01, 6.13401379e-01,
-            8.62785166e-01, 3.86288785e-01, 6.36962686e+13
-        ]
-    )
+    # x0 = np.array(
+    #     [  
+    #         3.18596095e-03, 2.02885855e+06, 1.10137755e+06, 1.93483979e+06,
+    #         1.54299268e+00, 5.69685737e-01, 4.15745797e+14, 9.53233363e-02,
+    #         1.95768770e+00, 1.21121608e+10, 7.55540119e-01, 9.60205562e-01,
+    #         1.42825441e-01, 5.47142290e-01, 3.34977230e+14, 2.73275071e-01,
+    #         2.43285868e+00, 5.38356134e+09, 9.87878035e-01, 6.13401379e-01,
+    #         8.62785166e-01, 3.86288785e-01, 6.36962686e+13
+    #     ]
+    # )
     # res = basinhopping(
     #     F,
     #     x0=x0*scales,
@@ -828,13 +852,13 @@ def fit2insitu():
 
     # print((np.tile(x0*scales, (50,1))+np.random.randn(50, x0.size)).tolist())
 
-    res = gp_minimize(
-        F,
-        tuple((np.array(bounds)*scales[:,np.newaxis]).tolist()),
-        n_calls=500,
-        # x0=(np.tile(x0*scales, (50,1))+np.random.randn(50, x0.size)).tolist(),
-        n_jobs=4,
-    )
+    # res = gp_minimize(
+    #     F,
+    #     tuple((np.array(bounds)*scales[:,np.newaxis]).tolist()),
+    #     n_calls=500,
+    #     # x0=(np.tile(x0*scales, (50,1))+np.random.randn(50, x0.size)).tolist(),
+    #     n_jobs=4,
+    # )
 
     # res = basinhopping(
     #     F,
@@ -867,15 +891,16 @@ def fit2insitu():
     #     method='Nelder-Mead',
     # )
 
-    # res = differential_evolution(
-    #     F, 
-    #     bounds=scaler.transform(np.array(bounds).T).T.tolist(),
-    #     strategy='rand1bin',
-    #     popsize=10,
-    #     mutation=(0.5, 1.0),
-    #     recombination=0.9,
-    #     polish=False
-    # )
+    res = differential_evolution(
+        F, 
+        bounds=tuple((np.array(bounds)*np.tile(scales, (2, 1)).T).tolist()),
+        strategy='best1bin',
+        popsize=100,
+        mutation=(0.5, 1.0),
+        recombination=0.9,
+        disp=True,
+        polish=False
+    )
 
     # next attempt: basinhopping + cobyla with constraints
 
