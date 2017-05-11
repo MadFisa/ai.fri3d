@@ -1,4 +1,5 @@
 
+# from ai.fri3d.optimize import fit2remote, fit2insitu
 from ai.fri3d import Evolution
 from astropy import units as u
 from astropy import constants as c
@@ -20,32 +21,23 @@ def fit2insitu():
 
     step = 600
 
-    # COR
-    d0_cor = datetime(2011, 6, 4, 22, 54)
+    # COR & initial
+    d0_cor = datetime(2011, 6, 4, 23, 56)
     t0_cor = calendar.timegm(d0_cor.timetuple())
-    latitude_cor = u.deg.to(u.rad, 22.0)
-    longitude_cor = u.deg.to(u.rad, 125.0)
-    toroidal_height_cor = u.R_sun.to(u.m, 12.0)
-    poloidal_height_cor = u.R_sun.to(u.m, 4.0)
-    half_width_cor = u.deg.to(u.rad, 35.0)
-    tilt_cor = u.deg.to(u.rad, 35.0)
+    latitude_cor = u.deg.to(u.rad, 0.0)
+    longitude_cor = u.deg.to(u.rad, 95.0)
+    toroidal_height_cor = u.R_sun.to(u.m, 7.5)
+    poloidal_height_cor = u.R_sun.to(u.m, 1.5)
+    half_width_cor = u.deg.to(u.rad, 40.0)
+    tilt_cor = u.deg.to(u.rad, 65.0)
     flattening_cor = 0.4
-    pancaking_cor = u.deg.to(u.rad, 30.0)
+    pancaking_cor = u.deg.to(u.rad, 25.0)
     skew = 0.0
-    polarity = -1.0
+    polarity = 1.0
     chirality = 1.0
+    
     spline_s_phi_kind = 'cubic',
     spline_s_phi_n = 500
-
-    # MESSENGER
-    d0_mes = datetime(2011, 6, 5, 4, 40)
-    d1_mes = datetime(2011, 6, 5, 9, 29)
-    t0_mes = calendar.timegm(d0_mes.timetuple())
-    t1_mes = calendar.timegm(d1_mes.timetuple())
-    d_mes, b_mes, _, p_mes = getMES(d0_mes, d1_mes)
-    t_mes = np.array([calendar.timegm(x.timetuple()) for x in d_mes])
-    bt_mes = np.mean(np.sqrt(b_mes[:,0]**2+b_mes[:,1]**2+b_mes[:,2]**2))
-    delta_mes = 20*3600
 
     # VEX
     d0_vex = datetime(2011, 6, 5, 15, 30)
@@ -55,23 +47,17 @@ def fit2insitu():
     d_vex, b_vex, _, p_vex = getVEX(d0_vex, d1_vex)
     t_vex = np.array([calendar.timegm(x.timetuple()) for x in d_vex])
     bt_vex = np.sqrt(b_vex[:,0]**2+b_vex[:,1]**2+b_vex[:,2]**2)
-    # m = t_vex >= calendar.timegm(datetime(2011, 6, 5, 19).timetuple())
-    # ba_vex = np.median(bt_vex[m])
-    # b_vex[np.logical_not(m),0] *= ba_vex/bt_vex[np.logical_not(m)]
-    # b_vex[np.logical_not(m),1] *= ba_vex/bt_vex[np.logical_not(m)]
-    # b_vex[np.logical_not(m),2] *= ba_vex/bt_vex[np.logical_not(m)]
-    # bt_vex[np.logical_not(m)] *= ba_vex/bt_vex[np.logical_not(m)]
-    delta_vex = 20*3600
+    delta_vex = 50*3600
 
     # STA
-    d0_sta = datetime(2011, 6, 6, 12, 25)
-    d1_sta = datetime(2011, 6, 6, 14, 10)
+    d0_sta = datetime(2011, 6, 6, 16, 30)
+    d1_sta = datetime(2011, 6, 7, 1)
     t0_sta = calendar.timegm(d0_sta.timetuple())
     t1_sta = calendar.timegm(d1_sta.timetuple())
     d_sta, b_sta, _, p_sta = getSTA(d0_sta, d1_sta)
     t_sta = np.array([calendar.timegm(x.timetuple()) for x in d_sta])
     bt_sta = np.sqrt(b_sta[:,0]**2+b_sta[:,1]**2+b_sta[:,2]**2)
-    
+
     cdas.set_cache(True, './data')
     data = cdas.get_data(
         'sp_phys', 
@@ -90,7 +76,7 @@ def fit2insitu():
     )
     vt_sta = u.Unit('km/s').to(u.Unit('m/s'), f(t_sta))
     
-    delta_sta = 20*3600
+    delta_sta = 50*3600
 
     di = datetime(2011, 6, 5, 11, 30)
     ti = calendar.timegm(di.timetuple())
@@ -105,26 +91,26 @@ def fit2insitu():
         p[0] = params[0]
         p[1] = params[1]
         p[2] = params[2]
-        p[3] = params[3]
-        p[4] = params[4]
-        p[5] = params[5]
-        p[6] = 1e14
-        p[7] = params[6]
-        p[8] = params[7]
-        p[9] = params[8]
-        p[10] = params[9]
-        p[11] = params[10]
-        p[12] = params[11]
-        p[13] = params[12]
+        p[3] = 0.0
+        p[4] = 1.86287442e+00
+        p[5] = 5.45612614e-01
+        p[6] = 0.0
+        p[7] = params[3]
+        p[8] = params[4]
+        p[9] = params[5]
+        p[10] = params[6]
+        p[11] = params[7]
+        p[12] = params[8]
+        p[13] = params[9]
         p[14] = 1e14
-        p[15] = params[13]
-        p[16] = params[14]
-        p[17] = params[15]
-        p[18] = params[16]
-        p[19] = params[17]
-        p[20] = params[18]
-        p[21] = params[19]
-        p[22] = 1e14
+        p[15] = 1.33368540e-01
+        p[16] = 1.91927534e+00
+        p[17] = 9.07163638e+09
+        p[18] = 5.83000319e-01
+        p[19] = 5.31262222e-01
+        p[20] = 7.83716277e-01
+        p[21] = 6.77584455e-01
+        p[22] = 1.28830053e+14
         """
         SHARED
         0, 1, 2, 3: toroidal_height
@@ -159,79 +145,13 @@ def fit2insitu():
         evo.toroidal_height = lambda t: (
             (p[1]-p[2])/p[0]*(1.0-np.exp(-p[0]*(t-t0_cor)))+p[2]*(t-t0_cor)+
             toroidal_height_cor
-            if t <= ti else
-            (p[1]-p[2])/p[0]*(1.0-np.exp(-p[0]*(ti-t0_cor)))+p[2]*(ti-t0_cor)+
-            toroidal_height_cor+
-            p[3]*(t-ti)
         )
+        
         evo.sigma = lambda t: p[4]
         evo.twist = lambda t: p[5]
         evo.skew = lambda t: skew
         evo.polarity = polarity
         evo.chirality = chirality
-
-        # MESSENGER
-
-        evo.latitude = lambda t: p[7]
-        evo.longitude = lambda t: p[8]
-        evo.poloidal_height = lambda t: p[9]
-        evo.half_width = lambda t: p[10]
-        evo.tilt = lambda t: p[11]
-        evo.flattening = lambda t: p[12]
-        evo.pancaking = lambda t: p[13]
-        evo.flux = lambda t: p[6]
-        
-        tm_mes = np.arange(
-            t_mes[0]-delta_mes, 
-            t_mes[0]+delta_mes, 
-            step, 
-            dtype=np.int
-        )
-        fx_mes = interp1d(
-            t_mes, 
-            p_mes[:,0], 
-            kind='linear', 
-            axis=0, 
-            fill_value='extrapolate'
-        )
-        fy_mes = interp1d(
-            t_mes, 
-            p_mes[:,1], 
-            kind='linear', 
-            axis=0, 
-            fill_value='extrapolate'
-        )
-        fz_mes = interp1d(
-            t_mes, 
-            p_mes[:,2], 
-            kind='linear', 
-            axis=0, 
-            fill_value='extrapolate'
-        )
-        bm_mes, _ = evo.insitu(
-            tm_mes, 
-            fx_mes, 
-            fy_mes, 
-            fz_mes
-        )
-        btm_mes = np.sqrt(bm_mes[:,0]**2+bm_mes[:,1]**2+bm_mes[:,2]**2)
-        nzi_mes = np.where(np.isfinite(btm_mes))[0]
-
-        fit_t_mes = np.inf
-        
-        if nzi_mes.size > 1 and nzi_mes[0] != 0:
-            tm_mes = tm_mes[nzi_mes]
-            bm_mes = bm_mes[nzi_mes,:]
-            btm_mes = btm_mes[nzi_mes]
-
-            fit_t_mes = np.abs(tm_mes[0]-t_mes[0])/(t_vex[-1]-t_vex[0])
-            kappa_mes = bt_mes/np.median(btm_mes)
-            p[6] *= kappa_mes
-            bm_mes *= kappa_mes
-            btm_mes *= kappa_mes
-        else:
-            res = np.inf
-            return res
 
         # VEX
 
@@ -325,7 +245,7 @@ def fit2insitu():
             return res
 
         # STA
-            
+
         evo.latitude = lambda t: p[15]
         evo.longitude = lambda t: p[16]
         evo.poloidal_height = lambda t: p[17]
@@ -436,20 +356,18 @@ def fit2insitu():
         else:
             res = np.inf
             return res
-
+            
         res = np.mean(np.array([
-            fit_t_mes, 
             fit_t_vex, fit_b_vex,
             fit_t_sta, fit_b_sta, fit_vt_sta
         ]))
 
         if not np.isfinite(res):
             res = np.inf
-
+        
         if res < res_prev:
             res_prev = res
-            fp = open('./cme2_run2.txt', 'w')
-            print('MESSENGER: ', fit_t_mes, file=fp)
+            fp = open('./cme3v2_run1.txt', 'w')
             print('VEX: ', fit_t_vex, fit_b_vex, file=fp)
             print('STEREO-A: ', fit_t_sta, fit_b_sta, fit_vt_sta, file=fp)
             print('AVERAGE: ', res, file=fp)
@@ -464,14 +382,8 @@ def fit2insitu():
                 u.Unit('m/s').to(u.Unit('km/s'), p[2]), 
                 file=fp
             )
-            print(
-                'SHARED toroidal_height speed = ', 
-                u.Unit('m/s').to(u.Unit('km/s'), p[3]), 
-                file=fp
-            )
             print('SHARED sigma = ', p[4], file=fp)
             print('SHARED twist = ', p[5], file=fp)
-            print('MESSENGER flux = ', p[6], file=fp)
             print('VEX latitude = ', u.rad.to(u.deg, p[7]), file=fp)
             print('VEX longitude = ', u.rad.to(u.deg, p[8]), file=fp)
             print('VEX poloidal_height = ', u.m.to(u.au, p[9]), file=fp)
@@ -562,38 +474,38 @@ def fit2insitu():
     bounds = [
         # SHARED
         (1e-4, 1e-2),
-        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1500.0, 2500.0)).tolist()),
-        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 2000.0)).tolist()),
-        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 1500.0)).tolist()),
-        (1.6, 2.0),
-        (0.1, 1.0),
+        tuple(u.Unit('km/s').to(u.Unit('m/s'), (800.0, 2000.0)).tolist()),
+        tuple(u.Unit('km/s').to(u.Unit('m/s'), (800.0, 2000.0)).tolist()),
+        # tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 1200.0)).tolist()),
+        # (1.6, 2.0),
+        # (0.0, 1.0),
         # MES
         # (1e14, 1e15),
         # MES & VEX
         tuple(u.deg.to(u.rad, (0.0, 20.0)).tolist()),
-        tuple(u.deg.to(u.rad, (80.0, 125.0)).tolist()),
-        tuple(u.au.to(u.m, (0.01, 0.1)).tolist()),
-        tuple(u.deg.to(u.rad, (30.0, 50.0)).tolist()),
-        tuple(u.deg.to(u.rad, (20.0, 70.0)).tolist()),
-        (0.1, 0.9),
+        tuple(u.deg.to(u.rad, (100.0, 110.0)).tolist()),
+        tuple(u.au.to(u.m, (0.04, 0.06)).tolist()),
+        tuple(u.deg.to(u.rad, (30.0, 40.0)).tolist()),
+        tuple(u.deg.to(u.rad, (30.0, 60.0)).tolist()),
+        (0.5, 0.8),
         tuple(u.deg.to(u.rad, (30.0, 40.0)).tolist()),
         # (1e14, 1e15),
         # STA
-        tuple(u.deg.to(u.rad, (0.0, 20.0)).tolist()),
-        tuple(u.deg.to(u.rad, (75.0, 90.0)).tolist()),
-        tuple(u.au.to(u.m, (0.01, 0.1)).tolist()),
-        tuple(u.deg.to(u.rad, (30.0, 50.0)).tolist()),
-        tuple(u.deg.to(u.rad, (60.0, 80.0)).tolist()),
-        (0.1, 0.9),
-        tuple(u.deg.to(u.rad, (30.0, 40.0)).tolist()),
+        # tuple(u.deg.to(u.rad, (-10.0, 10.0)).tolist()),
+        # tuple(u.deg.to(u.rad, (90.0, 110.0)).tolist()),
+        # tuple(u.au.to(u.m, (0.01, 0.1)).tolist()),
+        # tuple(u.deg.to(u.rad, (20.0, 50.0)).tolist()),
+        # tuple(u.deg.to(u.rad, (30.0, 100.0)).tolist()),
+        # (0.1, 0.9),
+        # tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
         # (1e13, 1e14),
     ]
-
+    
     res = differential_evolution(
         F, 
         bounds=bounds,
         strategy='best1bin',
-        popsize=200,
+        popsize=100,
         mutation=(0.5, 1.0),
         recombination=0.9,
         disp=True,
@@ -603,5 +515,7 @@ def fit2insitu():
     print(res.x)
     print(res.success)
     print(res.message)
+    
+    return res
 
 fit2insitu()
