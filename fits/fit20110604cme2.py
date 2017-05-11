@@ -45,7 +45,7 @@ def fit2insitu():
     d_mes, b_mes, _, p_mes = getMES(d0_mes, d1_mes)
     t_mes = np.array([calendar.timegm(x.timetuple()) for x in d_mes])
     bt_mes = np.mean(np.sqrt(b_mes[:,0]**2+b_mes[:,1]**2+b_mes[:,2]**2))
-    delta_mes = 20*3600
+    delta_mes = 10*3600
 
     # VEX
     d0_vex = datetime(2011, 6, 5, 15, 30)
@@ -61,7 +61,7 @@ def fit2insitu():
     # b_vex[np.logical_not(m),1] *= ba_vex/bt_vex[np.logical_not(m)]
     # b_vex[np.logical_not(m),2] *= ba_vex/bt_vex[np.logical_not(m)]
     # bt_vex[np.logical_not(m)] *= ba_vex/bt_vex[np.logical_not(m)]
-    delta_vex = 20*3600
+    delta_vex = 10*3600
 
     # STA
     d0_sta = datetime(2011, 6, 6, 12, 25)
@@ -90,7 +90,7 @@ def fit2insitu():
     )
     vt_sta = u.Unit('km/s').to(u.Unit('m/s'), f(t_sta))
     
-    delta_sta = 20*3600
+    delta_sta = 10*3600
 
     di = datetime(2011, 6, 5, 11, 30)
     ti = calendar.timegm(di.timetuple())
