@@ -32,7 +32,7 @@ def fit2insitu():
     flattening_cor = 0.4
     pancaking_cor = u.deg.to(u.rad, 30.0)
     skew = 0.0
-    polarity = -1.0
+    polarity = 1.0
     chirality = 1.0
     spline_s_phi_kind = 'cubic',
     spline_s_phi_n = 500
@@ -448,7 +448,7 @@ def fit2insitu():
 
         if res < res_prev:
             res_prev = res
-            fp = open('./cme2_run2.txt', 'w')
+            fp = open('./cme2_run4.txt', 'w')
             print('MESSENGER: ', fit_t_mes, file=fp)
             print('VEX: ', fit_t_vex, fit_b_vex, file=fp)
             print('STEREO-A: ', fit_t_sta, fit_b_sta, fit_vt_sta, file=fp)
@@ -562,30 +562,30 @@ def fit2insitu():
     bounds = [
         # SHARED
         (1e-4, 1e-2),
-        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1500.0, 2500.0)).tolist()),
-        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 2000.0)).tolist()),
-        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 1500.0)).tolist()),
+        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1800.0, 2400.0)).tolist()),
+        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1300.0, 1900.0)).tolist()),
+        tuple(u.Unit('km/s').to(u.Unit('m/s'), (800.0, 1400.0)).tolist()),
         (1.6, 2.0),
         (0.1, 1.0),
         # MES
         # (1e14, 1e15),
         # MES & VEX
-        tuple(u.deg.to(u.rad, (0.0, 20.0)).tolist()),
-        tuple(u.deg.to(u.rad, (80.0, 125.0)).tolist()),
+        tuple(u.deg.to(u.rad, (10.0, 20.0)).tolist()),
+        tuple(u.deg.to(u.rad, (125.0, 125.0)).tolist()),
         tuple(u.au.to(u.m, (0.01, 0.1)).tolist()),
-        tuple(u.deg.to(u.rad, (30.0, 50.0)).tolist()),
-        tuple(u.deg.to(u.rad, (20.0, 70.0)).tolist()),
-        (0.1, 0.9),
         tuple(u.deg.to(u.rad, (30.0, 40.0)).tolist()),
+        tuple(u.deg.to(u.rad, (30.0, 60.0)).tolist()),
+        (0.1, 0.9),
+        tuple(u.deg.to(u.rad, (25.0, 40.0)).tolist()),
         # (1e14, 1e15),
         # STA
         tuple(u.deg.to(u.rad, (0.0, 20.0)).tolist()),
-        tuple(u.deg.to(u.rad, (75.0, 90.0)).tolist()),
+        tuple(u.deg.to(u.rad, (125.0, 125.0)).tolist()),
         tuple(u.au.to(u.m, (0.01, 0.1)).tolist()),
         tuple(u.deg.to(u.rad, (30.0, 50.0)).tolist()),
-        tuple(u.deg.to(u.rad, (60.0, 80.0)).tolist()),
+        tuple(u.deg.to(u.rad, (-80.0, 0.0)).tolist()),
         (0.1, 0.9),
-        tuple(u.deg.to(u.rad, (30.0, 40.0)).tolist()),
+        tuple(u.deg.to(u.rad, (25.0, 40.0)).tolist()),
         # (1e13, 1e14),
     ]
 
@@ -593,7 +593,7 @@ def fit2insitu():
         F, 
         bounds=bounds,
         strategy='best1bin',
-        popsize=200,
+        popsize=100,
         mutation=(0.5, 1.0),
         recombination=0.9,
         disp=True,
