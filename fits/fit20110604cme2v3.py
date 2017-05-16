@@ -32,7 +32,7 @@ def fit2insitu():
     flattening_cor = 0.4
     pancaking_cor = u.deg.to(u.rad, 30.0)
     skew = 0.0
-    polarity = -1.0
+    polarity = 1.0
     chirality = 1.0
     spline_s_phi_kind = 'cubic',
     spline_s_phi_n = 500
@@ -55,13 +55,10 @@ def fit2insitu():
     d_vex, b_vex, _, p_vex = getVEX(d0_vex, d1_vex)
     t_vex = np.array([calendar.timegm(x.timetuple()) for x in d_vex])
     bt_vex = np.sqrt(b_vex[:,0]**2+b_vex[:,1]**2+b_vex[:,2]**2)
-    # m = t_vex >= calendar.timegm(datetime(2011, 6, 5, 19).timetuple())
-    # ba_vex = np.median(bt_vex[m])
-    # b_vex[np.logical_not(m),0] *= ba_vex/bt_vex[np.logical_not(m)]
-    # b_vex[np.logical_not(m),1] *= ba_vex/bt_vex[np.logical_not(m)]
-    # b_vex[np.logical_not(m),2] *= ba_vex/bt_vex[np.logical_not(m)]
-    # bt_vex[np.logical_not(m)] *= ba_vex/bt_vex[np.logical_not(m)]
     delta_vex = 10*3600
+
+    di = datetime(2011, 6, 5, 11, 30)
+    ti = calendar.timegm(di.timetuple())
 
     def F(params):
         global res_prev
@@ -70,20 +67,20 @@ def fit2insitu():
         if num_eval%100 == 0:
             print('NUMBER OF EVALUATIONS = ', num_eval)
         p = np.zeros(23)
-        p[0] = params[0]
-        p[1] = params[1]
-        p[2] = params[2]
-        p[3] = 0.0
-        p[4] = params[3]
-        p[5] = params[4]
+        p[0] = 0.0
+        p[1] = 0.0
+        p[2] = params[0]
+        p[3] = params[1]
+        p[4] = params[2]
+        p[5] = params[3]
         p[6] = 1e14
-        p[7] = params[5]
-        p[8] = params[6]
-        p[9] = params[7]
-        p[10] = params[8]
-        p[11] = params[9]
-        p[12] = params[10]
-        p[13] = params[11]
+        p[7] = params[4]
+        p[8] = params[5]
+        p[9] = params[6]
+        p[10] = params[7]
+        p[11] = params[8]
+        p[12] = params[9]
+        p[13] = params[10]
         p[14] = 1e14
         p[15] = 0.0
         p[16] = 0.0
@@ -92,7 +89,7 @@ def fit2insitu():
         p[19] = 0.0
         p[20] = 0.0
         p[21] = 0.0
-        p[22] = 0.0
+        p[22] = 1e14
         """
         SHARED
         0, 1, 2, 3: toroidal_height
@@ -121,12 +118,10 @@ def fit2insitu():
         22: flux
         """
         evo = Evolution()
-        if p[1] < p[2]:
-            res = np.inf
-            return res
         evo.toroidal_height = lambda t: (
-            (p[1]-p[2])/p[0]*(1.0-np.exp(-p[0]*(t-t0_cor)))+p[2]*(t-t0_cor)+
-            toroidal_height_cor
+            p[2]*(t-t0_cor)+toroidal_height_cor
+            if t <= ti else
+            p[2]*(ti-t0_cor)+toroidal_height_cor+p[3]*(t-ti)
         )
         evo.sigma = lambda t: p[4]
         evo.twist = lambda t: p[5]
@@ -275,7 +270,7 @@ def fit2insitu():
                         btmf_vex[i]
                     )
                 ) for i in np.arange(bf_vex.shape[0])]
-            )/np.pi/2.0
+            )/np.pi*2.0
 
             if not np.isfinite(fit_b_vex):
                 fit_b_vex = 1.0
@@ -302,15 +297,14 @@ def fit2insitu():
             print('MESSENGER: ', fit_t_mes, file=fp)
             print('VEX: ', fit_t_vex, fit_b_vex, file=fp)
             print('AVERAGE: ', res, file=fp)
-            print('SHARED toroidal_height decay = ', p[0], file=fp)
             print(
                 'SHARED toroidal_height speed = ', 
-                u.Unit('m/s').to(u.Unit('km/s'), p[1]), 
+                u.Unit('m/s').to(u.Unit('km/s'), p[2]), 
                 file=fp
             )
             print(
                 'SHARED toroidal_height speed = ', 
-                u.Unit('m/s').to(u.Unit('km/s'), p[2]), 
+                u.Unit('m/s').to(u.Unit('km/s'), p[3]), 
                 file=fp
             )
             print('SHARED sigma = ', p[4], file=fp)
@@ -381,31 +375,31 @@ def fit2insitu():
     """
     bounds = [
         # SHARED
-        (1e-4, 1e-2),
-        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1500.0, 2500.0)).tolist()),
+        # (1e-1, 1e-2),
+        # tuple(u.Unit('km/s').to(u.Unit('m/s'), (1800.0, 2400.0)).tolist()),
         tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 2000.0)).tolist()),
-        # tuple(u.Unit('km/s').to(u.Unit('m/s'), (800.0, 1400.0)).tolist()),
+        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 1500.0)).tolist()),
         (1.6, 2.0),
-        (0.1, 1.0),
+        (0.0, 1.0),
         # MES
         # (1e14, 1e15),
         # MES & VEX
-        tuple(u.deg.to(u.rad, (0.0, 20.0)).tolist()),
-        tuple(u.deg.to(u.rad, (100.0, 150.0)).tolist()),
+        tuple(u.deg.to(u.rad, (-20.0, 20.0)).tolist()),
+        tuple(u.deg.to(u.rad, (80.0, 130.0)).tolist()),
         tuple(u.au.to(u.m, (0.01, 0.1)).tolist()),
-        tuple(u.deg.to(u.rad, (30.0, 40.0)).tolist()),
-        tuple(u.deg.to(u.rad, (20.0, 80.0)).tolist()),
-        (0.1, 0.9),
         tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
+        tuple(u.deg.to(u.rad, (-80.0, 80.0)).tolist()),
+        (0.2, 0.8),
+        tuple(u.deg.to(u.rad, (30.0, 40.0)).tolist()),
         # (1e14, 1e15),
         # STA
         # tuple(u.deg.to(u.rad, (0.0, 20.0)).tolist()),
-        # tuple(u.deg.to(u.rad, (90.0, 125.0)).tolist()),
+        # tuple(u.deg.to(u.rad, (110.0, 125.0)).tolist()),
         # tuple(u.au.to(u.m, (0.01, 0.1)).tolist()),
-        # tuple(u.deg.to(u.rad, (30.0, 50.0)).tolist()),
-        # tuple(u.deg.to(u.rad, (60.0, 80.0)).tolist()),
-        # (0.1, 0.9),
-        # tuple(u.deg.to(u.rad, (25.0, 40.0)).tolist()),
+        # tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
+        # tuple(u.deg.to(u.rad, (-50.0, 50.0)).tolist()),
+        # (0.2, 0.8),
+        # tuple(u.deg.to(u.rad, (30.0, 40.0)).tolist()),
         # (1e13, 1e14),
     ]
 

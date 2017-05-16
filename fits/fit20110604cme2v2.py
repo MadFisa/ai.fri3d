@@ -32,7 +32,7 @@ def fit2insitu():
     flattening_cor = 0.4
     pancaking_cor = u.deg.to(u.rad, 30.0)
     skew = 0.0
-    polarity = -1.0
+    polarity = 1.0
     chirality = 1.0
     spline_s_phi_kind = 'cubic',
     spline_s_phi_n = 500
@@ -55,13 +55,21 @@ def fit2insitu():
     d_vex, b_vex, _, p_vex = getVEX(d0_vex, d1_vex)
     t_vex = np.array([calendar.timegm(x.timetuple()) for x in d_vex])
     bt_vex = np.sqrt(b_vex[:,0]**2+b_vex[:,1]**2+b_vex[:,2]**2)
-    m = t_vex >= calendar.timegm(datetime(2011, 6, 5, 19).timetuple())
-    ba_vex = np.median(bt_vex[m])
-    b_vex[np.logical_not(m),0] *= ba_vex/bt_vex[np.logical_not(m)]
-    b_vex[np.logical_not(m),1] *= ba_vex/bt_vex[np.logical_not(m)]
-    b_vex[np.logical_not(m),2] *= ba_vex/bt_vex[np.logical_not(m)]
-    bt_vex[np.logical_not(m)] *= ba_vex/bt_vex[np.logical_not(m)]
+    # m = t_vex >= calendar.timegm(datetime(2011, 6, 5, 19).timetuple())
+    # ba_vex = np.median(bt_vex[m])
+    # b_vex[np.logical_not(m),0] *= ba_vex/bt_vex[np.logical_not(m)]
+    # b_vex[np.logical_not(m),1] *= ba_vex/bt_vex[np.logical_not(m)]
+    # b_vex[np.logical_not(m),2] *= ba_vex/bt_vex[np.logical_not(m)]
+    # bt_vex[np.logical_not(m)] *= ba_vex/bt_vex[np.logical_not(m)]
     delta_vex = 10*3600
+
+    phi = u.rad.to(u.deg, np.arctan(b_vex[:,1]/b_vex[:,0]))
+    theta = u.rad.to(u.deg, np.arctan(b_vex[:,2]/np.sqrt(b_vex[:,0]**2+b_vex[:,1]**2)))
+    plt.figure()
+    plt.plot(phi, 'r')
+    plt.plot(theta, 'g')
+    # plt.show()
+
 
     # STA
     d0_sta = datetime(2011, 6, 6, 12, 25)
@@ -71,6 +79,13 @@ def fit2insitu():
     d_sta, b_sta, _, p_sta = getSTA(d0_sta, d1_sta)
     t_sta = np.array([calendar.timegm(x.timetuple()) for x in d_sta])
     bt_sta = np.sqrt(b_sta[:,0]**2+b_sta[:,1]**2+b_sta[:,2]**2)
+
+    phi = u.rad.to(u.deg, np.arctan(b_sta[:,1]/b_sta[:,0]))
+    theta = u.rad.to(u.deg, np.arctan(b_sta[:,2]/np.sqrt(b_sta[:,0]**2+b_sta[:,1]**2)))
+    plt.figure()
+    plt.plot(phi, 'r')
+    plt.plot(theta, 'g')
+    plt.show()
     
     cdas.set_cache(True, './data')
     data = cdas.get_data(
@@ -102,28 +117,28 @@ def fit2insitu():
         if num_eval%100 == 0:
             print('NUMBER OF EVALUATIONS = ', num_eval)
         p = np.zeros(23)
-        p[0] = params[0]
-        p[1] = params[1]
-        p[2] = params[2]
-        p[3] = params[3]
-        p[4] = params[4]
-        p[5] = params[5]
+        p[0] = 0.0
+        p[1] = 0.0
+        p[2] = params[0]
+        p[3] = params[1]
+        p[4] = params[2]
+        p[5] = params[3]
         p[6] = 1e14
-        p[7] = params[6]
-        p[8] = params[7]
-        p[9] = params[8]
-        p[10] = params[9]
-        p[11] = params[10]
-        p[12] = params[11]
-        p[13] = params[12]
+        p[7] = params[4]
+        p[8] = params[5]
+        p[9] = params[6]
+        p[10] = params[7]
+        p[11] = params[8]
+        p[12] = params[9]
+        p[13] = params[10]
         p[14] = 1e14
-        p[15] = params[13]
-        p[16] = params[14]
-        p[17] = params[15]
-        p[18] = params[16]
-        p[19] = params[17]
-        p[20] = params[18]
-        p[21] = params[19]
+        p[15] = params[11]
+        p[16] = params[12]
+        p[17] = params[13]
+        p[18] = params[14]
+        p[19] = params[15]
+        p[20] = params[16]
+        p[21] = params[17]
         p[22] = 1e14
         """
         SHARED
@@ -153,16 +168,10 @@ def fit2insitu():
         22: flux
         """
         evo = Evolution()
-        if p[1] < p[2]:
-            res = np.inf
-            return res
         evo.toroidal_height = lambda t: (
-            (p[1]-p[2])/p[0]*(1.0-np.exp(-p[0]*(t-t0_cor)))+p[2]*(t-t0_cor)+
-            toroidal_height_cor
+            p[2]*(t-t0_cor)+toroidal_height_cor
             if t <= ti else
-            (p[1]-p[2])/p[0]*(1.0-np.exp(-p[0]*(ti-t0_cor)))+p[2]*(ti-t0_cor)+
-            toroidal_height_cor+
-            p[3]*(t-ti)
+            p[2]*(ti-t0_cor)+toroidal_height_cor+p[3]*(t-ti)
         )
         evo.sigma = lambda t: p[4]
         evo.twist = lambda t: p[5]
@@ -311,7 +320,7 @@ def fit2insitu():
                         btmf_vex[i]
                     )
                 ) for i in np.arange(bf_vex.shape[0])]
-            )/np.pi/2.0
+            )/np.pi*2.0
 
             if not np.isfinite(fit_b_vex):
                 fit_b_vex = 1.0
@@ -411,7 +420,7 @@ def fit2insitu():
                         btmf_sta[i]
                     )
                 ) for i in np.arange(bf_sta.shape[0])]
-            )/np.pi/2.0
+            )/np.pi*2.0
 
             if not np.isfinite(fit_b_sta):
                 fit_b_sta = 1.0
@@ -448,17 +457,11 @@ def fit2insitu():
 
         if res < res_prev:
             res_prev = res
-            fp = open('./cme2v2_run1.txt', 'w')
+            fp = open('./cme2v2_run2.txt', 'w')
             print('MESSENGER: ', fit_t_mes, file=fp)
             print('VEX: ', fit_t_vex, fit_b_vex, file=fp)
             print('STEREO-A: ', fit_t_sta, fit_b_sta, fit_vt_sta, file=fp)
             print('AVERAGE: ', res, file=fp)
-            print('SHARED toroidal_height decay = ', p[0], file=fp)
-            print(
-                'SHARED toroidal_height speed = ', 
-                u.Unit('m/s').to(u.Unit('km/s'), p[1]), 
-                file=fp
-            )
             print(
                 'SHARED toroidal_height speed = ', 
                 u.Unit('m/s').to(u.Unit('km/s'), p[2]), 
@@ -561,31 +564,31 @@ def fit2insitu():
     """
     bounds = [
         # SHARED
-        (1e-1, 1e-2),
-        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1800.0, 2400.0)).tolist()),
-        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1300.0, 1900.0)).tolist()),
-        tuple(u.Unit('km/s').to(u.Unit('m/s'), (800.0, 1400.0)).tolist()),
+        # (1e-1, 1e-2),
+        # tuple(u.Unit('km/s').to(u.Unit('m/s'), (1800.0, 2400.0)).tolist()),
+        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 2000.0)).tolist()),
+        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 1500.0)).tolist()),
         (1.6, 2.0),
-        (0.1, 1.0),
+        (0.0, 1.0),
         # MES
         # (1e14, 1e15),
         # MES & VEX
-        tuple(u.deg.to(u.rad, (10.0, 20.0)).tolist()),
-        tuple(u.deg.to(u.rad, (110.0, 125.0)).tolist()),
+        tuple(u.deg.to(u.rad, (-20.0, 20.0)).tolist()),
+        tuple(u.deg.to(u.rad, (80.0, 130.0)).tolist()),
         tuple(u.au.to(u.m, (0.01, 0.1)).tolist()),
+        tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
+        tuple(u.deg.to(u.rad, (-80.0, 80.0)).tolist()),
+        (0.2, 0.8),
         tuple(u.deg.to(u.rad, (30.0, 40.0)).tolist()),
-        tuple(u.deg.to(u.rad, (20.0, 70.0)).tolist()),
-        (0.1, 0.9),
-        tuple(u.deg.to(u.rad, (25.0, 40.0)).tolist()),
         # (1e14, 1e15),
         # STA
-        tuple(u.deg.to(u.rad, (0.0, 20.0)).tolist()),
-        tuple(u.deg.to(u.rad, (90.0, 125.0)).tolist()),
+        tuple(u.deg.to(u.rad, (-20.0, 20.0)).tolist()),
+        tuple(u.deg.to(u.rad, (80.0, 130.0)).tolist()),
         tuple(u.au.to(u.m, (0.01, 0.1)).tolist()),
-        tuple(u.deg.to(u.rad, (30.0, 50.0)).tolist()),
-        tuple(u.deg.to(u.rad, (60.0, 80.0)).tolist()),
-        (0.1, 0.9),
-        tuple(u.deg.to(u.rad, (25.0, 40.0)).tolist()),
+        tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
+        tuple(u.deg.to(u.rad, (-80.0, 0.0)).tolist()),
+        (0.2, 0.8),
+        tuple(u.deg.to(u.rad, (30.0, 40.0)).tolist()),
         # (1e13, 1e14),
     ]
 
@@ -605,3 +608,37 @@ def fit2insitu():
     print(res.message)
 
 fit2insitu()
+
+# MESSENGER:  0.0714285714286
+# VEX:  0.0238095238095 0.147885690074
+# STEREO-A:  0.047619047619 0.256383357026 0.0764026480497
+# AVERAGE:  0.103921473001
+# SHARED toroidal_height decay =  0.074880278671
+# SHARED toroidal_height speed =  2158.73067257
+# SHARED toroidal_height speed =  1607.18562046
+# SHARED toroidal_height speed =  1168.41863675
+# SHARED sigma =  1.78277984837
+# SHARED twist =  0.417389768315
+# MESSENGER flux =  9.30223125511e+14
+# VEX latitude =  15.4165425873
+# VEX longitude =  121.314131546
+# VEX poloidal_height =  0.0931936834373
+# VEX half_width =  31.9491511754
+# VEX tilt =  60.2708575138
+# VEX flattening =  0.867515533104
+# VEX pancaking =  34.030985596
+# VEX flux =  4.27330783546e+14
+# STEREO-A latitude =  18.2209764426
+# STEREO-A longitude =  115.144557025
+# STEREO-A poloidal_height =  0.0118936690065
+# STEREO-A half_width =  30.3747451069
+# STEREO-A tilt =  72.7271727662
+# STEREO-A flattening =  0.725633433038
+# STEREO-A pancaking =  36.8518912917
+# STEREO-A flux =  7.04993499698e+13
+# [  7.48802787e-02   2.15873067e+06   1.60718562e+06   1.16841864e+06
+#    1.78277985e+00   4.17389768e-01   9.30223126e+14   2.69069427e-01
+#    2.11733102e+00   1.39415766e+10   5.57617881e-01   1.05192491e+00
+#    8.67515533e-01   5.93952746e-01   4.27330784e+14   3.18016032e-01
+#    2.00965164e+00   1.77926756e+09   5.30139312e-01   1.26932862e+00
+#    7.25633433e-01   6.43186839e-01   7.04993500e+13]

@@ -435,5 +435,5 @@ def fit2insitu():
     
     return res
 
-# fit2remote()
-fit2insitu()
+fit2remote()
+# fit2insitu()

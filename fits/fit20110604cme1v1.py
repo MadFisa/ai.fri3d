@@ -223,7 +223,7 @@ def fit2insitu():
             axis=0, 
             fill_value='extrapolate'
         )
-        bm_vex, _ = evo.insitu(
+        bm_vex, vtm_vex = evo.insitu(
             tm_vex, 
             fx_vex, 
             fy_vex, 
@@ -242,6 +242,8 @@ def fit2insitu():
             tm_vex = tm_vex[nzi_vex]
             bm_vex = bm_vex[nzi_vex,:]
             btm_vex = btm_vex[nzi_vex]
+            vtm_vex = vtm_vex[nzi_vex]
+            print(np.median(vtm_vex))
 
             fit_t_vex = (
                 (abs(tm_vex[0]-t_vex[0])+abs(tm_vex[-1]-t_vex[-1]))/
