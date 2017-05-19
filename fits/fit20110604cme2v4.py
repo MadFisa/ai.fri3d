@@ -358,8 +358,8 @@ def fit2insitu():
         # tuple(u.deg.to(u.rad, (30.0, 40.0)).tolist()),
         # (1e14, 1e15),
         # STA
-        tuple(u.deg.to(u.rad, (0.0, 15.0)).tolist()),
-        tuple(u.deg.to(u.rad, (90.0, 130.0)).tolist()),
+        tuple(u.deg.to(u.rad, (-20.0, 20.0)).tolist()),
+        tuple(u.deg.to(u.rad, (80.0, 130.0)).tolist()),
         tuple(u.au.to(u.m, (0.005, 0.04)).tolist()),
         # tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
         tuple(u.deg.to(u.rad, (-70.0, -20.0)).tolist()),
