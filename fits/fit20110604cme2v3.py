@@ -77,10 +77,10 @@ def fit2insitu():
         p[7] = params[4]
         p[8] = params[5]
         p[9] = params[6]
-        p[10] = params[7]
-        p[11] = params[8]
-        p[12] = params[9]
-        p[13] = params[10]
+        p[10] = half_width_cor
+        p[11] = params[7]
+        p[12] = params[8]
+        p[13] = pancaking_cor
         p[14] = 1e14
         p[15] = 0.0
         p[16] = 0.0
@@ -293,7 +293,7 @@ def fit2insitu():
 
         if res < res_prev:
             res_prev = res
-            fp = open('./cme2v3_run1.txt', 'w')
+            fp = open('./cme2v3_run2.txt', 'w')
             print('MESSENGER: ', fit_t_mes, file=fp)
             print('VEX: ', fit_t_vex, fit_b_vex, file=fp)
             print('AVERAGE: ', res, file=fp)
@@ -378,19 +378,19 @@ def fit2insitu():
         # (1e-1, 1e-2),
         # tuple(u.Unit('km/s').to(u.Unit('m/s'), (1800.0, 2400.0)).tolist()),
         tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 2000.0)).tolist()),
-        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 1500.0)).tolist()),
+        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 1700.0)).tolist()),
         (1.6, 2.0),
         (0.0, 1.0),
         # MES
         # (1e14, 1e15),
         # MES & VEX
         tuple(u.deg.to(u.rad, (-20.0, 20.0)).tolist()),
-        tuple(u.deg.to(u.rad, (80.0, 130.0)).tolist()),
+        tuple(u.deg.to(u.rad, (80.0, 140.0)).tolist()),
         tuple(u.au.to(u.m, (0.01, 0.1)).tolist()),
-        tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
-        tuple(u.deg.to(u.rad, (-80.0, 80.0)).tolist()),
+        # tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
+        tuple(u.deg.to(u.rad, (-80.0, 0.0)).tolist()),
         (0.2, 0.8),
-        tuple(u.deg.to(u.rad, (30.0, 40.0)).tolist()),
+        # tuple(u.deg.to(u.rad, (30.0, 40.0)).tolist()),
         # (1e14, 1e15),
         # STA
         # tuple(u.deg.to(u.rad, (0.0, 20.0)).tolist()),

@@ -63,6 +63,9 @@ def fit2insitu():
     # bt_vex[np.logical_not(m)] *= ba_vex/bt_vex[np.logical_not(m)]
     delta_vex = 10*3600
 
+    print(u.m.to(u.au, np.mean(p_mes, axis=0)))
+    print(u.m.to(u.au, np.mean(p_vex, axis=0)))
+
     phi = u.rad.to(u.deg, np.arctan(b_vex[:,1]/b_vex[:,0]))
     theta = u.rad.to(u.deg, np.arctan(b_vex[:,2]/np.sqrt(b_vex[:,0]**2+b_vex[:,1]**2)))
     plt.figure()
@@ -119,26 +122,26 @@ def fit2insitu():
         p = np.zeros(23)
         p[0] = 0.0
         p[1] = 0.0
-        p[2] = params[0]
-        p[3] = params[1]
-        p[4] = params[2]
-        p[5] = params[3]
+        p[2] = 1.60063564e+06
+        p[3] = params[0]
+        p[4] = 1.93403104e+00
+        p[5] = 6.64739737e-01
         p[6] = 1e14
-        p[7] = params[4]
-        p[8] = params[5]
-        p[9] = params[6]
-        p[10] = params[7]
-        p[11] = params[8]
-        p[12] = params[9]
-        p[13] = params[10]
+        p[7] = 1.91098468e-01
+        p[8] = 2.19678602e+00
+        p[9] = 1.32980424e+10
+        p[10] = half_width_cor
+        p[11] = -3.58729938e-01
+        p[12] = 7.73785273e-01
+        p[13] = pancaking_cor
         p[14] = 1e14
-        p[15] = params[11]
-        p[16] = params[12]
-        p[17] = params[13]
-        p[18] = params[14]
-        p[19] = params[15]
-        p[20] = params[16]
-        p[21] = params[17]
+        p[15] = params[1]
+        p[16] = params[2]
+        p[17] = params[3]
+        p[18] = half_width_cor
+        p[19] = params[4]
+        p[20] = params[5]
+        p[21] = params[6]
         p[22] = 1e14
         """
         SHARED
@@ -183,7 +186,7 @@ def fit2insitu():
 
         evo.latitude = lambda t: p[7]
         evo.longitude = lambda t: p[8]
-        evo.poloidal_height = lambda t: p[9]
+        evo.poloidal_height = lambda t: p[9]/2.0
         evo.half_width = lambda t: p[10]
         evo.tilt = lambda t: p[11]
         evo.flattening = lambda t: p[12]
@@ -233,7 +236,7 @@ def fit2insitu():
             bm_mes = bm_mes[nzi_mes,:]
             btm_mes = btm_mes[nzi_mes]
 
-            fit_t_mes = np.abs(tm_mes[0]-t_mes[0])/(t_vex[-1]-t_vex[0])
+            fit_t_mes = np.abs(tm_mes[0]-t_mes[0])/(t_vex[-1]-t_vex[0])*2.0
             kappa_mes = bt_mes/np.median(btm_mes)
             p[6] *= kappa_mes
             bm_mes *= kappa_mes
@@ -244,6 +247,7 @@ def fit2insitu():
 
         # VEX
 
+        evo.poloidal_height = lambda t: p[9]
         evo.flux = lambda t: p[14]
 
         tm_vex = np.arange(
@@ -457,7 +461,7 @@ def fit2insitu():
 
         if res < res_prev:
             res_prev = res
-            fp = open('./cme2v2_run2.txt', 'w')
+            fp = open('./cme2v2_run5.txt', 'w')
             print('MESSENGER: ', fit_t_mes, file=fp)
             print('VEX: ', fit_t_vex, fit_b_vex, file=fp)
             print('STEREO-A: ', fit_t_sta, fit_b_sta, fit_vt_sta, file=fp)
@@ -566,29 +570,29 @@ def fit2insitu():
         # SHARED
         # (1e-1, 1e-2),
         # tuple(u.Unit('km/s').to(u.Unit('m/s'), (1800.0, 2400.0)).tolist()),
-        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 2000.0)).tolist()),
-        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 1500.0)).tolist()),
-        (1.6, 2.0),
-        (0.0, 1.0),
+        # tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 2000.0)).tolist()),
+        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1200.0, 1500.0)).tolist()),
+        # (1.6, 2.0),
+        # (0.0, 1.0),
         # MES
         # (1e14, 1e15),
         # MES & VEX
-        tuple(u.deg.to(u.rad, (-20.0, 20.0)).tolist()),
-        tuple(u.deg.to(u.rad, (80.0, 130.0)).tolist()),
-        tuple(u.au.to(u.m, (0.01, 0.1)).tolist()),
-        tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
-        tuple(u.deg.to(u.rad, (-80.0, 80.0)).tolist()),
-        (0.2, 0.8),
-        tuple(u.deg.to(u.rad, (30.0, 40.0)).tolist()),
+        # tuple(u.deg.to(u.rad, (0.0, 20.0)).tolist()),
+        # tuple(u.deg.to(u.rad, (90.0, 130.0)).tolist()),
+        # tuple(u.au.to(u.m, (0.01, 0.1)).tolist()),
+        # tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
+        # tuple(u.deg.to(u.rad, (-80.0, 30.0)).tolist()),
+        # (0.2, 0.8),
+        # tuple(u.deg.to(u.rad, (30.0, 40.0)).tolist()),
         # (1e14, 1e15),
         # STA
-        tuple(u.deg.to(u.rad, (-20.0, 20.0)).tolist()),
-        tuple(u.deg.to(u.rad, (80.0, 130.0)).tolist()),
-        tuple(u.au.to(u.m, (0.01, 0.1)).tolist()),
-        tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
-        tuple(u.deg.to(u.rad, (-80.0, 0.0)).tolist()),
+        tuple(u.deg.to(u.rad, (0.0, 20.0)).tolist()),
+        tuple(u.deg.to(u.rad, (90.0, 125.0)).tolist()),
+        tuple(u.au.to(u.m, (0.001, 0.04)).tolist()),
+        # tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
+        tuple(u.deg.to(u.rad, (-80.0, -20.0)).tolist()),
         (0.2, 0.8),
-        tuple(u.deg.to(u.rad, (30.0, 40.0)).tolist()),
+        tuple(u.deg.to(u.rad, (10.0, 30.0)).tolist()),
         # (1e13, 1e14),
     ]
 
@@ -596,7 +600,7 @@ def fit2insitu():
         F, 
         bounds=bounds,
         strategy='best1bin',
-        popsize=100,
+        popsize=50,
         mutation=(0.5, 1.0),
         recombination=0.9,
         disp=True,

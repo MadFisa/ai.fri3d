@@ -192,10 +192,14 @@ class FRi3D:
             self.spline_s_phi_n
         )
         s = np.array([self._initial_axis_s(p) for p in phi])
+        m = np.isfinite(s)
+        s = s[m]
+        phi = phi[m]
         self._spline_initial_axis_s_phi = interp1d(
             s, phi, 
             kind=self.spline_s_phi_kind,
             bounds_error=False,
+            # fill_value='extrapolate'
             fill_value=(-self.half_width, self.half_width)
         )
 
@@ -255,6 +259,7 @@ class FRi3D:
         # ))
         # for i in range(10000):
         s = fixed_quad(self._initial_axis_ds, -self.half_width, phi, n=1000)
+        # s = quad(self._initial_axis_ds, -self.half_width, phi)
         # s = quadrature(
         #     self._initial_axis_ds, 
         #     -self.half_width, 

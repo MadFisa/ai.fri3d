@@ -5,6 +5,7 @@
 *.cdf
 *.gz
 *.mp4
+*.png
 
 # Data cache
 data/

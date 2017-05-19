@@ -94,10 +94,10 @@ def fit2insitu():
         p[15] = params[4]
         p[16] = params[5]
         p[17] = params[6]
-        p[18] = params[7]
-        p[19] = params[8]
-        p[20] = params[9]
-        p[21] = params[10]
+        p[18] = half_width_cor
+        p[19] = params[7]
+        p[20] = params[8]
+        p[21] = params[9]
         p[22] = 1e14
         """
         SHARED
@@ -260,7 +260,7 @@ def fit2insitu():
 
         if res < res_prev:
             res_prev = res
-            fp = open('./cme2v4_run1.txt', 'w')
+            fp = open('./cme2v4_run2.txt', 'w')
             print('STEREO-A: ', fit_t_sta, fit_b_sta, fit_vt_sta, file=fp)
             print('AVERAGE: ', res, file=fp)
             print(
@@ -343,7 +343,7 @@ def fit2insitu():
         # (1e-1, 1e-2),
         # tuple(u.Unit('km/s').to(u.Unit('m/s'), (1800.0, 2400.0)).tolist()),
         tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 2000.0)).tolist()),
-        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 1500.0)).tolist()),
+        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 1600.0)).tolist()),
         (1.6, 2.0),
         (0.0, 1.0),
         # MES
@@ -358,13 +358,13 @@ def fit2insitu():
         # tuple(u.deg.to(u.rad, (30.0, 40.0)).tolist()),
         # (1e14, 1e15),
         # STA
-        tuple(u.deg.to(u.rad, (-20.0, 20.0)).tolist()),
-        tuple(u.deg.to(u.rad, (80.0, 130.0)).tolist()),
-        tuple(u.au.to(u.m, (0.01, 0.1)).tolist()),
-        tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
-        tuple(u.deg.to(u.rad, (-80.0, 0.0)).tolist()),
-        (0.2, 0.8),
-        tuple(u.deg.to(u.rad, (30.0, 40.0)).tolist()),
+        tuple(u.deg.to(u.rad, (0.0, 15.0)).tolist()),
+        tuple(u.deg.to(u.rad, (90.0, 130.0)).tolist()),
+        tuple(u.au.to(u.m, (0.005, 0.04)).tolist()),
+        # tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
+        tuple(u.deg.to(u.rad, (-70.0, -20.0)).tolist()),
+        (0.2, 0.4),
+        tuple(u.deg.to(u.rad, (10.0, 30.0)).tolist()),
         # (1e13, 1e14),
     ]
 
@@ -384,6 +384,30 @@ def fit2insitu():
     print(res.message)
 
 fit2insitu()
+
+# STEREO-A:  0.047619047619 0.0846761294283 0.013111095246
+# AVERAGE:  0.0484687574311
+# SHARED toroidal_height speed =  1074.13697467
+# SHARED toroidal_height speed =  1000.62862142
+# SHARED sigma =  1.8473254712
+# SHARED twist =  0.351453804492
+# STEREO-A latitude =  -18.3088164634
+# STEREO-A longitude =  81.6636726523
+# STEREO-A poloidal_height =  0.030154291444
+# STEREO-A half_width =  39.2969475439
+# STEREO-A tilt =  -61.1322776563
+# STEREO-A flattening =  0.201437153817
+# STEREO-A pancaking =  35.847787406
+# STEREO-A flux =  2.40762503817e+14
+# [  0.00000000e+00   0.00000000e+00   1.07413697e+06   1.00062862e+06
+#    1.84732547e+00   3.51453804e-01   1.00000000e+14   0.00000000e+00
+#    0.00000000e+00   0.00000000e+00   0.00000000e+00   0.00000000e+00
+#    0.00000000e+00   0.00000000e+00   1.00000000e+14  -3.19549129e-01
+#    1.42529997e+00   4.51101779e+09   6.85861121e-01  -1.06695952e+00
+#    2.01437154e-01   6.25661920e-01   2.40762504e+14]
+
+
+
 
 # STEREO-A:  0.904761904762 0.371791498672 0.0735345318287
 # AVERAGE:  0.450029311754

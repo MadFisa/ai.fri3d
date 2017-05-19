@@ -4,271 +4,296 @@ from datetime import datetime
 import calendar
 from astropy import units as u
 from matplotlib import pyplot as plt
+from ai.fri3d import FRi3D
+from mpl_toolkits.mplot3d import proj3d
+from ai.shared.color import BLIND_PALETTE
+
+di = datetime(2011, 6, 5, 11, 30)
+ti = calendar.timegm(di.timetuple())
 
 d0_cor1 = datetime(2011, 6, 4, 8, 54)
 t0_cor1 = calendar.timegm(d0_cor1.timetuple())
+latitude_cor1 = u.deg.to(u.rad, 30.0)
+longitude_cor1 = u.deg.to(u.rad, 110.0)
 toroidal_height_cor1 = u.R_sun.to(u.m, 12.5)
+poloidal_height_cor1 = u.R_sun.to(u.m, 3.5)
+half_width_cor1 = u.deg.to(u.rad, 40.0)
+tilt_cor1 = u.deg.to(u.rad, 37.0)
+flattening_cor1 = 0.4
+pancaking_cor1 = u.deg.to(u.rad, 25.0)
+d0_vex1 = datetime(2011, 6, 5, 8, 45)
+d1_vex1 = datetime(2011, 6, 5, 11, 50)
+t0_vex1 = calendar.timegm(d0_vex1.timetuple())
+t1_vex1 = calendar.timegm(d1_vex1.timetuple())
 
-p1 = [  
-    4.10087695e-03, 1.53239612e+06, 1.09074414e+06, 0.00000000e+00,
-    1.72208573e+00, 9.75235369e-02, 2.95738716e+14, 8.76460076e-03,
-    2.43337280e+00, 6.85080642e+09, 6.75083121e-01, 7.78536041e-01,
-    3.21601842e-01, 5.96513135e-01, 2.60208297e+14, 0.00000000e+00,
+p1 = np.array([
+    0.00000000e+00, 0.00000000e+00, 1.09694321e+06, 0.00000000e+00,
+    1.74663539e+00, 1.42715313e-01, 2.37949622e+14, 1.15029689e-02,
+    2.43874271e+00, 1.48063900e+10, 6.98131701e-01, 7.69720360e-01,
+    3.11766980e-01, 4.36332313e-01, 2.12218034e+14, 0.00000000e+00,
     0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
     0.00000000e+00, 0.00000000e+00, 0.00000000e+00
-]
+])
+
+p_theta1 = np.polyfit([t0_cor1, t1_vex1], [latitude_cor1, p1[7]], 1)
+theta1 = lambda t: (
+    np.polyval(p_theta1, t)
+    if t <= t1_vex1 else
+    p1[7]
+)
+p_phi1 = np.polyfit([t0_cor1, t1_vex1], [longitude_cor1, p1[8]], 1)
+phi1 = lambda t: (
+    np.polyval(p_phi1, t)
+    if t <= t1_vex1 else
+    p1[8]
+)
+Rt1 = lambda t: p1[2]*(t-t0_cor1)+toroidal_height_cor1
+p_Rp1 = np.polyfit([t0_cor1, t1_vex1], [poloidal_height_cor1, p1[9]], 1)
+Rp1 = lambda t: (
+    np.polyval(p_Rp1, t)
+    if t <= t1_vex1 else
+    p1[9]
+)
+p_gamma1 = np.polyfit([t0_cor1, t1_vex1], [tilt_cor1, p1[11]], 1)
+gamma1 = lambda t: (
+    np.polyval(p_gamma1, t)
+    if t <= t1_vex1 else
+    p1[10]
+)
 
 d0_cor2 = datetime(2011, 6, 4, 22, 54)
 t0_cor2 = calendar.timegm(d0_cor2.timetuple())
+latitude_cor2 = u.deg.to(u.rad, 22.0)
+longitude_cor2 = u.deg.to(u.rad, 125.0)
 toroidal_height_cor2 = u.R_sun.to(u.m, 12.0)
+poloidal_height_cor2 = u.R_sun.to(u.m, 4.0)
+half_width_cor2 = u.deg.to(u.rad, 35.0)
+tilt_cor2 = u.deg.to(u.rad, 35.0)
+flattening_cor2 = 0.4
+pancaking_cor2 = u.deg.to(u.rad, 30.0)
+d0_vex2 = datetime(2011, 6, 5, 15, 30)
+d1_vex2 = datetime(2011, 6, 5, 22, 30)
+t0_vex2 = calendar.timegm(d0_vex2.timetuple())
+t1_vex2 = calendar.timegm(d1_vex2.timetuple())
+d0_sta2 = datetime(2011, 6, 6, 12, 25)
+d1_sta2 = datetime(2011, 6, 6, 14, 10)
+t0_sta2 = calendar.timegm(d0_sta2.timetuple())
+t1_sta2 = calendar.timegm(d1_sta2.timetuple())
 
-p2 = [  
-    7.48802787e-02, 2.15873067e+06, 1.60718562e+06, 1.16841864e+06,
-    1.78277985e+00, 4.17389768e-01, 9.30223126e+14, 2.69069427e-01,
-    2.11733102e+00, 1.39415766e+10, 5.57617881e-01, 1.05192491e+00,
-    8.67515533e-01, 5.93952746e-01, 4.27330784e+14, 3.18016032e-01,
-    2.00965164e+00, 1.77926756e+09, 5.30139312e-01, 1.26932862e+00,
-    7.25633433e-01, 6.43186839e-01, 7.04993500e+13
-]
+
+p2 = np.array([
+    0.00000000e+00, 0.00000000e+00, 1.60063564e+06, 1.36899100e+06,
+    1.93403104e+00, 6.64739737e-01, 3.32931163e+14, 1.91098468e-01,
+    2.19678602e+00, 1.32980424e+10, 6.10865238e-01,-3.58729938e-01,
+    7.73785273e-01, 5.23598776e-01, 4.44185435e+14,-3.48929342e-01,
+    1.98187717e+00, 3.65509409e+09, 6.10865238e-01,-6.11774845e-03,
+    7.13127894e-01, 5.23598776e-01, 1.32006025e+14
+])
+
+p_theta21 = np.polyfit([t0_cor2, t1_vex2], [latitude_cor2, p2[7]], 1)
+p_theta22 = np.polyfit([t1_vex2, t1_sta2], [p2[7], p2[15]], 1)
+theta2 = lambda t: (
+    np.polyval(p_theta21, t) 
+    if t <= t1_vex2 else
+    np.polyval(p_theta22, t)
+)
+
+p_phi21 = np.polyfit([t0_cor2, t1_vex2], [longitude_cor2, p2[8]], 1)
+p_phi22 = np.polyfit([t1_vex2, t1_sta2], [p2[8], p2[16]], 1)
+phi2 = lambda t: (
+    np.polyval(p_phi21, t)
+    if t <= t1_vex2 else
+    np.polyval(p_phi22, t)
+)
+
+Rt2 = lambda t: (
+    p2[2]*(t-t0_cor2)+toroidal_height_cor2
+    if t <= ti else
+    p2[2]*(ti-t0_cor2)+toroidal_height_cor2+p2[3]*(t-ti)
+)
+
+p_Rp21 = np.polyfit([t0_cor2, t1_vex2], [poloidal_height_cor2, p2[9]], 1)
+p_Rp22 = np.polyfit([t1_vex2, t1_sta2], [p2[9], p2[17]], 1)
+Rp2 = lambda t: (
+    np.polyval(p_Rp21, t)
+    if t <= t1_vex2 else
+    np.polyval(p_Rp22, t)
+)
+
+p_gamma21 = np.polyfit([t0_cor2, t1_vex2], [tilt_cor2, p2[11]], 1)
+p_gamma22 = np.polyfit([t1_vex2, t1_sta2], [p2[11], p2[19]], 1)
+gamma2 = lambda t: (
+    np.polyval(p_gamma21, t)
+    if t <= t1_vex2 else
+    np.polyval(p_gamma22, t)
+)
 
 d0_cor3 = datetime(2011, 6, 4, 23, 56)
 t0_cor3 = calendar.timegm(d0_cor3.timetuple())
-toroidal_height_cor3 = u.R_sun.to(u.m, 7.5)
+latitude_cor3 = u.deg.to(u.rad, -2.0)
+longitude_cor3 = u.deg.to(u.rad, 92.0)
+toroidal_height_cor3 = u.R_sun.to(u.m, 16.5)
+poloidal_height_cor3 = u.R_sun.to(u.m, 4.5)
+half_width_cor3 = u.deg.to(u.rad, 30.0)
+tilt_cor3 = u.deg.to(u.rad, 65.0)
+flattening_cor3 = 0.3
+pancaking_cor3 = u.deg.to(u.rad, 18.0)
+d0_sta3 = datetime(2011, 6, 6, 16, 30)
+d1_sta3 = datetime(2011, 6, 7, 1)
+t0_sta3 = calendar.timegm(d0_sta3.timetuple())
+t1_sta3 = calendar.timegm(d1_sta3.timetuple())
 
-p3 = [  
-    9.36787673e-03, 1.03308533e+06, 1.01328946e+06, 0.00000000e+00,
-    1.86287442e+00, 5.45612614e-01, 0.00000000e+00, 0.00000000e+00,
+p3 = np.array([
+    0.00000000e+00, 0.00000000e+00, 1.07624479e+06, 0.00000000e+00,
+    1.65115340e+00, 9.61432961e-01, 0.00000000e+00, 0.00000000e+00,
     0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
-    0.00000000e+00, 0.00000000e+00, 1.00000000e+14, 1.33368540e-01,
-    1.91927534e+00, 9.07163638e+09, 5.83000319e-01, 5.31262222e-01,
-    7.83716277e-01, 6.77584455e-01, 1.28830053e+14
-]
+    0.00000000e+00, 0.00000000e+00, 1.00000000e+14, 1.72942795e-01,
+    1.98685514e+00, 9.55998124e+09, 6.98131701e-01, 4.44415988e-01,
+    7.96464127e-01, 4.36332313e-01, 6.57017733e+13
+])
 
-di = datetime(2011, 6, 5, 11, 30)
-# di = datetime(2011, 6, 5, 5)
-ti = calendar.timegm(di.timetuple())
+p_theta3 = np.polyfit([t0_cor3, t1_sta3], [latitude_cor3, p3[15]], 1)
+theta3 = lambda t: np.polyval(p_theta3, t)
+p_phi3 = np.polyfit([t0_cor3, t1_sta3], [longitude_cor3, p3[16]], 1)
+phi3 = lambda t: np.polyval(p_phi3, t)
+Rt3 = lambda t: p3[2]*(t-t0_cor3)+toroidal_height_cor3
+p_Rp3 = np.polyfit([t0_cor3, t1_sta3], [poloidal_height_cor3, p3[17]], 1)
+Rp3 = lambda t: np.polyval(p_Rp3, t)
+p_gamma3 = np.polyfit([t0_cor3, t1_sta3], [tilt_cor3, p3[19]], 1)
+gamma3 = lambda t: np.polyval(p_gamma3, t)
 
-# Rt1 = lambda t: (
-#     (p1[1]-p1[2])/p1[0]*(1.0-np.exp(-p1[0]*(t-t0_cor1)))+p1[2]*(t-t0_cor1)+
-#     toroidal_height_cor1
-# )
+t1 = np.linspace(t0_cor1, t1_vex1, 100)
+t2 = np.linspace(t0_cor2, t1_sta2, 100)
+t3 = np.linspace(t0_cor3, t1_sta3, 100)
 
-# Rt2 = lambda t: (
-#     (p2[1]-p2[2])/p2[0]*(1.0-np.exp(-p2[0]*(t-t0_cor2)))+p2[2]*(t-t0_cor2)+
-#     toroidal_height_cor2
-#     if t <= ti else
-#     (p2[1]-p2[2])/p2[0]*(1.0-np.exp(-p2[0]*(ti-t0_cor2)))+p2[2]*(ti-t0_cor2)+
-#     toroidal_height_cor2+
-#     p2[3]*(t-ti)
-# )
-
-# Rt3 = lambda t: (
-#     (p3[1]-p3[2])/p3[0]*(1.0-np.exp(-p3[0]*(t-t0_cor3)))+p3[2]*(t-t0_cor3)+
-#     toroidal_height_cor3
-# )
-
-# d0 = datetime(2011, 6, 4, 6)
-# d1 = datetime(2011, 6, 7, 12)
-
-# t1 = np.linspace(
-#     t0_cor1,
-#     calendar.timegm(d1.timetuple()),
-#     100
-# )
-
-# t2 = np.linspace(
-#     t0_cor2,
-#     calendar.timegm(d1.timetuple()),
-#     100
-# )
-
-# t3 = np.linspace(
-#     t0_cor3,
-#     calendar.timegm(d1.timetuple()),
-#     100
-# )
-
-# plt.plot(t1, [Rt1(x) for x in t1], 'r')
-# plt.plot(t2, [Rt2(x) for x in t2], 'g')
-# plt.plot(t3, [Rt3(x) for x in t3], 'b')
+# plt.figure()
+# plt.plot(t1, [Rt1(x) for x in t1])
+# plt.plot(t2, [Rt2(x) for x in t2])
+# plt.plot(t3, [Rt3(x) for x in t3])
 # plt.show()
 
-d0_cor = datetime(2011, 6, 4, 22, 54)
-t0_cor = calendar.timegm(d0_cor.timetuple())
-d0_mes = datetime(2011, 6, 5, 4, 40)
-d1_mes = datetime(2011, 6, 5, 9, 29)
-t0_mes = calendar.timegm(d0_mes.timetuple())
-t1_mes = calendar.timegm(d1_mes.timetuple())
+# for t in np.linspace(t0_cor1+15*3600, t0_cor1+50*3600, 200):
 
-t1 = np.linspace(
-    t0_cor,
-    t1_mes,
-    10
-)
-v1 = 1.66589259e+06
+t = t0_cor1+3600*30.0
 
-d0_sta = datetime(2011, 6, 6, 12, 25)
-d1_sta = datetime(2011, 6, 6, 14, 10)
-t0_sta = calendar.timegm(d0_sta.timetuple())
-t1_sta = calendar.timegm(d1_sta.timetuple())
+fr1 = FRi3D(theta1(t), phi1(t), Rt1(t), Rp1(t), half_width_cor1, gamma1(t), flattening_cor1, pancaking_cor1)
+fr2 = FRi3D(theta2(t), phi2(t), Rt2(t), Rp2(t), half_width_cor2, gamma2(t), flattening_cor2, pancaking_cor2)
+fr3 = FRi3D(theta3(t), phi3(t), Rt3(t), Rp3(t), half_width_cor3, gamma3(t), flattening_cor3, pancaking_cor3)
 
-d0_vex = datetime(2011, 6, 5, 15, 30)
-d1_vex = datetime(2011, 6, 5, 22, 30)
-t0_vex = calendar.timegm(d0_vex.timetuple())
-t1_vex = calendar.timegm(d1_vex.timetuple())
+# fr1 = FRi3D(p1[7], p1[8], Rt1(t1_sta3), p1[9], p1[10], p1[11], p1[12], p1[13])
+# fr2 = FRi3D(p2[15], p2[16], Rt2(t1_sta3), p2[17], p2[18], p2[19], p2[20], p2[21])
+# fr3 = FRi3D(p3[15], p3[16], Rt3(t1_sta3), p3[17], p3[18], p3[19], p3[20], p3[21])
 
-t2 = np.linspace(
-    ti,
-    t1_vex,
-    10
-)
-v2 = 1.39337996e+06
+fig = plt.figure(figsize=(10,10))
+ax = fig.add_subplot(111, projection='3d', adjustable='box', aspect=1.0)
+ax.set_xlim(-1.5, 0.5)
+ax.set_ylim(0.0, 2.0)
+ax.set_zlim(-1.0, 1.0)
+ax.view_init(45.0, 45.0)
 
-t3 = np.linspace(
-    t0_sta,
-    t1_sta,
-    10
-)
-v3 = 1.00778480e+06
+x, y, z = fr1.shell()
+x *= u.m.to(u.au)
+y *= u.m.to(u.au)
+z *= u.m.to(u.au)
+ax.plot_wireframe(x, y, z, color=BLIND_PALETTE['vermillion'], alpha=0.4)
 
-toroidal_height_cor = u.R_sun.to(u.m, 12.0)
+x, y, z = fr2.shell()
+x *= u.m.to(u.au)
+y *= u.m.to(u.au)
+z *= u.m.to(u.au)
+ax.plot_wireframe(x, y, z, color=BLIND_PALETTE['bluish-green'], alpha=0.4)
 
+x, y, z = fr3.shell()
+x *= u.m.to(u.au)
+y *= u.m.to(u.au)
+z *= u.m.to(u.au)
+ax.plot_wireframe(x, y, z, color=BLIND_PALETTE['blue'], alpha=0.4)
 
+ax.plot([-0.24780182], [0.20551227], [0.01735895], '.g', markersize=10)
+ax.plot([-0.4918486], [0.5307865], [0.03558903], '.b', markersize=10)
+ax.plot([-0.08090355], [0.94649878], [0.12191591], '.r', markersize=10)
 
-
-# plt.plot(t1, np.ones(t1.shape)*v1)
-# plt.plot(t2, np.ones(t2.shape)*v2)
-# plt.plot(t3, np.ones(t3.shape)*v3)
-# plt.show()
-
-Rt = lambda t: (
-    toroidal_height_cor+v1*(t-t0_cor)
-    if t <= ti else
-        toroidal_height_cor+1.01717379e+06*(ti-t0_cor)+v3*(t-ti)
-        if t >= t1_vex+3600*11.5 else
-        toroidal_height_cor+v1*(ti-t0_cor)+650e3*(t-ti)
-)
-
-# t1_vex+3600*5 = datetime(2011, 6, 6, 10)
-
-t = np.linspace(
-    t0_cor,
-    t1_sta,
-    100
-)
-
-plt.plot(t, [Rt(x) for x in t])
-
-
-
-
-Rt1 = lambda t: 1.09284773e+06*(t-t0_cor1)+toroidal_height_cor1
-t1 = np.linspace(
-    calendar.timegm(datetime(2011, 6, 4, 8, 54).timetuple()),
-    calendar.timegm(datetime(2011, 6, 5, 11, 50).timetuple()),
-    100
-)
-plt.plot(t1, [Rt1(x) for x in t1])
-
-
-
-Rt3 = lambda t: 1.01519278e+06*(t-t0_cor3)+toroidal_height_cor3
-t3 = np.linspace(
-    calendar.timegm(datetime(2011, 6, 4, 23, 56).timetuple()),
-    calendar.timegm(datetime(2011, 6, 7, 1).timetuple()),
-    100
-)
-plt.plot(t3, [Rt3(x) for x in t3])
-
-
+# fig.savefig('CMExCMExCME_'+str(t)+'.png')
 
 plt.show()
-
-
 
 
 # CME 1
 
 # MESSENGER:  0.0540540540541
-# VEX:  0.027027027027 0.0257009934907
-# AVERAGE:  0.0355940248573
-# SHARED toroidal_height decay =  0.00410087695021
-# SHARED toroidal_height speed =  1532.39611789
-# SHARED toroidal_height speed =  1090.74414456
-# SHARED sigma =  1.72208572816
-# SHARED twist =  0.0975235369307
-# MESSENGER flux =  2.95738715957e+14
-# VEX latitude =  0.50217463248
-# VEX longitude =  139.421991365
-# VEX poloidal_height =  0.0457948123976
-# VEX half_width =  38.6794136686
-# VEX tilt =  44.6068293323
-# VEX flattening =  0.321601842477
-# VEX pancaking =  34.177685088
-# VEX flux =  2.60208296555e+14
-# [  4.10087695e-03   1.53239612e+06   1.09074414e+06   0.00000000e+00
-#    1.72208573e+00   9.75235369e-02   2.95738716e+14   8.76460076e-03
-#    2.43337280e+00   6.85080642e+09   6.75083121e-01   7.78536041e-01
-#    3.21601842e-01   5.96513135e-01   2.60208297e+14   0.00000000e+00
+# VEX:  0.027027027027 0.099474436912
+# AVERAGE:  0.0601851726644
+# SHARED toroidal_height speed =  1094.62947891
+# SHARED sigma =  1.82910491845
+# SHARED twist =  0.137251561394
+# MESSENGER flux =  2.16703775611e+14
+# VEX latitude =  -2.08207379051
+# VEX longitude =  139.969561307
+# VEX poloidal_height =  0.047094292214
+# VEX half_width =  40.6753583782
+# VEX tilt =  44.8938664755
+# VEX flattening =  0.558357402407
+# VEX pancaking =  21.8073158989
+# VEX flux =  1.94095355935e+14
+# [  0.00000000e+00   0.00000000e+00   1.09462948e+06   0.00000000e+00
+#    1.82910492e+00   1.37251561e-01   2.16703776e+14  -3.63390429e-02
+#    2.44292970e+00   7.04520584e+09   7.09918928e-01   7.83545784e-01
+#    5.58357402e-01   3.80609463e-01   1.94095356e+14   0.00000000e+00
 #    0.00000000e+00   0.00000000e+00   0.00000000e+00   0.00000000e+00
 #    0.00000000e+00   0.00000000e+00   0.00000000e+00]
 
 # CME 2
 
-# MESSENGER:  0.0714285714286
-# VEX:  0.0238095238095 0.147885690074
-# STEREO-A:  0.047619047619 0.256383357026 0.0764026480497
-# AVERAGE:  0.103921473001
-# SHARED toroidal_height decay =  0.074880278671
-# SHARED toroidal_height speed =  2158.73067257
-# SHARED toroidal_height speed =  1607.18562046
-# SHARED toroidal_height speed =  1168.41863675
-# SHARED sigma =  1.78277984837
-# SHARED twist =  0.417389768315
-# MESSENGER flux =  9.30223125511e+14
-# VEX latitude =  15.4165425873
-# VEX longitude =  121.314131546
-# VEX poloidal_height =  0.0931936834373
-# VEX half_width =  31.9491511754
-# VEX tilt =  60.2708575138
-# VEX flattening =  0.867515533104
-# VEX pancaking =  34.030985596
-# VEX flux =  4.27330783546e+14
-# STEREO-A latitude =  18.2209764426
-# STEREO-A longitude =  115.144557025
-# STEREO-A poloidal_height =  0.0118936690065
-# STEREO-A half_width =  30.3747451069
-# STEREO-A tilt =  72.7271727662
-# STEREO-A flattening =  0.725633433038
-# STEREO-A pancaking =  36.8518912917
-# STEREO-A flux =  7.04993499698e+13
-# [  7.48802787e-02   2.15873067e+06   1.60718562e+06   1.16841864e+06
-#    1.78277985e+00   4.17389768e-01   9.30223126e+14   2.69069427e-01
-#    2.11733102e+00   1.39415766e+10   5.57617881e-01   1.05192491e+00
-#    8.67515533e-01   5.93952746e-01   4.27330784e+14   3.18016032e-01
-#    2.00965164e+00   1.77926756e+09   5.30139312e-01   1.26932862e+00
-#    7.25633433e-01   6.43186839e-01   7.04993500e+13]
+# MESSENGER:  0.0
+# VEX:  0.0 0.284802368595
+# STEREO-A:  0.047619047619 0.463426890829 0.0175609666235
+# AVERAGE:  0.135568212278
+# SHARED toroidal_height speed =  1634.28420266
+# SHARED toroidal_height speed =  1378.4377414
+# SHARED sigma =  1.86551864579
+# SHARED twist =  0.713969549189
+# MESSENGER flux =  5.56341188364e+14
+# VEX latitude =  11.571126533
+# VEX longitude =  129.071341191
+# VEX poloidal_height =  0.0696361207668
+# VEX half_width =  20.4498224535
+# VEX tilt =  -17.6414757564
+# VEX flattening =  0.593706418683
+# VEX pancaking =  39.7556405293
+# VEX flux =  4.23256538291e+14
+# STEREO-A latitude =  -19.966317885
+# STEREO-A longitude =  98.4221567877
+# STEREO-A poloidal_height =  0.0151102725599
+# STEREO-A half_width =  38.6123371973
+# STEREO-A tilt =  -45.6170221329
+# STEREO-A flattening =  0.766754748488
+# STEREO-A pancaking =  30.3765340348
+# STEREO-A flux =  7.30233034896e+13
+# [  0.00000000e+00   0.00000000e+00   1.63428420e+06   1.37843774e+06
+#    1.86551865e+00   7.13969549e-01   5.56341188e+14   2.01954256e-01
+#    2.25271987e+00   1.04174154e+10   3.56916733e-01  -3.07901837e-01
+#    5.93706419e-01   6.93866823e-01   4.23256538e+14  -3.48477987e-01
+#    1.71779069e+00   2.26046460e+09   6.73912416e-01  -7.96167231e-01
+#    7.66754748e-01   5.30170534e-01   7.30233035e+13]
 
 # CME 3
 
-# STEREO-A:  0.0 0.0121611550752 0.039531843147
-# AVERAGE:  0.0172309994074
-# SHARED toroidal_height decay =  0.0093678767328
-# SHARED toroidal_height speed =  1033.08532747
-# SHARED toroidal_height speed =  1013.28945534
-# SHARED sigma =  1.8628744185
-# SHARED twist =  0.545612614115
-# STEREO-A latitude =  7.64145445659
-# STEREO-A longitude =  109.966376822
-# STEREO-A poloidal_height =  0.0606401436962
-# STEREO-A half_width =  33.4034577557
-# STEREO-A tilt =  30.4390831437
-# STEREO-A flattening =  0.78371627718
-# STEREO-A pancaking =  38.8227295464
-# STEREO-A flux =  1.28830052586e+14
-# [  9.36787673e-03   1.03308533e+06   1.01328946e+06   0.00000000e+00
-#    1.86287442e+00   5.45612614e-01   0.00000000e+00   0.00000000e+00
+# STEREO-A:  0.0 0.0476390185064 0.0388334503763
+# AVERAGE:  0.0288241562942
+# SHARED toroidal_height speed =  1049.95046066
+# SHARED sigma =  1.70085913751
+# SHARED twist =  0.744155854282
+# STEREO-A latitude =  9.11951553025
+# STEREO-A longitude =  112.159584221
+# STEREO-A poloidal_height =  0.0615651693267
+# STEREO-A half_width =  37.432378156
+# STEREO-A tilt =  27.5966515011
+# STEREO-A flattening =  0.79893673596
+# STEREO-A pancaking =  31.5372131593
+# STEREO-A flux =  8.63176178802e+13
+# [  0.00000000e+00   0.00000000e+00   1.04995046e+06   0.00000000e+00
+#    1.70085914e+00   7.44155854e-01   0.00000000e+00   0.00000000e+00
 #    0.00000000e+00   0.00000000e+00   0.00000000e+00   0.00000000e+00
-#    0.00000000e+00   0.00000000e+00   1.00000000e+14   1.33368540e-01
-#    1.91927534e+00   9.07163638e+09   5.83000319e-01   5.31262222e-01
-#    7.83716277e-01   6.77584455e-01   1.28830053e+14]
+#    0.00000000e+00   0.00000000e+00   1.00000000e+14   1.59165572e-01
+#    1.95755403e+00   9.21001824e+09   6.53318246e-01   4.81652431e-01
+#    7.98936736e-01   5.50428207e-01   8.63176179e+13]

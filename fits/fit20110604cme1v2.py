@@ -75,10 +75,10 @@ def fit2insitu():
         p[7] = params[3]
         p[8] = params[4]
         p[9] = params[5]
-        p[10] = params[6]
-        p[11] = params[7]
-        p[12] = params[8]
-        p[13] = params[9]
+        p[10] = half_width_cor
+        p[11] = params[6]
+        p[12] = params[7]
+        p[13] = pancaking_cor
         p[14] = 1e14
         p[15] = 0.0
         p[16] = 0.0
@@ -127,7 +127,7 @@ def fit2insitu():
 
         evo.latitude = lambda t: p[7]
         evo.longitude = lambda t: p[8]
-        evo.poloidal_height = lambda t: p[9]
+        evo.poloidal_height = lambda t: p[9]/2.0
         evo.half_width = lambda t: p[10]
         evo.tilt = lambda t: p[11]
         evo.flattening = lambda t: p[12]
@@ -177,7 +177,7 @@ def fit2insitu():
             bm_mes = bm_mes[nzi_mes,:]
             btm_mes = btm_mes[nzi_mes]
 
-            fit_t_mes = np.abs(tm_mes[0]-t_mes[0])/(t_vex[-1]-t_vex[0])
+            fit_t_mes = np.abs(tm_mes[0]-t_mes[0])/(t_vex[-1]-t_vex[0])*2.0
             kappa_mes = bt_mes/np.median(btm_mes)
             p[6] *= kappa_mes
             bm_mes *= kappa_mes
@@ -288,7 +288,7 @@ def fit2insitu():
 
         if res < res_prev:
             res_prev = res
-            fp = open('./cme1v2_run2.txt', 'w')
+            fp = open('./cme1v2_run3.txt', 'w')
             print('MESSENGER: ', fit_t_mes, file=fp)
             print('VEX: ', fit_t_vex, fit_b_vex, file=fp)
             print('AVERAGE: ', res, file=fp)
@@ -309,7 +309,6 @@ def fit2insitu():
             print('VEX pancaking = ', u.rad.to(u.deg, p[13]), file=fp)
             print('VEX flux = ', p[14], file=fp)
             print(p, file=fp)
-            print(np.median(vtm_vex), file=fp)
             fp.close()
 
             d_vex = np.array(
@@ -375,13 +374,13 @@ def fit2insitu():
         # MES
         # (1e14, 1e15),
         # MES & VEX
-        tuple(u.deg.to(u.rad, (-5.0, 5.0)).tolist()),
-        tuple(u.deg.to(u.rad, (100.0, 140.0)).tolist()),
+        tuple(u.deg.to(u.rad, (-5.0, 30.0)).tolist()),
+        tuple(u.deg.to(u.rad, (120.0, 150.0)).tolist()),
         tuple(u.au.to(u.m, (0.01, 0.1)).tolist()),
-        tuple(u.deg.to(u.rad, (30.0, 50.0)).tolist()),
+        # tuple(u.deg.to(u.rad, (30.0, 50.0)).tolist()),
         tuple(u.deg.to(u.rad, (30.0, 60.0)).tolist()),
         (0.2, 0.8),
-        tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
+        # tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
         # (1e14, 1e15),
         # STA
         # tuple(u.deg.to(u.rad, (5.0, 10.0)).tolist()),

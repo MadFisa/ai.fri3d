@@ -142,10 +142,10 @@ def fit2insitu():
         p[15] = params[3]
         p[16] = params[4]
         p[17] = params[5]
-        p[18] = params[6]
-        p[19] = params[7]
-        p[20] = params[8]
-        p[21] = params[9]
+        p[18] = half_width_cor
+        p[19] = params[6]
+        p[20] = params[7]
+        p[21] = pancaking_cor
         p[22] = 1e14
         """
         SHARED
@@ -302,7 +302,7 @@ def fit2insitu():
         
         if res < res_prev:
             res_prev = res
-            fp = open('./cme3v2_run1.txt', 'w')
+            fp = open('./cme3v2_run3.txt', 'w')
             print('STEREO-A: ', fit_t_sta, fit_b_sta, fit_vt_sta, file=fp)
             print('AVERAGE: ', res, file=fp)
             print(
@@ -395,13 +395,13 @@ def fit2insitu():
         # tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
         # (1e14, 1e15),
         # STA
-        tuple(u.deg.to(u.rad, (-10.0, 10.0)).tolist()),
+        tuple(u.deg.to(u.rad, (-10.0, 20.0)).tolist()),
         tuple(u.deg.to(u.rad, (90.0, 120.0)).tolist()),
         tuple(u.au.to(u.m, (0.01, 0.1)).tolist()),
-        tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
+        # tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
         tuple(u.deg.to(u.rad, (20.0, 60.0)).tolist()),
         (0.2, 0.8),
-        tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
+        # tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
         # (1e13, 1e14),
     ]
     
