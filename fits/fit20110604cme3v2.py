@@ -70,11 +70,11 @@ def fit2insitu():
     # COR & initial
     d0_cor = datetime(2011, 6, 4, 23, 56)
     t0_cor = calendar.timegm(d0_cor.timetuple())
-    latitude_cor = u.deg.to(u.rad, 0.0)
-    longitude_cor = u.deg.to(u.rad, 95.0)
-    toroidal_height_cor = u.R_sun.to(u.m, 7.5)
-    poloidal_height_cor = u.R_sun.to(u.m, 1.5)
-    half_width_cor = u.deg.to(u.rad, 40.0)
+    latitude_cor = u.deg.to(u.rad, -2.0)
+    longitude_cor = u.deg.to(u.rad, 92.0)
+    toroidal_height_cor = u.R_sun.to(u.m, 16.5)
+    poloidal_height_cor = u.R_sun.to(u.m, 4.5)
+    half_width_cor = u.deg.to(u.rad, 30.0)
     tilt_cor = u.deg.to(u.rad, 65.0)
     flattening_cor = 0.4
     pancaking_cor = u.deg.to(u.rad, 25.0)
@@ -302,7 +302,7 @@ def fit2insitu():
         
         if res < res_prev:
             res_prev = res
-            fp = open('./cme3v2_run3.txt', 'w')
+            fp = open('./cme3v2_run4.txt', 'w')
             print('STEREO-A: ', fit_t_sta, fit_b_sta, fit_vt_sta, file=fp)
             print('AVERAGE: ', res, file=fp)
             print(

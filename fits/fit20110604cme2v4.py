@@ -342,9 +342,9 @@ def fit2insitu():
         # SHARED
         # (1e-1, 1e-2),
         # tuple(u.Unit('km/s').to(u.Unit('m/s'), (1800.0, 2400.0)).tolist()),
-        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 2000.0)).tolist()),
-        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 1600.0)).tolist()),
-        (1.6, 2.0),
+        tuple(u.Unit('km/s').to(u.Unit('m/s'), (900.0, 1600.0)).tolist()),
+        tuple(u.Unit('km/s').to(u.Unit('m/s'), (900.0, 1200.0)).tolist()),
+        (1.8, 2.0),
         (0.0, 1.0),
         # MES
         # (1e14, 1e15),
@@ -360,10 +360,10 @@ def fit2insitu():
         # STA
         tuple(u.deg.to(u.rad, (-20.0, 20.0)).tolist()),
         tuple(u.deg.to(u.rad, (80.0, 130.0)).tolist()),
-        tuple(u.au.to(u.m, (0.005, 0.04)).tolist()),
+        tuple(u.au.to(u.m, (0.005, 0.08)).tolist()),
         # tuple(u.deg.to(u.rad, (20.0, 40.0)).tolist()),
-        tuple(u.deg.to(u.rad, (-70.0, -20.0)).tolist()),
-        (0.2, 0.4),
+        tuple(u.deg.to(u.rad, (-70.0, -10.0)).tolist()),
+        (0.2, 0.8),
         tuple(u.deg.to(u.rad, (10.0, 30.0)).tolist()),
         # (1e13, 1e14),
     ]

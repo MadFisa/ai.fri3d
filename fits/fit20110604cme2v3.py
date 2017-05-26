@@ -45,17 +45,18 @@ def fit2insitu():
     d_mes, b_mes, _, p_mes = getMES(d0_mes, d1_mes)
     t_mes = np.array([calendar.timegm(x.timetuple()) for x in d_mes])
     bt_mes = np.mean(np.sqrt(b_mes[:,0]**2+b_mes[:,1]**2+b_mes[:,2]**2))
-    delta_mes = 10*3600
+    delta_mes = 20*3600
 
     # VEX
     d0_vex = datetime(2011, 6, 5, 15, 30)
-    d1_vex = datetime(2011, 6, 5, 22, 30)
+    # d1_vex = datetime(2011, 6, 5, 22, 30)
+    d1_vex = datetime(2011, 6, 6, 6, 34)
     t0_vex = calendar.timegm(d0_vex.timetuple())
     t1_vex = calendar.timegm(d1_vex.timetuple())
     d_vex, b_vex, _, p_vex = getVEX(d0_vex, d1_vex)
     t_vex = np.array([calendar.timegm(x.timetuple()) for x in d_vex])
     bt_vex = np.sqrt(b_vex[:,0]**2+b_vex[:,1]**2+b_vex[:,2]**2)
-    delta_vex = 10*3600
+    delta_vex = 20*3600
 
     di = datetime(2011, 6, 5, 11, 30)
     ti = calendar.timegm(di.timetuple())
@@ -133,7 +134,7 @@ def fit2insitu():
 
         evo.latitude = lambda t: p[7]
         evo.longitude = lambda t: p[8]
-        evo.poloidal_height = lambda t: p[9]
+        evo.poloidal_height = lambda t: p[9]/2.0
         evo.half_width = lambda t: p[10]
         evo.tilt = lambda t: p[11]
         evo.flattening = lambda t: p[12]
@@ -142,7 +143,7 @@ def fit2insitu():
         
         tm_mes = np.arange(
             t_mes[0]-delta_mes, 
-            t_mes[0]+delta_mes, 
+            t_mes[-1]+delta_mes, 
             step, 
             dtype=np.int
         )
@@ -183,7 +184,7 @@ def fit2insitu():
             bm_mes = bm_mes[nzi_mes,:]
             btm_mes = btm_mes[nzi_mes]
 
-            fit_t_mes = np.abs(tm_mes[0]-t_mes[0])/(t_vex[-1]-t_vex[0])
+            fit_t_mes = np.abs(tm_mes[0]-t_mes[0])/(t_vex[-1]-t_vex[0])*2.0
             kappa_mes = bt_mes/np.median(btm_mes)
             p[6] *= kappa_mes
             bm_mes *= kappa_mes
@@ -194,6 +195,7 @@ def fit2insitu():
 
         # VEX
 
+        evo.poloidal_height = lambda t: p[9]
         evo.flux = lambda t: p[14]
 
         tm_vex = np.arange(
@@ -293,7 +295,7 @@ def fit2insitu():
 
         if res < res_prev:
             res_prev = res
-            fp = open('./cme2v3_run2.txt', 'w')
+            fp = open('./cme2v3_run3.txt', 'w')
             print('MESSENGER: ', fit_t_mes, file=fp)
             print('VEX: ', fit_t_vex, fit_b_vex, file=fp)
             print('AVERAGE: ', res, file=fp)
@@ -377,8 +379,8 @@ def fit2insitu():
         # SHARED
         # (1e-1, 1e-2),
         # tuple(u.Unit('km/s').to(u.Unit('m/s'), (1800.0, 2400.0)).tolist()),
+        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 3000.0)).tolist()),
         tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 2000.0)).tolist()),
-        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 1700.0)).tolist()),
         (1.6, 2.0),
         (0.0, 1.0),
         # MES
