@@ -93,14 +93,26 @@ cme2_d1_vex = datetime(2011, 6, 5, 22, 30)
 cme2_t0_vex = calendar.timegm(cme2_d0_vex.timetuple())
 cme2_t1_vex = calendar.timegm(cme2_d1_vex.timetuple())
 cme2_delta_vex = 10*3600
+# cme2_p_vex = np.array([
+#     0.00000000e+00, 0.00000000e+00, 1.63103908e+06, 1.68411547e+06,
+#     1.95001830e+00, 9.71007874e-01, 5.86563348e+14, 2.13230550e-01,
+#     2.11464106e+00, 1.33347207e+10, 6.10865238e-01,-1.86526317e-01,
+#     7.83222407e-01, 5.23598776e-01, 4.15008461e+14, 0.00000000e+00,
+#     0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
+#     0.00000000e+00, 0.00000000e+00, 1.00000000e+14
+# ])
 cme2_p_vex = np.array([
-    0.00000000e+00, 0.00000000e+00, 1.63103908e+06, 1.68411547e+06,
-    1.95001830e+00, 9.71007874e-01, 5.86563348e+14, 2.13230550e-01,
-    2.11464106e+00, 1.33347207e+10, 6.10865238e-01,-1.86526317e-01,
-    7.83222407e-01, 5.23598776e-01, 4.15008461e+14, 0.00000000e+00,
+    0.00000000e+00, 0.00000000e+00, 2.46619507e+06, 1.59906971e+06,
+    1.71849118e+00, 5.24861205e-01, 1.00000000e+14,-2.71443628e-01,
+    1.97068675e+00, 2.78203200e+09, 6.10865238e-01, 4.49940736e-01,
+    4.78756335e-01, 5.23598776e-01, 1.86889165e+14, 0.00000000e+00,
     0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
-    0.00000000e+00, 0.00000000e+00, 1.00000000e+14
+    0.00000000e+00, 0.00000000e+00, 1.00000000e+14, 1.19216084e+05
 ])
+# cme2_p_vex[2] = 1.85e6
+# cme2_p_vex[3] = 1.2e6
+# cme2_p_vex[9] = u.au.to(u.m, 0.13)
+
 # STA
 cme2_d0_sta = datetime(2011, 6, 6, 12, 25)
 cme2_d1_sta = datetime(2011, 6, 6, 14, 10)
@@ -121,8 +133,7 @@ cme2_p_sta = np.array([
 # COR
 cme3_latitude_cor = u.deg.to(u.rad, -2.0)
 cme3_longitude_cor = u.deg.to(u.rad, 92.0)
-# cme3_toroidal_height_cor = u.R_sun.to(u.m, 16.5)
-cme3_toroidal_height_cor = u.R_sun.to(u.m, 7.5)
+cme3_toroidal_height_cor = u.R_sun.to(u.m, 16.5)
 cme3_poloidal_height_cor = u.R_sun.to(u.m, 4.5)
 cme3_half_width_cor = u.deg.to(u.rad, 30.0)
 cme3_tilt_cor = u.deg.to(u.rad, 65.0)
@@ -140,12 +151,12 @@ cme3_t0_sta = calendar.timegm(cme3_d0_sta.timetuple())
 cme3_t1_sta = calendar.timegm(cme3_d1_sta.timetuple())
 cme3_delta_sta = 10*3600
 cme3_p_sta = np.array([
-    0.00000000e+00, 0.00000000e+00, 1.11320638e+06, 0.00000000e+00,
-    1.87028467e+00, 9.96313673e-01, 0.00000000e+00, 0.00000000e+00,
+    0.00000000e+00, 0.00000000e+00, 9.95107574e+05, 1.08908611e+06,
+    1.90629120e+00, 9.69237318e-01, 0.00000000e+00, 0.00000000e+00,
     0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
-    0.00000000e+00, 0.00000000e+00, 1.00000000e+14, 2.14172346e-01,
-    2.03693608e+00, 9.78555131e+09, 6.98131701e-01, 5.39515444e-01,
-    6.55698132e-01, 4.36332313e-01, 8.26308441e+13
+    0.00000000e+00, 0.00000000e+00, 1.00000000e+14, 2.80081525e-01,
+    2.02642087e+00, 9.42706753e+09, 5.23598776e-01, 5.06115484e-01,
+    2.08874976e-01, 4.36332313e-01, 8.61869149e+13
 ])
 
 di = datetime(2011, 6, 5, 11, 30)
@@ -230,6 +241,8 @@ def insitu_mes():
 
     evo = Evolution()
     p = cme2_p_vex
+    # p[2] = 3e6
+    # p[9] = u.au.to(u.m, 0.02)
     evo.toroidal_height = lambda t: (
         p[2]*(t-cme2_t0_cor)+cme2_toroidal_height_cor
         if t <= ti else
@@ -242,7 +255,8 @@ def insitu_mes():
     evo.chirality = cme2_chirality
     evo.latitude = lambda t: p[7]
     evo.longitude = lambda t: p[8]
-    evo.poloidal_height = lambda t: p[9]/2.0
+    # evo.poloidal_height = lambda t: p[9]/2.0
+    evo.poloidal_height = lambda t: cme2_poloidal_height_cor+p[23]*(t-cme2_t0_cor)
     evo.half_width = lambda t: p[10]
     evo.tilt = lambda t: p[11]
     evo.flattening = lambda t: p[12]
@@ -274,6 +288,20 @@ def insitu_mes():
         cme2_vtm_mes = vtm_mes = vtm_mes[nzi_mes]
     else:
         return 0
+
+    m = np.logical_or.reduce((
+        np.logical_and(
+            t_mes >= calendar.timegm(datetime(2011, 6, 4, 12, 29).timetuple()),
+            t_mes < calendar.timegm(datetime(2011, 6, 4, 17, 14).timetuple()),
+        ),
+        np.logical_and(
+            t_mes >= calendar.timegm(datetime(2011, 6, 5, 0, 44).timetuple()),
+            t_mes < calendar.timegm(datetime(2011, 6, 5, 8, 29).timetuple())
+        ),
+        t_mes >= calendar.timegm(datetime(2011, 6, 5, 12, 43).timetuple())
+    ))
+    b_mes[np.logical_not(m),:] = np.nan
+    bt_mes[np.logical_not(m)] = np.nan
 
     major = mdates.HourLocator(byhour=(0, 12))
     minor = mdates.HourLocator()
@@ -307,9 +335,21 @@ def insitu_mes():
         label='Bz'
     )
     ax.axvline(
+        datetime(2011, 6, 4, 15, 11),
+        color='k',
+        linewidth=3,
+        linestyle='dashdot'
+    )
+    ax.axvline(
+        datetime(2011, 6, 4, 16, 30),
+        color=BLIND_PALETTE['vermillion'],
+        linewidth=3,
+        linestyle='dotted'
+    )
+    ax.axvline(
         cme1_dm_mes[0],
         color=BLIND_PALETTE['reddish-purple'], 
-        linewidth=4, 
+        linewidth=3, 
         linestyle='dashed',
         label='FRi3D'
     )
@@ -342,9 +382,21 @@ def insitu_mes():
     #     linestyle='dashed'
     # )
     ax.axvline(
+        datetime(2011, 6, 5, 3, 36),
+        color='k',
+        linewidth=3,
+        linestyle='dashdot'
+    )
+    ax.axvline(
+        datetime(2011, 6, 5, 6, 27),
+        color=BLIND_PALETTE['bluish-green'],
+        linewidth=3,
+        linestyle='dotted'
+    )
+    ax.axvline(
         cme2_dm_mes[0],
         color=BLIND_PALETTE['reddish-purple'], 
-        linewidth=4, 
+        linewidth=3, 
         linestyle='dashed'
     )
     # ax.plot(
@@ -375,6 +427,7 @@ def insitu_mes():
     #     linewidth=4, 
     #     linestyle='dashed'
     # )
+    
 
     ax.legend()
     ax.set_ylabel('$B$ $[nT]$')
@@ -415,7 +468,7 @@ def insitu_vex():
 
     d_vex, b_vex, _, p_vex = getVEX(
         cme1_d0_vex-timedelta(seconds=delta_vex), 
-        cme2_d1_vex+timedelta(seconds=delta_vex*2)
+        cme2_d1_vex+timedelta(seconds=delta_vex*3)
     )
     t_vex = np.array([calendar.timegm(x.timetuple()) for x in d_vex])
     b_vex = u.T.to(u.nT, b_vex)
@@ -503,7 +556,8 @@ def insitu_vex():
     evo.chirality = cme2_chirality
     evo.latitude = lambda t: p[7]
     evo.longitude = lambda t: p[8]
-    evo.poloidal_height = lambda t: p[9]
+    # evo.poloidal_height = lambda t: p[9]
+    evo.poloidal_height = lambda t: cme2_poloidal_height_cor+p[23]*(t-cme2_t0_cor)
     evo.half_width = lambda t: p[10]
     evo.tilt = lambda t: p[11]
     evo.flattening = lambda t: p[12]
@@ -536,6 +590,13 @@ def insitu_vex():
     else:
         return 0
 
+    m = np.logical_or(
+        t_vex < calendar.timegm(datetime(2011, 6, 6, 0, 44).timetuple()),
+        t_vex > calendar.timegm(datetime(2011, 6, 6, 2, 58).timetuple())
+    )
+    b_vex[np.logical_not(m),:] = np.nan
+    bt_vex[np.logical_not(m)] = np.nan
+
     major = mdates.HourLocator(byhour=(0, 12))
     minor = mdates.HourLocator()
     majorFormat = mdates.DateFormatter('%Y-%m-%d %H:%M')
@@ -567,61 +628,103 @@ def insitu_vex():
         color=BLIND_PALETTE['blue'], 
         label='Bz'
     )
+
+    ax.axvline(
+        datetime(2011, 6, 5, 5, 25),
+        color='k',
+        linewidth=3,
+        linestyle='dashdot'
+    )
+    ax.axvline(
+        datetime(2011, 6, 5, 8, 39),
+        color=BLIND_PALETTE['vermillion'],
+        linewidth=3,
+        linestyle='dotted'
+    )
+    ax.axvline(
+        datetime(2011, 6, 5, 11, 50),
+        color=BLIND_PALETTE['vermillion'],
+        linewidth=3,
+        linestyle='dotted'
+    )
     ax.plot(
         cme1_dm_vex, 
         cme1_btm_vex, 
+        # 'k', 
         color=BLIND_PALETTE['reddish-purple'], 
-        linewidth=4, 
+        linewidth=3, 
         linestyle='dashed',
         label='FRi3D'
     )
     ax.plot(
         cme1_dm_vex, 
         cme1_bm_vex[:,0], 
+        # color=BLIND_PALETTE['vermillion'], 
         color=BLIND_PALETTE['reddish-purple'], 
-        linewidth=4, 
+        linewidth=3, 
         linestyle='dashed'
     )
     ax.plot(
         cme1_dm_vex, 
         cme1_bm_vex[:,1], 
+        # color=BLIND_PALETTE['bluish-green'], 
         color=BLIND_PALETTE['reddish-purple'], 
-        linewidth=4, 
+        linewidth=3, 
         linestyle='dashed'
     )
     ax.plot(
         cme1_dm_vex, 
         cme1_bm_vex[:,2], 
+        # color=BLIND_PALETTE['blue'], 
         color=BLIND_PALETTE['reddish-purple'], 
-        linewidth=4, 
+        linewidth=3, 
         linestyle='dashed'
+    )
+
+    ax.axvline(
+        datetime(2011, 6, 5, 12, 7),
+        color='k',
+        linewidth=3,
+        linestyle='dashdot'
+    )
+    ax.axvline(
+        datetime(2011, 6, 5, 15, 13),
+        color=BLIND_PALETTE['bluish-green'],
+        linewidth=3,
+        linestyle='dotted'
+    )
+    ax.axvline(
+        datetime(2011, 6, 6, 6, 35),
+        color=BLIND_PALETTE['bluish-green'],
+        linewidth=3,
+        linestyle='dotted'
     )
     ax.plot(
         cme2_dm_vex, 
         cme2_btm_vex, 
         color=BLIND_PALETTE['reddish-purple'], 
-        linewidth=4, 
+        linewidth=3, 
         linestyle='dashed'
     )
     ax.plot(
         cme2_dm_vex, 
         cme2_bm_vex[:,0], 
         color=BLIND_PALETTE['reddish-purple'], 
-        linewidth=4, 
+        linewidth=3, 
         linestyle='dashed'
     )
     ax.plot(
         cme2_dm_vex, 
         cme2_bm_vex[:,1], 
         color=BLIND_PALETTE['reddish-purple'], 
-        linewidth=4, 
+        linewidth=3, 
         linestyle='dashed'
     )
     ax.plot(
         cme2_dm_vex, 
         cme2_bm_vex[:,2], 
         color=BLIND_PALETTE['reddish-purple'], 
-        linewidth=4, 
+        linewidth=3, 
         linestyle='dashed'
     )
 
@@ -640,16 +743,18 @@ def insitu_vex():
         cme1_dm_vex, 
         cme1_vtm_vex, 
         color=BLIND_PALETTE['reddish-purple'], 
-        linewidth=4, 
+        linewidth=3, 
         linestyle='dashed'
     )
     ax.plot(
         cme2_dm_vex, 
         cme2_vtm_vex, 
         color=BLIND_PALETTE['reddish-purple'], 
-        linewidth=4, 
+        linewidth=3, 
         linestyle='dashed'
     )
+
+    ax.set_ylabel('$V_p$ $[km/s]$')
     
     ax.xaxis.set_major_locator(major)
     ax.xaxis.set_major_formatter(majorFormat)
@@ -658,12 +763,29 @@ def insitu_vex():
     ax.autoscale(enable=True, axis='x', tight=True)
     plt.xlim([d_vex[0], d_vex[-1]])
 
+    # ax = fig.add_subplot(gs[2])
+
+    # ax.plot(
+    #     d_vex,
+    #     u.rad.to(u.deg, np.arctan(b_vex[:,1]/b_vex[:,0]))
+    # )
+    # ax.plot(
+    #     d_vex,
+    #     u.rad.to(u.deg, np.arctan(b_vex[:,2]/np.sqrt(b_vex[:,0]**2+b_vex[:,1]**2)))
+    # )
+
+    # ax.xaxis.set_major_locator(major)
+    # ax.xaxis.set_major_formatter(majorFormat)
+    # ax.xaxis.set_minor_locator(minor)
+    # ax.yaxis.set_label_coords(-0.08, 0.5)
+    # ax.autoscale(enable=True, axis='x', tight=True)
+
     plt.show()
 
 def insitu_sta():
 
     d_sta, b_sta, _, p_sta = getSTA(
-        cme2_d0_sta-timedelta(seconds=delta_sta*2), 
+        cme2_d0_sta-timedelta(seconds=delta_sta*3), 
         cme3_d1_sta+timedelta(seconds=delta_sta)
     )
     t_sta = np.array([calendar.timegm(x.timetuple()) for x in d_sta])
@@ -682,6 +804,7 @@ def insitu_sta():
     data['epoch'] = np.array(data['epoch'])
 
     pa = table.vstack([
+        ascii_.read('data/STA_L2_SWEA_PAD_20110605_V04.cef', data_start=152),
         ascii_.read('data/STA_L2_SWEA_PAD_20110606_V04.cef', data_start=129),
         ascii_.read('data/STA_L2_SWEA_PAD_20110607_V04.cef', data_start=129),
     ])
@@ -692,7 +815,7 @@ def insitu_sta():
     pa = np.array(table.Table(pa.columns[52:244]))
     pa = np.array([np.array(list(pa[i])) for i in range(pa.size)])
     m = np.logical_and(
-        pa_time >= cme2_d0_sta-timedelta(seconds=delta_sta*2), 
+        pa_time >= cme2_d0_sta-timedelta(seconds=delta_sta*3), 
         pa_time <= cme3_d1_sta+timedelta(seconds=delta_sta)
     )
     pa_time = pa_time[m]
@@ -780,7 +903,14 @@ def insitu_sta():
 
     evo = Evolution()
     p = cme3_p_sta
-    evo.toroidal_height = lambda t: p[2]*(t-cme3_t0_cor)+cme3_toroidal_height_cor
+    # evo.toroidal_height = lambda t: p[2]*(t-cme3_t0_cor)+cme3_toroidal_height_cor
+    cme3_di = datetime(2011, 6, 6, 15)
+    cme3_ti = calendar.timegm(cme3_di.timetuple())
+    evo.toroidal_height = lambda t: (
+        p[2]*(t-cme3_t0_cor)+cme3_toroidal_height_cor
+        if t <= cme3_ti else
+        p[2]*(cme3_ti-cme3_t0_cor)+cme3_toroidal_height_cor+p[3]*(t-cme3_ti)
+    )
     evo.sigma = lambda t: p[4]
     evo.twist = lambda t: p[5]
     evo.skew = lambda t: cme3_skew_cor
@@ -852,11 +982,30 @@ def insitu_sta():
         color=BLIND_PALETTE['blue'], 
         label='Bz'
     )
+
+    ax.axvline(
+        datetime(2011, 6, 5, 18, 58),
+        color='k',
+        linewidth=3,
+        linestyle='dashdot'
+    )
+    ax.axvline(
+        datetime(2011, 6, 6, 12, 23),
+        color=BLIND_PALETTE['bluish-green'],
+        linewidth=3,
+        linestyle='dotted'
+    )
+    ax.axvline(
+        datetime(2011, 6, 6, 14, 15),
+        color=BLIND_PALETTE['bluish-green'],
+        linewidth=3,
+        linestyle='dotted'
+    )
     ax.plot(
         cme2_dm_sta, 
         cme2_btm_sta, 
         color=BLIND_PALETTE['reddish-purple'], 
-        linewidth=4, 
+        linewidth=3, 
         linestyle='dashed',
         label='FRi3D'
     )
@@ -864,49 +1013,62 @@ def insitu_sta():
         cme2_dm_sta, 
         cme2_bm_sta[:,0], 
         color=BLIND_PALETTE['reddish-purple'], 
-        linewidth=4, 
+        linewidth=3, 
         linestyle='dashed'
     )
     ax.plot(
         cme2_dm_sta, 
         cme2_bm_sta[:,1], 
         color=BLIND_PALETTE['reddish-purple'], 
-        linewidth=4, 
+        linewidth=3, 
         linestyle='dashed'
     )
     ax.plot(
         cme2_dm_sta, 
         cme2_bm_sta[:,2], 
         color=BLIND_PALETTE['reddish-purple'], 
-        linewidth=4, 
+        linewidth=3, 
         linestyle='dashed'
+    )
+
+    ax.axvline(
+        datetime(2011, 6, 6, 17, 7),
+        color=BLIND_PALETTE['blue'],
+        linewidth=3,
+        linestyle='dotted'
+    )
+    ax.axvline(
+        datetime(2011, 6, 7, 1, 35),
+        color=BLIND_PALETTE['blue'],
+        linewidth=3,
+        linestyle='dotted'
     )
     ax.plot(
         cme3_dm_sta, 
         cme3_btm_sta, 
         color=BLIND_PALETTE['reddish-purple'], 
-        linewidth=4, 
+        linewidth=3, 
         linestyle='dashed'
     )
     ax.plot(
         cme3_dm_sta, 
         cme3_bm_sta[:,0], 
         color=BLIND_PALETTE['reddish-purple'], 
-        linewidth=4, 
+        linewidth=3, 
         linestyle='dashed'
     )
     ax.plot(
         cme3_dm_sta, 
         cme3_bm_sta[:,1], 
         color=BLIND_PALETTE['reddish-purple'], 
-        linewidth=4, 
+        linewidth=3, 
         linestyle='dashed'
     )
     ax.plot(
         cme3_dm_sta, 
         cme3_bm_sta[:,2], 
         color=BLIND_PALETTE['reddish-purple'], 
-        linewidth=4, 
+        linewidth=3, 
         linestyle='dashed'
     )
 
@@ -953,7 +1115,8 @@ def insitu_sta():
 
     ax = fig.add_subplot(gs[2])
     m = data['proton_bulk_speed'] >= 0.0
-    ax.plot(data['epoch'][m], data['proton_bulk_speed'][m], 'k')
+    data['proton_bulk_speed'][np.logical_not(m)] = np.nan
+    ax.plot(data['epoch'], data['proton_bulk_speed'], 'k')
     plt.setp(ax.get_xticklabels(), visible=False)
     ax.set_ylabel('$V_p$ $[km/s]$')
 
@@ -961,7 +1124,7 @@ def insitu_sta():
         cme2_dm_sta, 
         cme2_vtm_sta, 
         color=BLIND_PALETTE['reddish-purple'], 
-        linewidth=4, 
+        linewidth=3, 
         linestyle='dashed',
         label='FRi3D'
     )
@@ -969,7 +1132,7 @@ def insitu_sta():
         cme3_dm_sta, 
         cme3_vtm_sta, 
         color=BLIND_PALETTE['reddish-purple'], 
-        linewidth=4, 
+        linewidth=3, 
         linestyle='dashed'
     )
 
@@ -979,10 +1142,12 @@ def insitu_sta():
     ax.xaxis.set_minor_locator(minor)
     ax.yaxis.set_label_coords(-0.08, 0.5)
     ax.autoscale(enable=True, axis='x', tight=True)
+    plt.xlim([d_sta[0], d_sta[-1]])
     
     ax = fig.add_subplot(gs[3])
     m = data['proton_number_density'] >= 0.0
-    ax.plot(data['epoch'][m], data['proton_number_density'][m], 'k')
+    data['proton_number_density'][np.logical_not(m)] = np.nan
+    ax.plot(data['epoch'], data['proton_number_density'], 'k')
     plt.setp(ax.get_xticklabels(), visible=False)
     ax.set_ylabel('$N_p$ $[cm^{-3}]$')
 
@@ -991,10 +1156,12 @@ def insitu_sta():
     ax.xaxis.set_minor_locator(minor)
     ax.yaxis.set_label_coords(-0.08, 0.5)
     ax.autoscale(enable=True, axis='x', tight=True)
+    plt.xlim([d_sta[0], d_sta[-1]])
     
     ax = fig.add_subplot(gs[4])
     m = data['proton_temperature'] >= 0.0
-    ax.plot(data['epoch'][m], data['proton_temperature'][m]/1e6, 'k')
+    data['proton_temperature'][np.logical_not(m)] = np.nan
+    ax.plot(data['epoch'], data['proton_temperature']/1e6, 'k')
     ax.set_ylabel('$T_p$ $[MK]$')
 
     ax.xaxis.set_major_locator(major)
@@ -1002,13 +1169,12 @@ def insitu_sta():
     ax.xaxis.set_minor_locator(minor)
     ax.yaxis.set_label_coords(-0.08, 0.5)
     ax.autoscale(enable=True, axis='x', tight=True)
-
     plt.xlim([d_sta[0], d_sta[-1]])
 
     plt.show()
 
 # insitu_mes()
 
-insitu_vex()
+# insitu_vex()
 
-# insitu_sta()
+insitu_sta()

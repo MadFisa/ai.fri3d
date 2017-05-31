@@ -114,7 +114,8 @@ def fit2insitu():
     
     delta_sta = 10*3600
 
-    di = datetime(2011, 6, 5, 11, 30)
+    # di = datetime(2011, 6, 5, 11, 30)
+    di = datetime(2011, 6, 6, 15)
     ti = calendar.timegm(di.timetuple())
 
     def F(params):
@@ -127,9 +128,9 @@ def fit2insitu():
         p[0] = 0.0
         p[1] = 0.0
         p[2] = params[0]
-        p[3] = 0.0
-        p[4] = params[1]
-        p[5] = params[2]
+        p[3] = params[1]
+        p[4] = params[2]
+        p[5] = params[3]
         p[6] = 0.0
         p[7] = 0.0
         p[8] = 0.0
@@ -139,12 +140,12 @@ def fit2insitu():
         p[12] = 0.0
         p[13] = 0.0
         p[14] = 1e14
-        p[15] = params[3]
-        p[16] = params[4]
-        p[17] = params[5]
+        p[15] = params[4]
+        p[16] = params[5]
+        p[17] = params[6]
         p[18] = half_width_cor
-        p[19] = params[6]
-        p[20] = params[7]
+        p[19] = params[7]
+        p[20] = params[8]
         p[21] = pancaking_cor
         p[22] = 1e14
         """
@@ -175,7 +176,12 @@ def fit2insitu():
         22: flux
         """
         evo = Evolution()
-        evo.toroidal_height = lambda t: p[2]*(t-t0_cor)+toroidal_height_cor
+        # evo.toroidal_height = lambda t: p[2]*(t-t0_cor)+toroidal_height_cor
+        evo.toroidal_height = lambda t: (
+            p[2]*(t-t0_cor)+toroidal_height_cor
+            if t <= ti else
+            p[2]*(ti-t0_cor)+toroidal_height_cor+p[3]*(t-ti)
+        )
         evo.sigma = lambda t: p[4]
         evo.twist = lambda t: p[5]
         evo.skew = lambda t: skew
@@ -302,7 +308,7 @@ def fit2insitu():
         
         if res < res_prev:
             res_prev = res
-            fp = open('./cme3v2_run4.txt', 'w')
+            fp = open('./cme3v2_run5.txt', 'w')
             print('STEREO-A: ', fit_t_sta, fit_b_sta, fit_vt_sta, file=fp)
             print('AVERAGE: ', res, file=fp)
             print(
@@ -380,7 +386,7 @@ def fit2insitu():
         # (1e-4, 1e-2),
         # tuple(u.Unit('km/s').to(u.Unit('m/s'), (800.0, 2000.0)).tolist()),
         tuple(u.Unit('km/s').to(u.Unit('m/s'), (800.0, 1200.0)).tolist()),
-        # tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 1200.0)).tolist()),
+        tuple(u.Unit('km/s').to(u.Unit('m/s'), (1000.0, 1200.0)).tolist()),
         (1.6, 2.0),
         (0.0, 1.0),
         # MES
