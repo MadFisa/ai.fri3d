@@ -435,8 +435,34 @@ def insitu_mes():
     ax.xaxis.set_major_locator(major)
     ax.xaxis.set_major_formatter(majorFormat)
     ax.xaxis.set_minor_locator(minor)
-    ax.yaxis.set_label_coords(-0.08, 0.5)
+    ax.yaxis.set_label_coords(-0.06, 0.5)
     ax.autoscale(enable=True, axis='x', tight=True)
+    ax.tick_params(
+        which='both', 
+        direction='in',
+        top=True, 
+        right=True
+    )
+
+    ax.annotate(
+        'CME#1',
+        xy=(.236, .932), 
+        xycoords='figure fraction',
+        horizontalalignment='left', 
+        verticalalignment='top',
+        fontsize=12,
+        color=BLIND_PALETTE['vermillion']
+    )
+
+    ax.annotate(
+        'CME#2',
+        xy=(.638, .932), 
+        xycoords='figure fraction',
+        horizontalalignment='left', 
+        verticalalignment='top',
+        fontsize=12,
+        color=BLIND_PALETTE['bluish-green']
+    )
 
     # ax = fig.add_subplot(gs[1])
 
@@ -734,17 +760,60 @@ def insitu_vex():
     ax.xaxis.set_major_locator(major)
     ax.xaxis.set_major_formatter(majorFormat)
     ax.xaxis.set_minor_locator(minor)
-    ax.yaxis.set_label_coords(-0.08, 0.5)
+    ax.yaxis.set_label_coords(-0.06, 0.5)
     ax.autoscale(enable=True, axis='x', tight=True)
+    ax.tick_params(
+        which='both', 
+        direction='in',
+        top=True, 
+        right=True
+    )
 
     ax = fig.add_subplot(gs[1])
 
+    ax.axvline(
+        datetime(2011, 6, 5, 5, 25),
+        color='k',
+        linewidth=3,
+        linestyle='dashdot'
+    )
+    ax.axvline(
+        datetime(2011, 6, 5, 8, 39),
+        color=BLIND_PALETTE['vermillion'],
+        linewidth=3,
+        linestyle='dotted'
+    )
+    ax.axvline(
+        datetime(2011, 6, 5, 11, 50),
+        color=BLIND_PALETTE['vermillion'],
+        linewidth=3,
+        linestyle='dotted'
+    )
     ax.plot(
         cme1_dm_vex, 
         cme1_vtm_vex, 
         color=BLIND_PALETTE['reddish-purple'], 
         linewidth=3, 
         linestyle='dashed'
+    )
+
+    ax.axvline(
+        datetime(2011, 6, 5, 12, 7),
+        color='k',
+        linewidth=3,
+        linestyle='dashdot'
+    )
+    ax.axvline(
+        datetime(2011, 6, 5, 15, 13),
+        color=BLIND_PALETTE['bluish-green'],
+        linewidth=3,
+        linestyle='dotted'
+    )
+    ax.axvline(
+        datetime(2011, 6, 6, 6, 35),
+        color=BLIND_PALETTE['bluish-green'],
+        linewidth=3,
+        linestyle='dotted'
     )
     ax.plot(
         cme2_dm_vex, 
@@ -759,9 +828,35 @@ def insitu_vex():
     ax.xaxis.set_major_locator(major)
     ax.xaxis.set_major_formatter(majorFormat)
     ax.xaxis.set_minor_locator(minor)
-    ax.yaxis.set_label_coords(-0.08, 0.5)
+    ax.yaxis.set_label_coords(-0.06, 0.5)
     ax.autoscale(enable=True, axis='x', tight=True)
     plt.xlim([d_vex[0], d_vex[-1]])
+    ax.tick_params(
+        which='both', 
+        direction='in',
+        top=True, 
+        right=True
+    )
+
+    ax.annotate(
+        'CME#1',
+        xy=(.236, .914), 
+        xycoords='figure fraction',
+        horizontalalignment='left', 
+        verticalalignment='top',
+        fontsize=12,
+        color=BLIND_PALETTE['vermillion']
+    )
+
+    ax.annotate(
+        'CME#2',
+        xy=(.496, .914), 
+        xycoords='figure fraction',
+        horizontalalignment='left', 
+        verticalalignment='top',
+        fontsize=12,
+        color=BLIND_PALETTE['bluish-green']
+    )
 
     # ax = fig.add_subplot(gs[2])
 
@@ -796,7 +891,7 @@ def insitu_sta():
     data = cdas.get_data(
         'istp_public', 
         'STA_L2_PLA_1DMAX_1MIN', 
-        cme2_d0_sta-timedelta(seconds=delta_sta*2), 
+        cme2_d0_sta-timedelta(seconds=delta_sta*3), 
         cme3_d1_sta+timedelta(seconds=delta_sta), 
         ['proton_number_density', 'proton_bulk_speed', 'proton_temperature'],
         cdf=True
@@ -1078,8 +1173,14 @@ def insitu_sta():
     ax.xaxis.set_major_locator(major)
     ax.xaxis.set_major_formatter(majorFormat)
     ax.xaxis.set_minor_locator(minor)
-    ax.yaxis.set_label_coords(-0.08, 0.5)
+    ax.yaxis.set_label_coords(-0.06, 0.5)
     ax.autoscale(enable=True, axis='x', tight=True)
+    ax.tick_params(
+        which='both', 
+        direction='in',
+        top=True, 
+        right=True
+    )
 
     ax = fig.add_subplot(gs[1])
     im = ax.imshow(
@@ -1088,7 +1189,7 @@ def insitu_sta():
         cmap='RdBu_r', 
         norm=LogNorm(), 
         extent=[
-            mdates.date2num(cme2_d0_sta-timedelta(seconds=delta_sta*2)),
+            mdates.date2num(cme2_d0_sta-timedelta(seconds=delta_sta*3)),
             mdates.date2num(cme3_d1_sta+timedelta(seconds=delta_sta)),
             0.0, 180.0
         ],
@@ -1099,19 +1200,57 @@ def insitu_sta():
     Bbox = transforms.Bbox.from_bounds(1.02, 0, 0.03, 1)
     trans = ax.transAxes+fig.transFigure.inverted()
     l, b, w, h = transforms.TransformedBbox(Bbox, trans).bounds
-    cax = fig.add_axes([l, b, w, h])
+    cax = fig.add_axes([l*0.99, b, w, h])
     cb = plt.colorbar(im, cax = cax)
     # cb.locator = plt.MaxNLocator(5)
     cb.update_ticks()
+    cb.ax.set_ylabel('PSD $[s^3km^{-6}]$', rotation=270, labelpad=14)
+    # cb.ax.set_title('PSD $[s^3km^{-6}]$')
     axc = ax
-    axc.yaxis.set_label_coords(-0.08, 0.5)
+    axc.yaxis.set_label_coords(-0.06, 0.5)
     ax.set_ylabel('$PA$ $[^\circ]$')
+    ax.axvline(
+        datetime(2011, 6, 5, 18, 58),
+        color='k',
+        linewidth=3,
+        linestyle='dashdot'
+    )
+    ax.axvline(
+        datetime(2011, 6, 6, 12, 23),
+        color=BLIND_PALETTE['bluish-green'],
+        linewidth=3,
+        linestyle='dotted'
+    )
+    ax.axvline(
+        datetime(2011, 6, 6, 14, 15),
+        color=BLIND_PALETTE['bluish-green'],
+        linewidth=3,
+        linestyle='dotted'
+    )
+    ax.axvline(
+        datetime(2011, 6, 6, 17, 7),
+        color=BLIND_PALETTE['blue'],
+        linewidth=3,
+        linestyle='dotted'
+    )
+    ax.axvline(
+        datetime(2011, 6, 7, 1, 35),
+        color=BLIND_PALETTE['blue'],
+        linewidth=3,
+        linestyle='dotted'
+    )
     
     ax.xaxis.set_major_locator(major)
     ax.xaxis.set_major_formatter(majorFormat)
     ax.xaxis.set_minor_locator(minor)
-    ax.yaxis.set_label_coords(-0.08, 0.5)
+    ax.yaxis.set_label_coords(-0.06, 0.5)
     ax.autoscale(enable=True, axis='x', tight=True)
+    ax.tick_params(
+        which='both', 
+        direction='in',
+        top=True, 
+        right=True
+    )
 
     ax = fig.add_subplot(gs[2])
     m = data['proton_bulk_speed'] >= 0.0
@@ -1119,6 +1258,36 @@ def insitu_sta():
     ax.plot(data['epoch'], data['proton_bulk_speed'], 'k')
     plt.setp(ax.get_xticklabels(), visible=False)
     ax.set_ylabel('$V_p$ $[km/s]$')
+    ax.axvline(
+        datetime(2011, 6, 5, 18, 58),
+        color='k',
+        linewidth=3,
+        linestyle='dashdot'
+    )
+    ax.axvline(
+        datetime(2011, 6, 6, 12, 23),
+        color=BLIND_PALETTE['bluish-green'],
+        linewidth=3,
+        linestyle='dotted'
+    )
+    ax.axvline(
+        datetime(2011, 6, 6, 14, 15),
+        color=BLIND_PALETTE['bluish-green'],
+        linewidth=3,
+        linestyle='dotted'
+    )
+    ax.axvline(
+        datetime(2011, 6, 6, 17, 7),
+        color=BLIND_PALETTE['blue'],
+        linewidth=3,
+        linestyle='dotted'
+    )
+    ax.axvline(
+        datetime(2011, 6, 7, 1, 35),
+        color=BLIND_PALETTE['blue'],
+        linewidth=3,
+        linestyle='dotted'
+    )
 
     ax.plot(
         cme2_dm_sta, 
@@ -1140,9 +1309,15 @@ def insitu_sta():
     ax.xaxis.set_major_locator(major)
     ax.xaxis.set_major_formatter(majorFormat)
     ax.xaxis.set_minor_locator(minor)
-    ax.yaxis.set_label_coords(-0.08, 0.5)
+    ax.yaxis.set_label_coords(-0.06, 0.5)
     ax.autoscale(enable=True, axis='x', tight=True)
     plt.xlim([d_sta[0], d_sta[-1]])
+    ax.tick_params(
+        which='both', 
+        direction='in',
+        top=True, 
+        right=True
+    )
     
     ax = fig.add_subplot(gs[3])
     m = data['proton_number_density'] >= 0.0
@@ -1150,31 +1325,123 @@ def insitu_sta():
     ax.plot(data['epoch'], data['proton_number_density'], 'k')
     plt.setp(ax.get_xticklabels(), visible=False)
     ax.set_ylabel('$N_p$ $[cm^{-3}]$')
+    ax.axvline(
+        datetime(2011, 6, 5, 18, 58),
+        color='k',
+        linewidth=3,
+        linestyle='dashdot'
+    )
+    ax.axvline(
+        datetime(2011, 6, 6, 12, 23),
+        color=BLIND_PALETTE['bluish-green'],
+        linewidth=3,
+        linestyle='dotted'
+    )
+    ax.axvline(
+        datetime(2011, 6, 6, 14, 15),
+        color=BLIND_PALETTE['bluish-green'],
+        linewidth=3,
+        linestyle='dotted'
+    )
+    ax.axvline(
+        datetime(2011, 6, 6, 17, 7),
+        color=BLIND_PALETTE['blue'],
+        linewidth=3,
+        linestyle='dotted'
+    )
+    ax.axvline(
+        datetime(2011, 6, 7, 1, 35),
+        color=BLIND_PALETTE['blue'],
+        linewidth=3,
+        linestyle='dotted'
+    )
 
     ax.xaxis.set_major_locator(major)
     ax.xaxis.set_major_formatter(majorFormat)
     ax.xaxis.set_minor_locator(minor)
-    ax.yaxis.set_label_coords(-0.08, 0.5)
+    ax.yaxis.set_label_coords(-0.06, 0.5)
     ax.autoscale(enable=True, axis='x', tight=True)
     plt.xlim([d_sta[0], d_sta[-1]])
+    ax.tick_params(
+        which='both', 
+        direction='in',
+        top=True, 
+        right=True
+    )
     
     ax = fig.add_subplot(gs[4])
     m = data['proton_temperature'] >= 0.0
     data['proton_temperature'][np.logical_not(m)] = np.nan
     ax.plot(data['epoch'], data['proton_temperature']/1e6, 'k')
     ax.set_ylabel('$T_p$ $[MK]$')
+    ax.axvline(
+        datetime(2011, 6, 5, 18, 58),
+        color='k',
+        linewidth=3,
+        linestyle='dashdot'
+    )
+    ax.axvline(
+        datetime(2011, 6, 6, 12, 23),
+        color=BLIND_PALETTE['bluish-green'],
+        linewidth=3,
+        linestyle='dotted'
+    )
+    ax.axvline(
+        datetime(2011, 6, 6, 14, 15),
+        color=BLIND_PALETTE['bluish-green'],
+        linewidth=3,
+        linestyle='dotted'
+    )
+    ax.axvline(
+        datetime(2011, 6, 6, 17, 7),
+        color=BLIND_PALETTE['blue'],
+        linewidth=3,
+        linestyle='dotted'
+    )
+    ax.axvline(
+        datetime(2011, 6, 7, 1, 35),
+        color=BLIND_PALETTE['blue'],
+        linewidth=3,
+        linestyle='dotted'
+    )
 
     ax.xaxis.set_major_locator(major)
     ax.xaxis.set_major_formatter(majorFormat)
     ax.xaxis.set_minor_locator(minor)
-    ax.yaxis.set_label_coords(-0.08, 0.5)
+    ax.yaxis.set_label_coords(-0.06, 0.5)
     ax.autoscale(enable=True, axis='x', tight=True)
     plt.xlim([d_sta[0], d_sta[-1]])
+    ax.tick_params(
+        which='both', 
+        direction='in',
+        top=True, 
+        right=True
+    )
+
+    ax.annotate(
+        'CME#2',
+        xy=(.486, .897), 
+        xycoords='figure fraction',
+        horizontalalignment='left', 
+        verticalalignment='top',
+        fontsize=12,
+        color=BLIND_PALETTE['bluish-green']
+    )
+
+    ax.annotate(
+        'CME#3',
+        xy=(.658, .897), 
+        xycoords='figure fraction',
+        horizontalalignment='left', 
+        verticalalignment='top',
+        fontsize=12,
+        color=BLIND_PALETTE['blue']
+    )
 
     plt.show()
 
-# insitu_mes()
+insitu_mes()
 
-# insitu_vex()
+insitu_vex()
 
 insitu_sta()
