@@ -174,7 +174,8 @@ t3 = np.linspace(t0_cor3, t1_sta3, 100)
 
 # for t in np.linspace(t0_cor1+15*3600, t0_cor1+50*3600, 200):
 
-t = t0_vex2
+t = t0_vex1
+t = calendar.timegm(datetime(2011, 6, 5, 1).timetuple())
 
 fr1 = FRi3D(theta1(t), phi1(t), Rt1(t), Rp1(t), half_width_cor1, gamma1(t), flattening_cor1, pancaking_cor1)
 fr2 = FRi3D(theta2(t), phi2(t), Rt2(t), Rp2(t), half_width_cor2, gamma2(t), flattening_cor2, pancaking_cor2)
@@ -186,16 +187,16 @@ fr3 = FRi3D(theta3(t), phi3(t), Rt3(t), Rp3(t), half_width_cor3, gamma3(t), flat
 
 fig = plt.figure(figsize=(10,10))
 ax = fig.add_subplot(111, projection='3d', adjustable='box', aspect=1.0)
-ax.set_xlim(-1.5, 0.5)
-ax.set_ylim(0.0, 2.0)
-ax.set_zlim(-1.0, 1.0)
+ax.set_xlim(-1.5/4, 0.5/4)
+ax.set_ylim(0.0/4, 2.0/4)
+ax.set_zlim(-1.0/4, 1.0/4)
 ax.view_init(45.0, 45.0)
 
-x, y, z = fr1.shell()
-x *= u.m.to(u.au)
-y *= u.m.to(u.au)
-z *= u.m.to(u.au)
-ax.plot_wireframe(x, y, z, color=BLIND_PALETTE['vermillion'], alpha=0.4)
+# x, y, z = fr1.shell()
+# x *= u.m.to(u.au)
+# y *= u.m.to(u.au)
+# z *= u.m.to(u.au)
+# ax.plot_wireframe(x, y, z, color=BLIND_PALETTE['vermillion'], alpha=0.4)
 
 x, y, z = fr2.shell()
 x *= u.m.to(u.au)
