@@ -428,27 +428,5 @@ def fit2insitu():
     
     return res
 
-# fit2remote()
-fit2insitu()
-
-# STEREO-A:  0.0 0.0121611550752 0.039531843147
-# AVERAGE:  0.0172309994074
-# SHARED toroidal_height decay =  0.0093678767328
-# SHARED toroidal_height speed =  1033.08532747
-# SHARED toroidal_height speed =  1013.28945534
-# SHARED sigma =  1.8628744185
-# SHARED twist =  0.545612614115
-# STEREO-A latitude =  7.64145445659
-# STEREO-A longitude =  109.966376822
-# STEREO-A poloidal_height =  0.0606401436962
-# STEREO-A half_width =  33.4034577557
-# STEREO-A tilt =  30.4390831437
-# STEREO-A flattening =  0.78371627718
-# STEREO-A pancaking =  38.8227295464
-# STEREO-A flux =  1.28830052586e+14
-# [  9.36787673e-03   1.03308533e+06   1.01328946e+06   0.00000000e+00
-#    1.86287442e+00   5.45612614e-01   0.00000000e+00   0.00000000e+00
-#    0.00000000e+00   0.00000000e+00   0.00000000e+00   0.00000000e+00
-#    0.00000000e+00   0.00000000e+00   1.00000000e+14   1.33368540e-01
-#    1.91927534e+00   9.07163638e+09   5.83000319e-01   5.31262222e-01
-#    7.83716277e-01   6.77584455e-01   1.28830053e+14]
+fit2remote()
+# fit2insitu()

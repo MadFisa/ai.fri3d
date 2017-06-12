@@ -1,5 +1,6 @@
 
 from ai.fri3d import Evolution
+from ai.fri3d.optimize import fit2remote as f2r
 from astropy import units as u
 from astropy import constants as c
 from datetime import datetime, timedelta
@@ -15,6 +16,51 @@ from ai.fri3d.differentialevolution import differential_evolution
 
 res_prev = np.inf
 num_eval = 0
+
+def fit2remote():
+    f2r(
+        cor2a=True,
+        cor2a_img='data/cor2a_20110604_225400.png',
+        cor2a_aov=u.deg.to(u.rad, 4.0),
+        cor2a_xc=-1.16802e7,
+        cor2a_yc=-2.43284e7,
+        sta_r=u.au.to(u.m, 0.957613),
+        sta_lon=u.deg.to(u.rad, 94.666),
+        sta_lat=u.deg.to(u.rad, 7.333),
+        sta_datetime=datetime(2011,6,4,22,54),
+
+        cor2b=True,
+        cor2b_img='data/cor2b_20110604_225400.png',
+        cor2b_aov=u.deg.to(u.rad, 4.0),
+        cor2b_xc=-3.85197e7,
+        cor2b_yc=9.39991e7,
+        stb_r=u.au.to(u.m, 1.007948),
+        stb_lon=u.deg.to(u.rad, -93.155),
+        stb_lat=u.deg.to(u.rad, -7.245),
+        stb_datetime=datetime(2011,6,4,22,54),
+        
+        c3=True,
+        c3_img='data/c3_20110604_225534.png',
+        c3_fov=u.R_sun.to(u.m, 30.0),
+        c3_xc=-2.07815e8,
+        c3_yc=-8.50331e8,
+        soho_r=u.au.to(u.m, 1.0),
+        soho_lat=u.deg.to(u.rad, 0.0),
+        soho_lon=u.deg.to(u.rad, 0.0),
+        soho_datetime=datetime(2011,6,4,22,55,34),
+
+        latitude=u.deg.to(u.rad, 25.0),
+        longitude=u.deg.to(u.rad, 125.0),
+        toroidal_height=u.R_sun.to(u.m, 12.0),
+        poloidal_height=u.R_sun.to(u.m, 4.0),
+        half_width=u.deg.to(u.rad, 35.0),
+        tilt=u.deg.to(u.rad, 35.0),
+        flattening=0.4,
+        pancaking=u.deg.to(u.rad, 30.0),
+        skew=u.deg.to(u.rad, 0.0),
+        
+        spline_s_phi_kind='cubic',
+        spline_s_phi_n=500)
 
 def fit2insitu():
 
@@ -420,4 +466,5 @@ def fit2insitu():
     print(res.success)
     print(res.message)
 
-fit2insitu()
+fit2remote()
+# fit2insitu()
