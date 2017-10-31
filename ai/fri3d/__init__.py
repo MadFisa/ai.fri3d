@@ -1,97 +1,97 @@
 
 import numpy as np
-from scipy.interpolate import interp1d
-from scipy.integrate import quad, fixed_quad, quadrature, romberg
+from scipy.interpolate import RegularGridInterpolator
+from scipy.integrate import fixed_quad
 from scipy.optimize import minimize_scalar
 from astropy import constants as c
 from astropy import units as u
 
 class FRi3D:
-    def __init__(self,
-        latitude=u.deg.to(u.rad, 0.0), 
-        longitude=u.deg.to(u.rad, 0.0), 
-        toroidal_height=u.au.to(u.m, 1.0), 
-        poloidal_height=u.au.to(u.m, 0.2), 
-        half_width=u.deg.to(u.rad, 40.0), 
-        tilt=u.deg.to(u.rad, 0.0), 
-        flattening=0.5, 
-        pancaking=u.deg.to(u.rad, 20.0), 
-        skew=u.deg.to(u.rad, 0.0), 
-        twist=1.0, 
-        flux=5e14,
-        sigma=2.0,
-        polarity=1.0,
-        chirality=1.0,
-        spline_s_phi_kind='cubic',
-        spline_s_phi_n=500):
-        
-        self.latitude = latitude
-        self.longitude = longitude
-        self.toroidal_height = toroidal_height
-        self.poloidal_height = poloidal_height
-        self.half_width = half_width
-        self.tilt = tilt
-        self.flattening = flattening
-        self.pancaking = pancaking
-        self.skew = skew
-        self.twist = twist
-        self.flux = flux
-        self.sigma = sigma
-        self.polarity = polarity
-        self.chirality = chirality
-        self.spline_s_phi_kind = spline_s_phi_kind
-        self.spline_s_phi_n = spline_s_phi_n
+    """FRi3D model class. It provides static description of the model.
+    """
+    # pylint: disable=too-many-instance-attributes
+    # pylint: disable=E1101
+    def __init__(self, **kwargs):
+        self.latitude = kwargs.get('latitude', u.deg.to(u.rad, 0.0))
+        self.longitude = kwargs.get('longitude', u.deg.to(u.rad, 0.0))
+        self.toroidal_height = kwargs.get('toroidal_height', u.au.to(u.m, 1.0))
+        self.poloidal_height = kwargs.get('poloidal_height', u.au.to(u.m, 0.2))
+        self.half_width = kwargs.get('half_width', u.deg.to(u.rad, 40.0))
+        self.tilt = kwargs.get('tilt', u.deg.to(u.rad, 0.0))
+        self.flattening = kwargs.get('flattening', 0.5)
+        self.pancaking = kwargs.get('pancaking', u.deg.to(u.rad, 20.0))
+        self.skew = kwargs.get('skew', u.deg.to(u.rad, 0.0))
+        self.twist = kwargs.get('twist', 1.0)
+        self.flux = kwargs.get('flux', 5e14)
+        self.sigma = kwargs.get('sigma', 2.0)
+        self.polarity = kwargs.get('polarity', 1.0)
+        self.chirality = kwargs.get('chirality', 1.0)
         self.init()
 
     @property
     def twist(self):
+        """Get twist."""
         return self._twist
     @twist.setter
     def twist(self, twist):
-        if twist > 0.0:
+        """Set twist."""
+        if twist >= 0.0:
             self._twist = twist
 
     @property
     def toroidal_height(self):
+        """Get toroidal height."""
         return self._toroidal_height
     @toroidal_height.setter
     def toroidal_height(self, toroidal_height):
+        """Set toroidal height."""
         if toroidal_height > 0.0:
             self._toroidal_height = toroidal_height
 
     @property
     def poloidal_height(self):
+        """Get poloidal height."""
         return self._poloidal_height
     @poloidal_height.setter
     def poloidal_height(self, poloidal_height):
+        """Set poloidal height."""
         if poloidal_height > 0.0:
             self._poloidal_height = poloidal_height
 
     @property
     def half_width(self):
+        """Get half width."""
         return self._half_width
     @half_width.setter
     def half_width(self, half_width):
+        """Set half width explicitly and width coefficient implicitly.
+        """
         if half_width > 0.0 and half_width < np.pi*2.0:
             self._half_width = half_width
+            self._coeff_angle = np.pi/2.0/self.half_width
 
     @property
     def coeff_angle(self):
+        """Get width coefficient."""
         return self._coeff_angle
 
     @property
     def flattening(self):
+        """Get flattening coefficient."""
         return self._flattening
     @flattening.setter
     def flattening(self, flattening):
+        """Set flattening coefficient."""
         if flattening > 0.0 and flattening < 1.0:
             self._flattening = flattening
 
     @property
     def pancaking(self):
+        """Get pancaking (a.k.a., half height)."""
         return self._pancaking
     @pancaking.setter
     def pancaking(self, pancaking):
+        """Set pancaking (a.k.a., half height)."""
         if pancaking is None:
             self._pancaking = np.arctan(
                 self.poloidal_height/self.toroidal_height
@@ -101,9 +101,11 @@ class FRi3D:
 
     @property
     def skew(self):
+        """Get skewing angle."""
         return self._skew
     @skew.setter
     def skew(self, skew):
+        """Set skewing angle."""
         if skew is None:
             self._skew = 0.0
         elif skew >= 0.0:
@@ -111,73 +113,215 @@ class FRi3D:
 
     @property
     def latitude(self):
+        """Get orientation latitude."""
         return self._latitude
     @latitude.setter
     def latitude(self, latitude):
+        """Set orientation latitude."""
         if latitude >= -np.pi/2.0 and latitude <= np.pi/2.0:
             self._latitude = latitude
 
     @property
     def longitude(self):
+        """Get orientation longitude."""
         return self._longitude
     @longitude.setter
     def longitude(self, longitude):
+        """Set orientation longitude."""
         if longitude >= -np.pi and longitude <= np.pi:
             self._longitude = longitude
 
     @property
     def tilt(self):
+        """Get tilt."""
         return self._tilt
     @tilt.setter
     def tilt(self, tilt):
+        """Set tilt."""
         if tilt >= -np.pi and tilt <= np.pi:
-            self._tilt = tilt    
+            self._tilt = tilt
 
     @property
     def flux(self):
+        """Get magnetic flux."""
         return self._flux
     @flux.setter
     def flux(self, flux):
+        """Set magnetic flux."""
         if flux > 0.0:
             self._flux = flux
 
     @property
     def sigma(self):
+        """Get sigma from Gaussian distribution of total magnetic field.
+        """
         return self._sigma
     @sigma.setter
     def sigma(self, sigma):
+        """Set sigma for Gaussian distribution of total magnetic field.
+        """
         if sigma > 0.0:
             self._sigma = sigma
 
     @property
     def polarity(self):
+        """Get polarity."""
         return self._polarity
     @polarity.setter
     def polarity(self, polarity):
+        """Set polarity."""
         if polarity == 1.0 or polarity == -1.0:
             self._polarity = polarity
 
     @property
     def chirality(self):
+        """Get chirality."""
         return self._chirality
     @chirality.setter
     def chirality(self, chirality):
+        """Set chirality."""
         if chirality == 1.0 or chirality == -1.0:
             self._chirality = chirality
 
-    @property
-    def spline_s_phi_kind(self):
-        return self._spline_s_phi_kind
-    @spline_s_phi_kind.setter
-    def spline_s_phi_kind(self, spline_s_phi_kind):
-        self._spline_s_phi_kind = spline_s_phi_kind
+    def _vanilla_axis_r(
+            self,
+            phi,
+            toroidal_height=self.toroidal_height,
+            coeff_angle=self.coeff_angle,
+            flattening=self.flattening):
+        """Evaluate the axis function r(phi) in polar coordinates. Note
+        that rotational skewing is not taken into account.
+        """
+        return toroidal_height*np.cos(coeff_angle*phi)**flattening
 
-    @property
-    def spline_s_phi_n(self):
-        return self._spline_s_phi_n
-    @spline_s_phi_n.setter
-    def spline_s_phi_n(self, spline_s_phi_n):
-        self._spline_s_phi_n = spline_s_phi_n
+    def _vanilla_axis_dr(
+            self,
+            phi,
+            toroidal_height=self.toroidal_height,
+            coeff_angle=self.coeff_angle,
+            flattening=self.flattening):
+        """Evaluate the derivative of the axis function dr/d(phi). Note
+        that rotational skewing is not taken into account.
+        """
+        return(
+            -flattening*coeff_angle*np.tan(coeff_angle*phi)
+            *self._vanilla_axis_r(
+                phi,
+                toroidal_height=toroidal_height,
+                coeff_angle=coeff_angle,
+                flattening=flattening)
+        )
+
+    def _vanilla_axis_ds(
+            self,
+            phi,
+            toroidal_height=self.toroidal_height,
+            coeff_angle=self.coeff_angle,
+            flattening=self.flattening):
+        """Evaluate derivative of the axis length ds/d(phi). Note that
+        rotational skewing is not taken into account.
+        """
+        return(
+            self._vanilla_axis_r(
+                phi,
+                toroidal_height=toroidal_height,
+                coeff_angle=coeff_angle,
+                flattening=flattening
+            )*np.sqrt(
+                1.0+coeff_angle**2*flattening**2
+                *np.tan(coeff_angle*phi)**2
+            )
+        )
+
+    def _vanilla_axis_s(self, phi):
+        """Evaluate length of the axis. It is an estimation and also
+        does not take into account rotational skewing.
+        """
+        return(
+            self.toroidal_height
+            *self._interpolator_axis_s(
+                self.coeff_angle*phi,
+                self.coeff_angle,
+                self.flattening
+            )
+        )
+
+    def _init_interpolator_axis_s(self, ratio=1-1e-5):
+        """Initialize the interpolator
+        s=length(coeff_angle*phi, coeff_angle, flattening) for a curve
+        defined in polar coordinates as
+        r=cos(coeff_angle*phi)^flattening. Interpolation is performed
+        along the following variable ranges:
+        coeff_angle*phi = [-pi/2, pi/2]
+        coeff_angle = [1, 18] (half_angle = [pi/36, pi/2])
+        flattening = [0.1, 1.0]
+        """
+        coeff_angle_phi_array = np.linspace(-np.pi/2, np.pi/2, 100)
+        coeff_angle_array = np.linspace(1, 18, 100)
+        flattening_array = np.linspace(0.1, 1.0, 100)
+        def integrate_s(coeff_angle_phi, coeff_angle, flattening, ratio=ratio):
+            """Estimate length along axis by numerical integration."""
+            if coeff_angle_phi <= -np.pi/2*ratio:
+                return self._vanilla_axis_r(
+                    coeff_angle_phi/coeff_angle,
+                    toroidal_height=1,
+                    coeff_angle=coeff_angle,
+                    flattening=flattening
+                )
+            elif coeff_angle_phi < np.pi/2*ratio:
+                return(
+                    self._vanilla_axis_r(
+                        -np.pi/2*ratio/coeff_angle,
+                        toroidal_height=1,
+                        coeff_angle=coeff_angle,
+                        flattening=flattening
+                    )+fixed_quad(
+                        lambda coeff_angle_phi: self._vanilla_axis_ds(
+                            coeff_angle_phi/coeff_angle,
+                            toroidal_height=1,
+                            coeff_angle=coeff_angle,
+                            flattening=flattening)/coeff_angle,
+                        -np.pi/2*ratio,
+                        coeff_angle_phi,
+                        n=1000
+                    )[0]
+                )
+            else:
+                return(
+                    2*_self._vanilla_axis_r(
+                        -np.pi/2*ratio/coeff_angle,
+                        toroidal_height=1,
+                        coeff_angle=coeff_angle,
+                        flattening=flattening
+                    )+fixed_quad(
+                        lambda coeff_angle_phi: self._vanilla_axis_ds(
+                            coeff_angle_phi/coeff_angle,
+                            toroidal_height=1,
+                            coeff_angle=coeff_angle,
+                            flattening=flattening)/coeff_angle,
+                        -np.pi/2*ratio,
+                        np.pi/2*ratio,
+                        n=1000
+                    )[0]-_self._vanilla_axis_r(
+                        coeff_angle_phi/coeff_angle,
+                        toroidal_height=1,
+                        coeff_angle=coeff_angle,
+                        flattening=flattening
+                    )
+                )
+        data = integrate_s(
+            *np.meshgrid(
+                coeff_angle_phi_array,
+                coeff_angle_array,
+                flattening_array,
+                indexing='ij',
+                sparse=True
+            )
+        )
+        self._interpolator_axis_s = RegularGridInterpolator(
+            (coeff_angle_phi_array, coeff_angle_array, flattening_array),
+            data
+        )
 
     def init(self):
         self._coeff_angle = np.pi/2.0/self.half_width
@@ -187,8 +331,8 @@ class FRi3D:
     # initilize spline phi(s)
     def _init_spline_initial_axis_s_phi(self):
         phi = np.linspace(
-            -self.half_width, 
-            self.half_width, 
+            -self.half_width,
+            self.half_width,
             self.spline_s_phi_n
         )
         s = np.array([self._initial_axis_s(p) for p in phi])
@@ -196,7 +340,7 @@ class FRi3D:
         s = s[m]
         phi = phi[m]
         self._spline_initial_axis_s_phi = interp1d(
-            s, phi, 
+            s, phi,
             kind=self.spline_s_phi_kind,
             bounds_error=False,
             # fill_value='extrapolate'
@@ -252,17 +396,18 @@ class FRi3D:
         # print(quad(self._initial_axis_ds, -self.half_width, phi))
         # # print(fixed_quad(self._initial_axis_ds, -self.half_width, phi, n=100))
         # print(fixed_quad(
-        #     self._initial_axis_ds, 
-        #     -self.half_width, 
+        #     self._initial_axis_ds,
+        #     -self.half_width,
         #     phi,
         #     n=1000
         # ))
         # for i in range(10000):
+        # s = self.toroidal_height*self.flattening*np.sqrt
         s = fixed_quad(self._initial_axis_ds, -self.half_width, phi, n=1000)
         # s = quad(self._initial_axis_ds, -self.half_width, phi)
         # s = quadrature(
-        #     self._initial_axis_ds, 
-        #     -self.half_width, 
+        #     self._initial_axis_ds,
+        #     -self.half_width,
         #     phi,
         #     rtol=1e-5,
         #     maxiter=200
