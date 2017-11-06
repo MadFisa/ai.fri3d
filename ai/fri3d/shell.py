@@ -3,32 +3,31 @@ import numpy as np
 from ai.shared import cs
 from astropy import constants as c
 
-# FRi3D shell
-def shell(self, 
-    s=np.linspace(0.0, 1.0, 50), 
-    phi=np.linspace(0.0, np.pi*2.0, 24)):
-    
+def shell(
+        self,
+        s=np.linspace(0.0, 1.0, 50, endpoint=True),
+        phi=np.linspace(0.0, np.pi*2.0, 24)):
     s = np.array(s, copy=False, ndmin=1)
     phi = np.array(phi, copy=False, ndmin=1)
 
     # start the FR from the solar surface
-    s_max = self._initial_axis_s(self.half_width)
-    s[s < c.R_sun.value/s_max] = c.R_sun.value/s_max
-    s[s > 1.0-c.R_sun.value/s_max] = 1.0-c.R_sun.value/s_max
-    s = np.unique(s)
+    # s_max = self._vanilla_axis_length(self.half_width)
+    # s[s < c.R_sun.value/s_max] = c.R_sun.value/s_max
+    # s[s > 1.0-c.R_sun.value/s_max] = 1.0-c.R_sun.value/s_max
+    # s = np.unique(s)
 
     s = np.transpose(np.tile(s, (phi.size, 1)))
     phi = np.tile(phi, (s.shape[0], 1))
 
     # extension to full axis length
     r = np.ones(s.shape)
-    z = s*self._initial_axis_s(self.half_width)
-    
+    z = s*self._vanilla_axis_length(self.half_width)
+
     # tapering
     r = (
         r*self.poloidal_height*
         (
-            self._initial_axis_r(self._spline_initial_axis_s_phi(z))/
+            self._vanilla_axis_height(self._vanilla_axis_phi(z))/
             self.toroidal_height
         )
     )
@@ -39,9 +38,9 @@ def shell(self,
     x, y, z = cs.mx_apply(T, x, y, z)
 
     # bending
-    phi = self._spline_initial_axis_s_phi(x)
-    r = self._initial_axis_r(phi)
-    t = self._initial_axis_tan(phi)
+    phi = self._vanilla_axis_phi(x)
+    r = self._vanilla_axis_height(phi)
+    t = self._vanilla_axis_tan(phi)
     x = r*np.cos(phi)+np.sin(t-phi-np.pi/2.0)*y
     y = r*np.sin(phi)+np.cos(t-phi-np.pi/2.0)*y
 
@@ -56,10 +55,10 @@ def shell(self,
     # orientation
     T = cs.mx_rot(-self.latitude, self.longitude, self.tilt)
     x, y, z = cs.mx_apply(T, x, y, z)
-    
+
     # skew
     r, phi, z = cs.cart2cyl(x, y, z)
     phi += self.skew*(1.0-r/self.toroidal_height)
     x, y, z = cs.cyl2cart(r, phi, z)
-    
-    return (x, y, z)
+
+    return(x, y, z)

@@ -1,13 +1,19 @@
 """Defines the FRi3D class which describes CME structure and Evolution
 class which handles its evolution.
 """
+import os
 import math
+import pickle
 import numpy as np
-from scipy.interpolate import RegularGridInterpolator
+from scipy.interpolate import RegularGridInterpolator, LinearNDInterpolator
 from scipy.integrate import fixed_quad
 from scipy.optimize import minimize_scalar
 from astropy import constants as c
 from astropy import units as u
+
+LOCATION = os.path.realpath(
+    os.path.join(os.getcwd(), os.path.dirname(__file__))
+)
 
 class FRi3D:
     """FRi3D model class. It provides static description of the model.
@@ -28,8 +34,11 @@ class FRi3D:
         self._twist = None
         self._flux = None
         self._sigma = None
+        self._unit_b = None
         self._polarity = None
         self._chirality = None
+        self._interpolator_axis_length = None
+        self._interpolator_axis_phi = None
         self.latitude = kwargs.get('latitude', u.deg.to(u.rad, 0))
         self.longitude = kwargs.get('longitude', u.deg.to(u.rad, 0))
         self.toroidal_height = kwargs.get('toroidal_height', u.au.to(u.m, 1))
@@ -47,7 +56,7 @@ class FRi3D:
         self.sigma = kwargs.get('sigma', 2)
         self.polarity = kwargs.get('polarity', 1)
         self.chirality = kwargs.get('chirality', 1)
-        self.init()
+        self._init_axis_interpolators()
 
     @property
     def latitude(self):
@@ -178,6 +187,8 @@ class FRi3D:
         """Set magnetic flux."""
         if flux > 0:
             self._flux = flux
+            if self.sigma is not None:
+                self._unit_b = self.flux/(2.0*np.pi*self.sigma**2)
         else:
             raise ValueError('Flux should be positive.')
 
@@ -192,6 +203,8 @@ class FRi3D:
         """
         if sigma > 0:
             self._sigma = sigma
+            if self.flux is not None:
+                self._unit_b = self.flux/(2.0*np.pi*self.sigma**2)
         else:
             raise ValueError('Sigma should be positive.')
 
@@ -219,7 +232,7 @@ class FRi3D:
         else:
             raise ValueError('Chirality should be +1 or -1.')
 
-    def _vanilla_axis_r(
+    def _vanilla_axis_height(
             self,
             phi,
             toroidal_height=None,
@@ -234,9 +247,9 @@ class FRi3D:
             coeff_angle = self.coeff_angle
         if flattening is None:
             flattening = self.flattening
-        return toroidal_height*np.cos(coeff_angle*phi)**flattening
+        return toroidal_height*np.abs(np.cos(coeff_angle*phi))**flattening
 
-    def _vanilla_axis_dr(
+    def _vanilla_axis_dheight(
             self,
             phi,
             toroidal_height=None,
@@ -252,15 +265,50 @@ class FRi3D:
         if flattening is None:
             flattening = self.flattening
         return(
-            (-1)*flattening*coeff_angle*np.tan(coeff_angle*phi)
-            *self._vanilla_axis_r(
+            flattening*coeff_angle*np.abs(np.tan(coeff_angle*phi))
+            *self._vanilla_axis_height(
                 phi,
                 toroidal_height=toroidal_height,
                 coeff_angle=coeff_angle,
-                flattening=flattening)
+                flattening=flattening
+            )
         )
 
-    def _vanilla_axis_ds(
+    def _vanilla_axis_distance(self, phi, r_sc, phi_sc):
+        """Find the distance to the given point of the axis (phi) from
+        a arbitrary point in space (r_sc, phi_sc)
+        """
+        return(
+            (
+                self._vanilla_axis_height(phi)*np.cos(phi)
+                -r_sc*np.cos(phi_sc)
+            )**2+
+            (
+                self._vanilla_axis_height(phi)*np.sin(phi)
+                -r_sc*np.sin(phi_sc)
+            )**2
+        )
+
+    def _vanilla_axis_min_distance(self, r_sc, phi_sc):
+        """Estimate the minimal distance to the axis from an arbitrary
+        point in space (r_sc, phi_sc).
+        """
+        phi = minimize_scalar(
+            lambda phi: self._vanilla_axis_distance(phi, r_sc, phi_sc),
+            bounds=[-self.half_width, self.half_width],
+            method='Bounded'
+        )
+        return(self._vanilla_axis_distance(phi, r_sc, phi_sc), phi)
+
+    def _vanilla_axis_tan(self, phi):
+        """Evaluate tangent angle relative to the axis at a given
+        location.
+        """
+        return np.arctan(
+            (-1)*self.coeff_angle*self.flattening*np.tan(self.coeff_angle*phi)
+        )
+
+    def _vanilla_axis_dlength(
             self,
             phi,
             toroidal_height=None,
@@ -276,61 +324,80 @@ class FRi3D:
         if flattening is None:
             flattening = self.flattening
         return(
-            self._vanilla_axis_r(
+            self._vanilla_axis_height(
                 phi,
                 toroidal_height=toroidal_height,
                 coeff_angle=coeff_angle,
                 flattening=flattening
             )*np.sqrt(
-                1.0+coeff_angle**2*flattening**2
+                1+coeff_angle**2*flattening**2
                 *np.tan(coeff_angle*phi)**2
             )
         )
 
-    def _vanilla_axis_s(self, phi):
+    def _vanilla_axis_length(self, phi):
         """Evaluate length of the axis. It is an estimation and also
         does not take into account rotational skewing.
         """
         return(
             self.toroidal_height
-            *self._interpolator_axis_s(
-                self.coeff_angle*phi,
-                self.coeff_angle,
-                self.flattening
+            *self._interpolator_axis_length(
+                (
+                    self.coeff_angle*phi,
+                    self.coeff_angle,
+                    self.flattening
+                )
             )
         )
 
-    def _init_interpolator_axis_s(self, ratio=1-1e-5):
-        """Initialize the interpolator
-        s=length(coeff_angle*phi, coeff_angle, flattening) for a curve
-        defined in polar coordinates as
+    def _vanilla_axis_phi(self, length):
+        """Evaluate polar coordinate of the axis as a function of its
+        length. It is an estimation and also does not take into account
+        rotational skewing.
+        """
+        return(
+            self._interpolator_axis_phi(
+                (
+                    length/self.toroidal_height,
+                    self.coeff_angle,
+                    self.flattening
+                )
+            )/self.coeff_angle
+        )
+
+    def _init_axis_interpolators(self, ratio=1-1e-5):
+        """Initialize the axis interpolators:
+        1. length=function(coeff_angle*phi, coeff_angle, flattening)
+        2. coeff_angle*phi=function(length, coeff_angle, flattening)
+        for a curve defined in polar coordinates as
         r=cos(coeff_angle*phi)^flattening. Interpolation is performed
         along the following variable ranges:
         coeff_angle*phi = [-pi/2, pi/2]
         coeff_angle = [1, 18] (half_angle = [pi/36, pi/2])
         flattening = [0.1, 1.0]
         """
-        coeff_angle_phi_array = np.linspace(-np.pi/2, np.pi/2, 100)
-        coeff_angle_array = np.linspace(1, 18, 100)
-        flattening_array = np.linspace(0.1, 1.0, 100)
-        def integrate_s(coeff_angle_phi, coeff_angle, flattening, ratio=ratio):
+        def integrate_length(
+                coeff_angle_phi,
+                coeff_angle,
+                flattening,
+                ratio=ratio):
             """Estimate length along axis by numerical integration."""
             if coeff_angle_phi <= -np.pi/2*ratio:
-                return self._vanilla_axis_r(
+                length = self._vanilla_axis_height(
                     coeff_angle_phi/coeff_angle,
                     toroidal_height=1,
                     coeff_angle=coeff_angle,
                     flattening=flattening
                 )
             elif coeff_angle_phi < np.pi/2*ratio:
-                return(
-                    self._vanilla_axis_r(
+                length = (
+                    self._vanilla_axis_height(
                         -np.pi/2*ratio/coeff_angle,
                         toroidal_height=1,
                         coeff_angle=coeff_angle,
                         flattening=flattening
                     )+fixed_quad(
-                        lambda coeff_angle_phi: self._vanilla_axis_ds(
+                        lambda coeff_angle_phi: self._vanilla_axis_dlength(
                             coeff_angle_phi/coeff_angle,
                             toroidal_height=1,
                             coeff_angle=coeff_angle,
@@ -341,14 +408,14 @@ class FRi3D:
                     )[0]
                 )
             else:
-                return(
-                    2*_self._vanilla_axis_r(
+                length = (
+                    2*self._vanilla_axis_height(
                         -np.pi/2*ratio/coeff_angle,
                         toroidal_height=1,
                         coeff_angle=coeff_angle,
                         flattening=flattening
                     )+fixed_quad(
-                        lambda coeff_angle_phi: self._vanilla_axis_ds(
+                        lambda coeff_angle_phi: self._vanilla_axis_dlength(
                             coeff_angle_phi/coeff_angle,
                             toroidal_height=1,
                             coeff_angle=coeff_angle,
@@ -356,124 +423,74 @@ class FRi3D:
                         -np.pi/2*ratio,
                         np.pi/2*ratio,
                         n=1000
-                    )[0]-self._vanilla_axis_r(
+                    )[0]-self._vanilla_axis_height(
                         coeff_angle_phi/coeff_angle,
                         toroidal_height=1,
                         coeff_angle=coeff_angle,
                         flattening=flattening
                     )
                 )
-        data = integrate_s(
-            *np.meshgrid(
-                coeff_angle_phi_array,
-                coeff_angle_array,
-                flattening_array,
-                indexing='ij',
-                sparse=True
-            )
+            return length
+
+        coeff_angle_phi_array = np.linspace(
+            -np.pi/2,
+            np.pi/2,
+            100,
+            endpoint=True
         )
-        self._interpolator_axis_s = RegularGridInterpolator(
+        coeff_angle_array = np.linspace(1, 18, 100, endpoint=True)
+        flattening_array = np.linspace(0.1, 1.0, 100, endpoint=True)
+
+        coeff_angle_phi_grid, coeff_angle_grid, flattening_grid = np.meshgrid(
+            coeff_angle_phi_array,
+            coeff_angle_array,
+            flattening_array,
+            indexing='ij'
+        )
+        v_integrate_length = np.vectorize(
+            integrate_length,
+            otypes=[np.float64]
+        )
+        length_grid = v_integrate_length(
+            coeff_angle_phi_grid,
+            coeff_angle_grid,
+            flattening_grid
+        )
+        self._interpolator_axis_length = RegularGridInterpolator(
             (coeff_angle_phi_array, coeff_angle_array, flattening_array),
-            data
+            length_grid
         )
-
-    def init(self):
-        self._coeff_angle = np.pi/2.0/self.half_width
-        self._unit_b = self.flux/(2.0*np.pi*self.sigma**2)
-        self._init_spline_initial_axis_s_phi()
-
-    # initilize spline phi(s)
-    def _init_spline_initial_axis_s_phi(self):
-        phi = np.linspace(
-            -self.half_width,
-            self.half_width,
-            self.spline_s_phi_n
+        self._interpolator_axis_phi = LinearNDInterpolator(
+            (
+                np.ravel(length_grid),
+                np.ravel(coeff_angle_grid),
+                np.ravel(flattening_grid)
+            ),
+            np.ravel(coeff_angle_phi_grid)
         )
-        s = np.array([self._initial_axis_s(p) for p in phi])
-        m = np.isfinite(s)
-        s = s[m]
-        phi = phi[m]
-        self._spline_initial_axis_s_phi = interp1d(
-            s, phi,
-            kind=self.spline_s_phi_kind,
-            bounds_error=False,
-            # fill_value='extrapolate'
-            fill_value=(-self.half_width, self.half_width)
-        )
-
-    # r(phi) for undeformed axis
-    def _initial_axis_r(self, phi):
-        return np.nan_to_num(
-            self.toroidal_height*
-            np.cos(self.coeff_angle*phi)**self.flattening
-        )
-
-    #dr/dphi for undeformed axis
-    def _initial_axis_dr(self, phi):
-        return (
-            -self.coeff_angle*self.toroidal_height*self.flattening*
-            np.cos(self.coeff_angle*phi)**(self.flattening-1.0)*
-            np.sin(self.coeff_angle*phi)
-        )
-
-    # distance to undeformed axis from (r0,phi0)
-    def _initial_axis_l(self, phi, r0, phi0):
-        return (
-            (self._initial_axis_r(phi)*np.cos(phi)-r0*np.cos(phi0))**2+
-            (self._initial_axis_r(phi)*np.sin(phi)-r0*np.sin(phi0))**2
-        )
-
-    # find phi which gives the minimum distance to undeformed axis
-    def _initial_axis_min_l_phi(self, r0, phi0):
-        res = minimize_scalar(
-            lambda phi: self._initial_axis_l(phi, r0, phi0),
-            bounds=[-self.half_width, self.half_width],
-            method='Bounded'
-        )
-        return res.x
-
-    # tangent to undeformed axis at a given phi
-    def _initial_axis_tan(self, phi):
-        return np.arctan(
-            -self.coeff_angle*self.flattening*np.tan(self.coeff_angle*phi)
-        )
-
-    # ds/dphi of of underformed axis at a given phi
-    def _initial_axis_ds(self, phi):
-        return np.sqrt(
-            self._initial_axis_r(phi)**2+
-            self._initial_axis_dr(phi)**2
-        )
-
-    # length of axis at a given phi
-    def _initial_axis_s(self, phi):
-        # print(quad(self._initial_axis_ds, -self.half_width, phi))
-        # # print(fixed_quad(self._initial_axis_ds, -self.half_width, phi, n=100))
-        # print(fixed_quad(
-        #     self._initial_axis_ds,
-        #     -self.half_width,
-        #     phi,
-        #     n=1000
-        # ))
-        # for i in range(10000):
-        # s = self.toroidal_height*self.flattening*np.sqrt
-        s = fixed_quad(self._initial_axis_ds, -self.half_width, phi, n=1000)
-        # s = quad(self._initial_axis_ds, -self.half_width, phi)
-        # s = quadrature(
-        #     self._initial_axis_ds,
-        #     -self.half_width,
-        #     phi,
-        #     rtol=1e-5,
-        #     maxiter=200
-        # )
-        # print(s)
-        return s[0]
+        with open(
+            os.path.join(LOCATION, 'FRi3D__interpolator_axis_length.pkl'),
+            'wb') as output:
+            pickle.dump(
+                self._interpolator_axis_length,
+                output,
+                pickle.HIGHEST_PROTOCOL
+            )
+        with open(
+            os.path.join(LOCATION, 'FRi3D__interpolator_axis_phi.pkl'),
+            'wb') as output:
+            pickle.dump(
+                self._interpolator_axis_phi,
+                output,
+                pickle.HIGHEST_PROTOCOL
+            )
 
     from ai.fri3d.shell import shell
-    from ai.fri3d.line import line
-    from ai.fri3d.data import data
-    from ai.fri3d.impact import impact
+    # from ai.fri3d.line import line
+    # from ai.fri3d.data import data
+    # from ai.fri3d.impact import impact
 
+"""
 class Evolution:
     def __init__(self,
         latitude=lambda t: u.deg.to(u.rad, 0.0),
@@ -787,6 +804,7 @@ class Evolution:
         bmap = np.reshape(bmap, [dx.size, dy.size])
 
         return bmap.T
-
+"""
 def subtract_period(value, period):
+    """Reduce angle by period."""
     return value-math.copysign(value, 1)*(math.fabs(value)//period)*period
