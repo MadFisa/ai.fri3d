@@ -393,8 +393,8 @@ class FRi3D:
         """Initialize the axis interpolators:
         1. length=function(coeff_angle*phi, coeff_angle, flattening)
         2. coeff_angle*phi=function(
-            relativelength, 
-            coeff_angle, 
+            relativelength,
+            coeff_angle,
             flattening
         )
         for a curve defined in polar coordinates as
@@ -539,7 +539,8 @@ class FRi3D:
             phi=np.linspace(0.0, np.pi*2.0, 24)):
         """Evaluate the 3D shell of the flux rope.
         relative_length defines the sampling along the axis,
-        phi defines the sampling of the cross-section."""
+        phi defines the sampling of the cross-section.
+        """
         relative_length = np.array(relative_length, copy=False, ndmin=1)
         phi = np.array(phi, copy=False, ndmin=1)
         # relative_length is the length along the axis from 0 to 1
@@ -550,10 +551,10 @@ class FRi3D:
         # apply tapering
         r = np.ones(relative_length.shape)
         r = (
-            r*self.poloidal_height*
-            (
-                self._vanilla_axis_height(self._vanilla_axis_phi(z))/
-                self.toroidal_height
+            r*self.poloidal_height
+            *(
+                self._vanilla_axis_height(self._vanilla_axis_phi(z))
+                /self.toroidal_height
             )
         )
         x, y, z = cs.cyl2cart(r, phi, z)
@@ -583,6 +584,58 @@ class FRi3D:
         phi += self.skew*(1-r/self.toroidal_height)
         x, y, z = cs.cyl2cart(r, phi, z)
         return(x, y, z)
+
+    def line(self, r=0.0, phi=0.0, relative_length=np.linspace(0.0, 1.0, 50)):
+        """Evaluate the 3D magnetic field line of the flux rope.
+        relative_length defines the sampling along the axis,
+        (r, phi) define the coordinates of the origin of the line.
+        """
+        s = np.array(relative_length, copy=False, ndmin=1)
+        phi = np.ones(s.size)*phi
+        # twist
+        phi += s*self.twist*np.pi*2.0*self.chirality
+        # elongation
+        z = s*self._vanilla_axis_length(self.half_width)
+        # distance to axis from origin
+        R = self._vanilla_axis_height(self._vanilla_axis_phi(z))
+        # cross-section radial size in the FR plane
+        rx = R*self.poloidal_height/self.toroidal_height
+        # cross-section radial size perp to FR plane
+        ry = R*self.pancaking
+        # coefficient of flux decay
+        kappa = rx*ry
+        # tapering
+        r *= rx
+        # magnetic field
+        b = self._unit_b/kappa*np.exp(
+            -((r/rx)**2)/2.0/self.sigma**2
+        )
+        x, y, z = cs.cyl2cart(r, phi, z)
+        # rotation to x
+        T = cs.mx_rot_y(np.pi/2.0)
+        x, y, z = cs.mx_apply(T, x, y, z)
+        # bending
+        x[x < 0] = 0
+        phi = self._vanilla_axis_phi(x)
+        r = self._vanilla_axis_height(phi)
+        t = self._vanilla_axis_tan(phi)
+        x = r*np.cos(phi)+np.sin(t-phi-np.pi/2.0)*y
+        y = r*np.sin(phi)+np.cos(t-phi-np.pi/2.0)*y
+        # pancake
+        r, theta, phi = cs.cart2sp(x, y, z)
+        theta = (
+            theta/np.arctan2(self.poloidal_height, self.toroidal_height)*
+            self.pancaking
+        )
+        x, y, z = cs.sp2cart(r, theta, phi)
+        # orientation
+        T = cs.mx_rot(-self.latitude, self.longitude, self.tilt)
+        x, y, z = cs.mx_apply(T, x, y, z)
+        # skew
+        r, phi, z = cs.cart2cyl(x, y, z)
+        phi += self.skew*(1.0-r/self.toroidal_height)
+        x, y, z = cs.cyl2cart(r, phi, z)
+        return (x, y, z, b)
 
     # from ai.fri3d.line import line
     # from ai.fri3d.data import data

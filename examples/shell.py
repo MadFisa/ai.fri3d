@@ -1,10 +1,8 @@
-
-import numpy as np
-from ai.fri3d import FRi3D
-from astropy import units as u
-from ai.shared.color import BLIND_PALETTE
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import proj3d
+from astropy import units as u
+from ai.fri3d import FRi3D
+from ai.shared.color import BLIND_PALETTE
 
 def example_shell(
         latitude=u.deg.to(u.rad, 0.0),
@@ -16,6 +14,9 @@ def example_shell(
         flattening=0.5,
         pancaking=u.deg.to(u.rad, 20.0),
         skew=u.deg.to(u.rad, 10.0)):
+    # pylint: disable=too-many-instance-attributes
+    # pylint: disable=E1101
+    # pylint: disable=C0103
     fr = FRi3D(
         latitude=latitude,
         longitude=longitude,
@@ -27,14 +28,6 @@ def example_shell(
         pancaking=pancaking,
         skew=skew
     )
-
-    # phi = np.linspace(-half_width, half_width, 100)
-    # plt.plot(phi, np.array([fr._vanilla_axis_length(x) for x in phi]))
-    # plt.show()
-
-    # phi = np.linspace(-half_width, half_width, 100)
-    # plt.plot(phi, np.array([fr._vanilla_axis_length(x) for x in phi]))
-    # plt.show()
 
     fig = plt.figure(figsize=(10, 10))
     ax = fig.add_subplot(111, projection='3d', adjustable='box', aspect=1.0)
