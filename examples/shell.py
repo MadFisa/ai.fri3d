@@ -1,6 +1,5 @@
 
 import numpy as np
-
 from ai.fri3d import FRi3D
 from astropy import units as u
 from ai.shared.color import BLIND_PALETTE
@@ -16,7 +15,7 @@ def example_shell(
         tilt=u.deg.to(u.rad, 0.0),
         flattening=0.5,
         pancaking=u.deg.to(u.rad, 20.0),
-        skew=u.deg.to(u.rad, 0.0)):
+        skew=u.deg.to(u.rad, 10.0)):
     fr = FRi3D(
         latitude=latitude,
         longitude=longitude,
@@ -28,6 +27,10 @@ def example_shell(
         pancaking=pancaking,
         skew=skew
     )
+
+    # phi = np.linspace(-half_width, half_width, 100)
+    # plt.plot(phi, np.array([fr._vanilla_axis_length(x) for x in phi]))
+    # plt.show()
 
     # phi = np.linspace(-half_width, half_width, 100)
     # plt.plot(phi, np.array([fr._vanilla_axis_length(x) for x in phi]))

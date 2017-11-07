@@ -10,16 +10,14 @@ from scipy.integrate import fixed_quad
 from scipy.optimize import minimize_scalar
 from astropy import constants as c
 from astropy import units as u
-
-LOCATION = os.path.realpath(
-    os.path.join(os.getcwd(), os.path.dirname(__file__))
-)
+from ai.shared import cs
 
 class FRi3D:
     """FRi3D model class. It provides static description of the model.
     """
     # pylint: disable=too-many-instance-attributes
     # pylint: disable=E1101
+    # pylint: disable=C0103
     def __init__(self, **kwargs):
         self._latitude = None
         self._longitude = None
@@ -56,7 +54,33 @@ class FRi3D:
         self.sigma = kwargs.get('sigma', 2)
         self.polarity = kwargs.get('polarity', 1)
         self.chirality = kwargs.get('chirality', 1)
-        self._init_axis_interpolators()
+        self._location_interpolator_axis_length = kwargs.get(
+            '_location_interpolator_axis_length',
+            os.path.join(
+                os.path.realpath(
+                    os.path.join(os.getcwd(), os.path.dirname(__file__))
+                ),
+                'FRi3D__interpolator_axis_length.pkl'
+            )
+        )
+        self._location_interpolator_axis_phi = kwargs.get(
+            '_location_interpolator_axis_phi',
+            os.path.join(
+                os.path.realpath(
+                    os.path.join(os.getcwd(), os.path.dirname(__file__))
+                ),
+                'FRi3D__interpolator_axis_phi.pkl'
+            )
+        )
+        try:
+            self._interpolator_axis_length = pickle.load(
+                open(self._location_interpolator_axis_length, 'rb')
+            )
+            self._interpolator_axis_phi = pickle.load(
+                open(self._location_interpolator_axis_phi, 'rb')
+            )
+        except FileNotFoundError:
+            self._init_axis_interpolators()
 
     @property
     def latitude(self):
@@ -358,7 +382,7 @@ class FRi3D:
         return(
             self._interpolator_axis_phi(
                 (
-                    length/self.toroidal_height,
+                    length/self._vanilla_axis_length(np.pi/2/self.coeff_angle),
                     self.coeff_angle,
                     self.flattening
                 )
@@ -368,13 +392,18 @@ class FRi3D:
     def _init_axis_interpolators(self, ratio=1-1e-5):
         """Initialize the axis interpolators:
         1. length=function(coeff_angle*phi, coeff_angle, flattening)
-        2. coeff_angle*phi=function(length, coeff_angle, flattening)
+        2. coeff_angle*phi=function(
+            relativelength, 
+            coeff_angle, 
+            flattening
+        )
         for a curve defined in polar coordinates as
         r=cos(coeff_angle*phi)^flattening. Interpolation is performed
         along the following variable ranges:
         coeff_angle*phi = [-pi/2, pi/2]
         coeff_angle = [1, 18] (half_angle = [pi/36, pi/2])
         flattening = [0.1, 1.0]
+        relative_length = [0, 1]
         """
         def integrate_length(
                 coeff_angle_phi,
@@ -435,11 +464,10 @@ class FRi3D:
         coeff_angle_phi_array = np.linspace(
             -np.pi/2,
             np.pi/2,
-            100,
-            endpoint=True
+            100
         )
-        coeff_angle_array = np.linspace(1, 18, 100, endpoint=True)
-        flattening_array = np.linspace(0.1, 1.0, 100, endpoint=True)
+        coeff_angle_array = np.linspace(1, 18, 100)
+        flattening_array = np.linspace(0.1, 1, 100)
 
         coeff_angle_phi_grid, coeff_angle_grid, flattening_grid = np.meshgrid(
             coeff_angle_phi_array,
@@ -460,32 +488,102 @@ class FRi3D:
             (coeff_angle_phi_array, coeff_angle_array, flattening_array),
             length_grid
         )
-        self._interpolator_axis_phi = LinearNDInterpolator(
+        relative_length_grid = length_grid/self._interpolator_axis_length(
             (
-                np.ravel(length_grid),
+                np.pi/2,
+                coeff_angle_grid,
+                flattening_grid
+            )
+        )
+        tmp_interpolator_axis_phi = LinearNDInterpolator(
+            (
+                np.ravel(relative_length_grid),
                 np.ravel(coeff_angle_grid),
                 np.ravel(flattening_grid)
             ),
-            np.ravel(coeff_angle_phi_grid)
+            np.ravel(coeff_angle_phi_grid),
+            fill_value=-np.pi/2
         )
-        with open(
-            os.path.join(LOCATION, 'FRi3D__interpolator_axis_length.pkl'),
-            'wb') as output:
+        relative_length_array = np.linspace(0, 1, 100)
+        relative_length_grid, coeff_angle_grid, flattening_grid = np.meshgrid(
+            relative_length_array,
+            coeff_angle_array,
+            flattening_array,
+            indexing='ij'
+        )
+        coeff_angle_phi_grid = tmp_interpolator_axis_phi(
+            relative_length_grid,
+            coeff_angle_grid,
+            flattening_grid
+        )
+        self._interpolator_axis_phi = RegularGridInterpolator(
+            (relative_length_array, coeff_angle_array, flattening_array),
+            coeff_angle_phi_grid
+        )
+        with open(self._location_interpolator_axis_length, 'wb') as output:
             pickle.dump(
                 self._interpolator_axis_length,
                 output,
                 pickle.HIGHEST_PROTOCOL
             )
-        with open(
-            os.path.join(LOCATION, 'FRi3D__interpolator_axis_phi.pkl'),
-            'wb') as output:
+        with open(self._location_interpolator_axis_phi, 'wb') as output:
             pickle.dump(
                 self._interpolator_axis_phi,
                 output,
                 pickle.HIGHEST_PROTOCOL
             )
 
-    from ai.fri3d.shell import shell
+    def shell(
+            self,
+            relative_length=np.linspace(0, 1, 50),
+            phi=np.linspace(0.0, np.pi*2.0, 24)):
+        """Evaluate the 3D shell of the flux rope.
+        relative_length defines the sampling along the axis,
+        phi defines the sampling of the cross-section."""
+        relative_length = np.array(relative_length, copy=False, ndmin=1)
+        phi = np.array(phi, copy=False, ndmin=1)
+        # relative_length is the length along the axis from 0 to 1
+        relative_length = np.transpose(np.tile(relative_length, (phi.size, 1)))
+        phi = np.tile(phi, (relative_length.shape[0], 1))
+        # extend to full axis length
+        z = relative_length*self._vanilla_axis_length(self.half_width)
+        # apply tapering
+        r = np.ones(relative_length.shape)
+        r = (
+            r*self.poloidal_height*
+            (
+                self._vanilla_axis_height(self._vanilla_axis_phi(z))/
+                self.toroidal_height
+            )
+        )
+        x, y, z = cs.cyl2cart(r, phi, z)
+        # rotate towards X axis
+        T = cs.mx_rot_y(np.pi/2)
+        x, y, z = cs.mx_apply(T, x, y, z)
+        # remove (tiny) values less than 0, numerical issues
+        x[x < 0] = 0
+        # apply bending
+        phi = self._vanilla_axis_phi(x)
+        r = self._vanilla_axis_height(phi)
+        t = self._vanilla_axis_tan(phi)
+        x = r*np.cos(phi)+np.sin(t-phi-np.pi/2)*y
+        y = r*np.sin(phi)+np.cos(t-phi-np.pi/2)*y
+        # apply pancaking
+        r, theta, phi = cs.cart2sp(x, y, z)
+        theta = (
+            theta/np.arctan2(self.poloidal_height, self.toroidal_height)*
+            self.pancaking
+        )
+        x, y, z = cs.sp2cart(r, theta, phi)
+        # orientation
+        T = cs.mx_rot(-self.latitude, self.longitude, self.tilt)
+        x, y, z = cs.mx_apply(T, x, y, z)
+        # skew
+        r, phi, z = cs.cart2cyl(x, y, z)
+        phi += self.skew*(1-r/self.toroidal_height)
+        x, y, z = cs.cyl2cart(r, phi, z)
+        return(x, y, z)
+
     # from ai.fri3d.line import line
     # from ai.fri3d.data import data
     # from ai.fri3d.impact import impact
