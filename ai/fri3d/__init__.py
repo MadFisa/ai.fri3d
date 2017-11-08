@@ -1,6 +1,14 @@
-"""Defines the FRi3D class which describes CME structure and Evolution
-class which handles its evolution.
+# -*- coding: utf-8 -*-
+"""FRi3D and Evolution classes.
+
+This module defines FRi3D and Evolution classes. FRi3D class provides a
+static description of a CME while Evolution class handles its
+propagation and evolution.
 """
+# pylint: disable=too-many-instance-attributes
+# pylint: disable=E1101
+# pylint: disable=C0103
+# pylint: disable=C0302
 import os
 import math
 import pickle
@@ -15,9 +23,6 @@ from ai.shared import cs
 class FRi3D:
     """FRi3D model class. It provides static description of the model.
     """
-    # pylint: disable=too-many-instance-attributes
-    # pylint: disable=E1101
-    # pylint: disable=C0103
     def __init__(self, **kwargs):
         self._latitude = None
         self._longitude = None
@@ -54,6 +59,7 @@ class FRi3D:
         self.sigma = kwargs.get('sigma', 2)
         self.polarity = kwargs.get('polarity', 1)
         self.chirality = kwargs.get('chirality', 1)
+        self._reload = kwargs.get('_reload', False)
         self._location_interpolator_axis_length = kwargs.get(
             '_location_interpolator_axis_length',
             os.path.join(
@@ -72,6 +78,12 @@ class FRi3D:
                 'FRi3D__interpolator_axis_phi.pkl'
             )
         )
+        if self._reload:
+            try:
+                os.remove(self._location_interpolator_axis_length)
+                os.remove(self._location_interpolator_axis_phi)
+            except FileNotFoundError:
+                pass
         try:
             self._interpolator_axis_length = pickle.load(
                 open(self._location_interpolator_axis_length, 'rb')
@@ -80,33 +92,32 @@ class FRi3D:
                 open(self._location_interpolator_axis_phi, 'rb')
             )
         except FileNotFoundError:
-            self._init_axis_interpolators()
+            self.init_axis_interpolators()
 
     @property
     def latitude(self):
-        """Get orientation latitude."""
+        """float: latitude orientation of CME [rad]."""
         return self._latitude
     @latitude.setter
     def latitude(self, latitude):
-        """Set orientation latitude."""
         self._latitude = subtract_period(latitude, np.pi*2)
 
     @property
     def longitude(self):
-        """Get orientation longitude."""
+        """float: longitude orientation of CME [rad]."""
         return self._longitude
     @longitude.setter
     def longitude(self, longitude):
-        """Set orientation longitude."""
         self._longitude = subtract_period(longitude, np.pi*2)
 
     @property
     def toroidal_height(self):
-        """Get toroidal height."""
+        """float: distance from the origin (Sun) to the apex of the
+        CME's axis [m].
+        """
         return self._toroidal_height
     @toroidal_height.setter
     def toroidal_height(self, toroidal_height):
-        """Set toroidal height."""
         if toroidal_height > 0:
             self._toroidal_height = toroidal_height
         else:
@@ -114,11 +125,12 @@ class FRi3D:
 
     @property
     def poloidal_height(self):
-        """Get poloidal height."""
+        """float: distance from the apex of the CME's axis to its global
+        apex [m].
+        """
         return self._poloidal_height
     @poloidal_height.setter
     def poloidal_height(self, poloidal_height):
-        """Set poloidal height."""
         if poloidal_height > 0:
             self._poloidal_height = poloidal_height
         else:
@@ -126,11 +138,12 @@ class FRi3D:
 
     @property
     def half_width(self):
-        """Get half width."""
+        """float: angular half width of the CME [rad]."""
         return self._half_width
     @half_width.setter
     def half_width(self, half_width):
-        """Set half width explicitly and width coefficient implicitly.
+        """Sets not only half width explicitly but also width
+        coefficient implicitly.
         """
         if half_width > 0 and half_width < np.pi*2:
             self._half_width = half_width
@@ -140,25 +153,31 @@ class FRi3D:
 
     @property
     def coeff_angle(self):
-        """Get width coefficient."""
+        """float: coefficient for the axis function,
+        defined as pi/2/half_width [unitless].
+        """
         return self._coeff_angle
 
     @property
     def tilt(self):
-        """Get tilt."""
+        """float: tilt of the CME, measured from equatorial plane using
+        right-hand rule around the axis with origin in the Sun [rad].
+        """
         return self._tilt
     @tilt.setter
     def tilt(self, tilt):
-        """Set tilt."""
         self._tilt = subtract_period(tilt, np.pi*2)
 
     @property
     def flattening(self):
-        """Get flattening coefficient."""
+        """float: coefficient that controls the front flattening of the
+        CME [unitless].
+        0 corresponds to total flattening,
+        1 corresponds to no flattening, i.e., circular axis.
+        """
         return self._flattening
     @flattening.setter
     def flattening(self, flattening):
-        """Set flattening coefficient."""
         if flattening > 0 and flattening < 1:
             self._flattening = flattening
         else:
@@ -168,11 +187,12 @@ class FRi3D:
 
     @property
     def pancaking(self):
-        """Get pancaking (a.k.a., half height)."""
+        """float: angular half height of the CME, measured in the plane
+        of the CME [rad].
+        """
         return self._pancaking
     @pancaking.setter
     def pancaking(self, pancaking):
-        """Set pancaking (a.k.a., half height)."""
         if pancaking > 0 and pancaking < np.pi:
             self._pancaking = pancaking
         else:
@@ -182,20 +202,26 @@ class FRi3D:
 
     @property
     def skew(self):
-        """Get skewing angle."""
+        """float: rotational skewing angle of the CME, happens due to
+        rotation of the Sun [rad], corresponds to rotation angle of the
+        Sun.
+        """
         return self._skew
     @skew.setter
     def skew(self, skew):
-        """Set skewing angle."""
         self._skew = skew
 
     @property
     def twist(self):
-        """Get twist."""
+        """float: constant twist of the flux rope, measured as number of
+        full rotations of magnetic fields around CME's axis [unitless].
+        """
         return self._twist
     @twist.setter
     def twist(self, twist):
-        """Set twist."""
+        """If negative twist is submitted the setter will revert the
+        chirality.
+        """
         if twist >= 0.0:
             self._twist = twist
         else:
@@ -204,11 +230,13 @@ class FRi3D:
 
     @property
     def flux(self):
-        """Get magnetic flux."""
+        """(float): total magnetic flux of the CME [Wb]."""
         return self._flux
     @flux.setter
     def flux(self, flux):
-        """Set magnetic flux."""
+        """Set not only magnetic flux but also unit magnetic field if
+        sigma is already defined.
+        """
         if flux > 0:
             self._flux = flux
             if self.sigma is not None:
@@ -218,12 +246,14 @@ class FRi3D:
 
     @property
     def sigma(self):
-        """Get sigma from Gaussian distribution of total magnetic field.
+        """float: sigma coefficient of the Gaussian distribution of
+        total magnetic field in cross-section of CME [unitless].
         """
         return self._sigma
     @sigma.setter
     def sigma(self, sigma):
-        """Set sigma for Gaussian distribution of total magnetic field.
+        """Set not only sigma but also unit magnetic field if magnetic
+        flux is already defined.
         """
         if sigma > 0:
             self._sigma = sigma
@@ -234,11 +264,16 @@ class FRi3D:
 
     @property
     def polarity(self):
-        """Get polarity."""
+        """int: defines the polarity of the flux rope (direction of the
+        axial magnetic field) [unitless].
+        +1 corresponds to east-to-west direction of magnetic field from
+        footpoint to footpoint.
+        -1 corresponds to west-to-east direction of magnetic field from
+        footpoint to footpoint.
+        """
         return self._polarity
     @polarity.setter
     def polarity(self, polarity):
-        """Set polarity."""
         if polarity == 1 or polarity == -1:
             self._polarity = polarity
         else:
@@ -246,17 +281,20 @@ class FRi3D:
 
     @property
     def chirality(self):
-        """Get chirality."""
+        """int: defines the chirality (handedness) of the flux
+        rope [unitless].
+        +1 correponds to right-handed twist of magnetic field lines.
+        -1 correponds to left-handed twist of magnetic field lines.
+        """
         return self._chirality
     @chirality.setter
     def chirality(self, chirality):
-        """Set chirality."""
         if chirality == 1 or chirality == -1:
             self._chirality = chirality
         else:
             raise ValueError('Chirality should be +1 or -1.')
 
-    def _vanilla_axis_height(
+    def vanilla_axis_height(
             self,
             phi,
             toroidal_height=None,
@@ -264,6 +302,21 @@ class FRi3D:
             flattening=None):
         """Evaluate the axis function r(phi) in polar coordinates. Note
         that rotational skewing is not taken into account.
+
+        Args:
+            phi (float): angular coordinate of a point on the
+                axis [rad] in polar coordinates, lies in the range
+                [-half_width, half_width].
+            toroidal_height (float, optional): custom toroidal height
+                for the calculation [m].
+            coeff_angle (float, optional): custom angle coefficient for
+                the calculation [unitless].
+            flattening (float, optional): custom angle coefficient for
+                the calculation [unitless].
+
+        Returns:
+            (float) radial coordinate of the point of the axis in polar
+                coordinates [m].
         """
         if toroidal_height is None:
             toroidal_height = self.toroidal_height
@@ -273,7 +326,7 @@ class FRi3D:
             flattening = self.flattening
         return toroidal_height*np.abs(np.cos(coeff_angle*phi))**flattening
 
-    def _vanilla_axis_dheight(
+    def vanilla_axis_dheight(
             self,
             phi,
             toroidal_height=None,
@@ -281,6 +334,21 @@ class FRi3D:
             flattening=None):
         """Evaluate the derivative of the axis function dr/d(phi). Note
         that rotational skewing is not taken into account.
+
+        Args:
+            phi (float): angular coordinate of a point on the
+                axis [rad] in polar coordinates, lies in the range
+                [-half_width, half_width].
+            toroidal_height (float, optional): custom toroidal height
+                for the calculation [m].
+            coeff_angle (float, optional): custom angle coefficient for
+                the calculation [unitless].
+            flattening (float, optional): custom angle coefficient for
+                the calculation [unitless].
+
+        Returns:
+            (float) dr/d(phi) avulated at an angular point phi in polar
+                coordinates [m/rad].
         """
         if toroidal_height is None:
             toroidal_height = self.toroidal_height
@@ -290,7 +358,7 @@ class FRi3D:
             flattening = self.flattening
         return(
             flattening*coeff_angle*np.abs(np.tan(coeff_angle*phi))
-            *self._vanilla_axis_height(
+            *self.vanilla_axis_height(
                 phi,
                 toroidal_height=toroidal_height,
                 coeff_angle=coeff_angle,
@@ -298,41 +366,69 @@ class FRi3D:
             )
         )
 
-    def _vanilla_axis_distance(self, phi, r_sc, phi_sc):
+    def vanilla_axis_distance(self, phi, r_sc, phi_sc):
         """Find the distance to the given point of the axis (phi) from
-        a arbitrary point in space (r_sc, phi_sc)
+        an arbitrary point in space (r_sc, phi_sc).
+
+        Args:
+            phi (float): angular coordinate of a point on the
+                axis [rad] in polar coordinates, lies in the range
+                [-half_width, half_width].
+            r_sc (float): radial coordinate of a point in space [m].
+            phi_sc (float): radial coordinate of a point in space [rad].
+
+        Returns:
+            (float) distance from (r_sc, phi_sc) to the phi point of the
+                axis [m].
         """
         return(
             (
-                self._vanilla_axis_height(phi)*np.cos(phi)
+                self.vanilla_axis_height(phi)*np.cos(phi)
                 -r_sc*np.cos(phi_sc)
             )**2+
             (
-                self._vanilla_axis_height(phi)*np.sin(phi)
+                self.vanilla_axis_height(phi)*np.sin(phi)
                 -r_sc*np.sin(phi_sc)
             )**2
         )
 
-    def _vanilla_axis_min_distance(self, r_sc, phi_sc):
+    def vanilla_axis_min_distance(self, r_sc, phi_sc):
         """Estimate the minimal distance to the axis from an arbitrary
         point in space (r_sc, phi_sc).
+
+        Args:
+            r_sc (float): radial coordinate of a point in space [m].
+            phi_sc (float): radial coordinate of a point in space [rad].
+
+        Returns:
+            (float) minimal distance from (r_sc, phi_sc) to the
+            axis [m].
         """
         phi = minimize_scalar(
-            lambda phi: self._vanilla_axis_distance(phi, r_sc, phi_sc),
+            lambda phi: self.vanilla_axis_distance(phi, r_sc, phi_sc),
             bounds=[-self.half_width, self.half_width],
             method='Bounded'
-        )
-        return(self._vanilla_axis_distance(phi, r_sc, phi_sc), phi)
+        ).x
+        return(self.vanilla_axis_distance(phi, r_sc, phi_sc), phi)
 
-    def _vanilla_axis_tan(self, phi):
+    def vanilla_axis_tan(self, phi):
         """Evaluate tangent angle relative to the axis at a given
         location.
+
+        Args:
+            phi (float): angular coordinate of a point on the
+                axis [rad] in polar coordinates, lies in the range
+                [-half_width, half_width].
+
+        Returns:
+            (float) tangent angle to the axis at a given angular
+                location [rad].
         """
         return np.arctan(
             (-1)*self.coeff_angle*self.flattening*np.tan(self.coeff_angle*phi)
         )
 
-    def _vanilla_axis_dlength(
+    def vanilla_axis_dlength(
             self,
             phi,
             toroidal_height=None,
@@ -340,6 +436,21 @@ class FRi3D:
             flattening=None):
         """Evaluate derivative of the axis length ds/d(phi). Note that
         rotational skewing is not taken into account.
+
+        Args:
+            phi (float): angular coordinate of a point on the
+                axis [rad] in polar coordinates, lies in the range
+                [-half_width, half_width].
+            toroidal_height (float, optional): custom toroidal height
+                for the calculation [m].
+            coeff_angle (float, optional): custom angle coefficient for
+                the calculation [unitless].
+            flattening (float, optional): custom angle coefficient for
+                the calculation [unitless].
+
+        Returns:
+            (float) ds/d(phi) evaluated at a phi angular location of the
+                axis [m/rad].
         """
         if toroidal_height is None:
             toroidal_height = self.toroidal_height
@@ -348,7 +459,7 @@ class FRi3D:
         if flattening is None:
             flattening = self.flattening
         return(
-            self._vanilla_axis_height(
+            self.vanilla_axis_height(
                 phi,
                 toroidal_height=toroidal_height,
                 coeff_angle=coeff_angle,
@@ -359,9 +470,18 @@ class FRi3D:
             )
         )
 
-    def _vanilla_axis_length(self, phi):
+    def vanilla_axis_length(self, phi):
         """Evaluate length of the axis. It is an estimation and also
         does not take into account rotational skewing.
+
+        Args:
+            phi (float): angular coordinate of a point on the
+                axis [rad] in polar coordinates, lies in the range
+                [-half_width, half_width].
+
+        Returns:
+            (float) length of the axis from origin footpoint towards the
+                location defined by angular coordinate phi.
         """
         return(
             self.toroidal_height
@@ -374,22 +494,36 @@ class FRi3D:
             )
         )
 
-    def _vanilla_axis_phi(self, length):
+    def vanilla_axis_phi(self, length):
         """Evaluate polar coordinate of the axis as a function of its
         length. It is an estimation and also does not take into account
         rotational skewing.
+
+        Args:
+            length (float): length of the section of the axis from
+                origin footpoint towards some point of the axis [m].
+
+        Returns:
+            (float) angular coordinate of a point of the axis, distance
+                to which is equal to length [rad].
         """
         return(
             self._interpolator_axis_phi(
                 (
-                    length/self._vanilla_axis_length(np.pi/2/self.coeff_angle),
+                    length/self.vanilla_axis_length(np.pi/2/self.coeff_angle),
                     self.coeff_angle,
                     self.flattening
                 )
             )/self.coeff_angle
         )
 
-    def _init_axis_interpolators(self, ratio=1-1e-5):
+    def init_axis_interpolators(
+            self,
+            n_coeff_angle_phi=100,
+            n_coeff_angle=100,
+            n_flattening=100,
+            n_relative_length=100,
+            ratio=1-1e-5):
         """Initialize the axis interpolators:
         1. length=function(coeff_angle*phi, coeff_angle, flattening)
         2. coeff_angle*phi=function(
@@ -402,8 +536,28 @@ class FRi3D:
         along the following variable ranges:
         coeff_angle*phi = [-pi/2, pi/2]
         coeff_angle = [1, 18] (half_angle = [pi/36, pi/2])
-        flattening = [0.1, 1.0]
+        flattening = [0, 1]
         relative_length = [0, 1]
+
+        Args:
+            n_coeff_angle_phi (int, optional): number [unitless] of
+                (linear) samples of the coeff_angle_phi
+                range [-pi/2, pi/2].
+            n_coeff_angle (int, optional): number [unitless] of
+                (linear) samples of the coeff_angle range [1, 18].
+            n_flattening (int, optional): number [unitless] of
+                (linear) samples of the flattening range [0, 1].
+            n_relative_length (int, optional): number [unitless] of
+                (linear) samples of the relative_length range [0, 1].
+            ratio (float, optional): numerical integration is applied in
+                the range [-ratio*pi/2, ratio*pi/2]. Outside of this
+                range ds/d(phi) tends to infinity and hence an
+                assumption that length = height is made. Ratio
+                parameter [unitless] can lie in the range [0, 1], though
+                it makes sense to keep it as close to 1 as possible.
+
+        Returns:
+            nothing
         """
         def integrate_length(
                 coeff_angle_phi,
@@ -412,7 +566,7 @@ class FRi3D:
                 ratio=ratio):
             """Estimate length along axis by numerical integration."""
             if coeff_angle_phi <= -np.pi/2*ratio:
-                length = self._vanilla_axis_height(
+                length = self.vanilla_axis_height(
                     coeff_angle_phi/coeff_angle,
                     toroidal_height=1,
                     coeff_angle=coeff_angle,
@@ -420,13 +574,13 @@ class FRi3D:
                 )
             elif coeff_angle_phi < np.pi/2*ratio:
                 length = (
-                    self._vanilla_axis_height(
+                    self.vanilla_axis_height(
                         -np.pi/2*ratio/coeff_angle,
                         toroidal_height=1,
                         coeff_angle=coeff_angle,
                         flattening=flattening
                     )+fixed_quad(
-                        lambda coeff_angle_phi: self._vanilla_axis_dlength(
+                        lambda coeff_angle_phi: self.vanilla_axis_dlength(
                             coeff_angle_phi/coeff_angle,
                             toroidal_height=1,
                             coeff_angle=coeff_angle,
@@ -438,13 +592,13 @@ class FRi3D:
                 )
             else:
                 length = (
-                    2*self._vanilla_axis_height(
+                    2*self.vanilla_axis_height(
                         -np.pi/2*ratio/coeff_angle,
                         toroidal_height=1,
                         coeff_angle=coeff_angle,
                         flattening=flattening
                     )+fixed_quad(
-                        lambda coeff_angle_phi: self._vanilla_axis_dlength(
+                        lambda coeff_angle_phi: self.vanilla_axis_dlength(
                             coeff_angle_phi/coeff_angle,
                             toroidal_height=1,
                             coeff_angle=coeff_angle,
@@ -452,7 +606,7 @@ class FRi3D:
                         -np.pi/2*ratio,
                         np.pi/2*ratio,
                         n=1000
-                    )[0]-self._vanilla_axis_height(
+                    )[0]-self.vanilla_axis_height(
                         coeff_angle_phi/coeff_angle,
                         toroidal_height=1,
                         coeff_angle=coeff_angle,
@@ -464,10 +618,10 @@ class FRi3D:
         coeff_angle_phi_array = np.linspace(
             -np.pi/2,
             np.pi/2,
-            100
+            n_coeff_angle_phi
         )
-        coeff_angle_array = np.linspace(1, 18, 100)
-        flattening_array = np.linspace(0.1, 1, 100)
+        coeff_angle_array = np.linspace(1, 18, n_coeff_angle)
+        flattening_array = np.linspace(0.1, 1, n_flattening)
 
         coeff_angle_phi_grid, coeff_angle_grid, flattening_grid = np.meshgrid(
             coeff_angle_phi_array,
@@ -504,7 +658,7 @@ class FRi3D:
             np.ravel(coeff_angle_phi_grid),
             fill_value=-np.pi/2
         )
-        relative_length_array = np.linspace(0, 1, 100)
+        relative_length_array = np.linspace(0, 1, n_relative_length)
         relative_length_grid, coeff_angle_grid, flattening_grid = np.meshgrid(
             relative_length_array,
             coeff_angle_array,
@@ -535,25 +689,33 @@ class FRi3D:
 
     def shell(
             self,
-            relative_length=np.linspace(0, 1, 50),
-            phi=np.linspace(0.0, np.pi*2.0, 24)):
+            s=np.linspace(0, 1, 50),
+            phi=np.linspace(0, np.pi*2, 24)):
         """Evaluate the 3D shell of the flux rope.
-        relative_length defines the sampling along the axis,
-        phi defines the sampling of the cross-section.
+
+        Args:
+            s (numpy.ndarray, optional): defines the sampling along the
+                axis in a relative sense, i.e., s goes from 0 to 1 from
+                one footpoint to the other [unitless].
+            phi (numpy.ndarray, optional) defines the angular sampling
+                of the cross-section [rad].
+
+        Returns:
+            (numpy.ndarray, numpy.ndarray, numpy.ndarray)
+                (x, y, z) coordinates of of the shell skin [m].
         """
-        relative_length = np.array(relative_length, copy=False, ndmin=1)
+        s = np.array(s, copy=False, ndmin=1)
         phi = np.array(phi, copy=False, ndmin=1)
-        # relative_length is the length along the axis from 0 to 1
-        relative_length = np.transpose(np.tile(relative_length, (phi.size, 1)))
-        phi = np.tile(phi, (relative_length.shape[0], 1))
+        s = np.transpose(np.tile(s, (phi.size, 1)))
+        phi = np.tile(phi, (s.shape[0], 1))
         # extend to full axis length
-        z = relative_length*self._vanilla_axis_length(self.half_width)
+        z = s*self.vanilla_axis_length(self.half_width)
         # apply tapering
-        r = np.ones(relative_length.shape)
+        r = np.ones(s.shape)
         r = (
             r*self.poloidal_height
             *(
-                self._vanilla_axis_height(self._vanilla_axis_phi(z))
+                self.vanilla_axis_height(self.vanilla_axis_phi(z))
                 /self.toroidal_height
             )
         )
@@ -564,9 +726,9 @@ class FRi3D:
         # remove (tiny) values less than 0, numerical issues
         x[x < 0] = 0
         # apply bending
-        phi = self._vanilla_axis_phi(x)
-        r = self._vanilla_axis_height(phi)
-        t = self._vanilla_axis_tan(phi)
+        phi = self.vanilla_axis_phi(x)
+        r = self.vanilla_axis_height(phi)
+        t = self.vanilla_axis_tan(phi)
         x = r*np.cos(phi)+np.sin(t-phi-np.pi/2)*y
         y = r*np.sin(phi)+np.cos(t-phi-np.pi/2)*y
         # apply pancaking
@@ -585,19 +747,32 @@ class FRi3D:
         x, y, z = cs.cyl2cart(r, phi, z)
         return(x, y, z)
 
-    def line(self, r=0.0, phi=0.0, relative_length=np.linspace(0.0, 1.0, 50)):
+    def line(self, r=0, phi=0, s=np.linspace(0, 1, 50)):
         """Evaluate the 3D magnetic field line of the flux rope.
-        relative_length defines the sampling along the axis,
-        (r, phi) define the coordinates of the origin of the line.
+
+        Args:
+            r (float, optional): relative radial coordinate of the line
+                origin in origin footpoint cross-section [m], goes from
+                0 (center) to 1 (edge).
+            phi (float, optional): angular coordinate of the line origin
+                in origin footpoint cross-section [rad].
+            s (numpy.ndarray, optional): relative sampling [unitless] of
+                the line, assuming that distance along the line goes
+                from 0 to 1.
+
+        Returns:
+            (numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray)
+                (x, y, z, b) coordinates of the line point and total
+                magnetic field along the line.
         """
-        s = np.array(relative_length, copy=False, ndmin=1)
+        s = np.array(s, copy=False, ndmin=1)
         phi = np.ones(s.size)*phi
         # twist
         phi += s*self.twist*np.pi*2.0*self.chirality
         # elongation
-        z = s*self._vanilla_axis_length(self.half_width)
+        z = s*self.vanilla_axis_length(self.half_width)
         # distance to axis from origin
-        R = self._vanilla_axis_height(self._vanilla_axis_phi(z))
+        R = self.vanilla_axis_height(self.vanilla_axis_phi(z))
         # cross-section radial size in the FR plane
         rx = R*self.poloidal_height/self.toroidal_height
         # cross-section radial size perp to FR plane
@@ -608,19 +783,19 @@ class FRi3D:
         r *= rx
         # magnetic field
         b = self._unit_b/kappa*np.exp(
-            -((r/rx)**2)/2.0/self.sigma**2
+            -((r/rx)**2)/2/self.sigma**2
         )
         x, y, z = cs.cyl2cart(r, phi, z)
         # rotation to x
-        T = cs.mx_rot_y(np.pi/2.0)
+        T = cs.mx_rot_y(np.pi/2)
         x, y, z = cs.mx_apply(T, x, y, z)
         # bending
         x[x < 0] = 0
-        phi = self._vanilla_axis_phi(x)
-        r = self._vanilla_axis_height(phi)
-        t = self._vanilla_axis_tan(phi)
-        x = r*np.cos(phi)+np.sin(t-phi-np.pi/2.0)*y
-        y = r*np.sin(phi)+np.cos(t-phi-np.pi/2.0)*y
+        phi = self.vanilla_axis_phi(x)
+        r = self.vanilla_axis_height(phi)
+        t = self.vanilla_axis_tan(phi)
+        x = r*np.cos(phi)+np.sin(t-phi-np.pi/2)*y
+        y = r*np.sin(phi)+np.cos(t-phi-np.pi/2)*y
         # pancake
         r, theta, phi = cs.cart2sp(x, y, z)
         theta = (
@@ -633,12 +808,123 @@ class FRi3D:
         x, y, z = cs.mx_apply(T, x, y, z)
         # skew
         r, phi, z = cs.cart2cyl(x, y, z)
-        phi += self.skew*(1.0-r/self.toroidal_height)
+        phi += self.skew*(1-r/self.toroidal_height)
         x, y, z = cs.cyl2cart(r, phi, z)
         return (x, y, z, b)
 
-    # from ai.fri3d.line import line
-    # from ai.fri3d.data import data
+    def data(self, x, y, z, ds=1e-5):
+        """
+        """
+        x = np.array(x, copy=False, ndmin=1)
+        y = np.array(y, copy=False, ndmin=1)
+        z = np.array(z, copy=False, ndmin=1)
+
+        # reverse skew
+        r, theta, phi = cs.cart2sp(x, y, z)
+        phi -= self.skew*(1-r/self.toroidal_height)
+        x, y, z = cs.sp2cart(r, theta, phi)
+
+        # reverse orientation
+        T = cs.mx_rot_reverse(self.latitude, -self.longitude, -self.tilt)
+        x, y, z = cs.mx_apply(T, x, y, z)
+
+        # reverse pancaking
+        r, theta, phi = cs.cart2sp(x, y, z)
+        theta = (
+            theta/self.pancaking*
+            np.arctan2(self.poloidal_height, self.toroidal_height)
+        )
+        x, y, z = cs.sp2cart(r, theta, phi)
+
+        # inside axis loop mask
+        p_in = self.vanilla_axis_height(phi) >= r*np.cos(theta)
+        # outside axis loop mask
+        p_out = np.logical_not(p_in)
+        # get r_ax and phi_ax of the closest point on axis
+        v_vanilla_axis_min_distance = np.vectorize(
+            self.vanilla_axis_min_distance, 
+            otypes=[np.float64, np.float64]
+        )
+        _, phi_ax = v_vanilla_axis_min_distance(r*np.cos(theta), phi)
+        r_ax = self.vanilla_axis_height(phi_ax)
+        # get s
+        v_vanilla_axis_length = np.vectorize(
+            self.vanilla_axis_length, 
+            otypes=[np.float64]
+        )
+        s = (
+            v_vanilla_axis_length(phi_ax)
+            /self.vanilla_axis_length(self.half_width)
+        )
+        x_ax, y_ax, z_ax = cs.sp2cart(r_ax, np.zeros(r_ax.size), phi_ax)
+        dx = x-x_ax
+        dy = y-y_ax
+        dz = z-z_ax
+        r_abs = np.sqrt(dx**2+dy**2+dz**2)
+        r = r_abs/(r_ax*self.poloidal_height/self.toroidal_height)
+        
+        def div0(a, b):
+            with np.errstate(divide='ignore', invalid='ignore'):
+                c = np.true_divide(a, b)
+                c[~np.isfinite(c)] = 0  # -inf inf NaN
+            return c
+
+        phi = (
+            np.piecewise(dz, [dz < 0, dz >= 0], [-1, 1])*
+            np.arccos(div0(np.sqrt(dx**2+dy**2), r_abs))
+        )
+        phi[p_in] = np.pi-phi[p_in]
+        # reverse twist
+        phi -= s*self.twist*np.pi*2*self.chirality
+        # phi -= s*twist*np.pi*2.0*self.chirality
+        # reverse rotation to x
+        phi -= np.pi/2
+        # only inside FR
+        mask = r <= 1
+        # r = r[mask]
+        # phi = phi[mask]
+        # s = s[mask]
+        
+        # get magnetic field along sc trajectory
+        b = []
+        c = []
+        for i in range(r.size):
+            if r[i] <= 1:
+                x_, y_, z_, b_ = self.line(
+                    r[i],
+                    phi[i],
+                    [s[i]-ds, s[i]+ds]
+                )
+                if x_.size < 2 or y_.size < 2 or z_.size < 2:
+                    b.append([np.nan, np.nan, np.nan])
+                    c.append([np.nan, np.nan])
+                else:
+                    vtc = r_ax[i]/self.toroidal_height
+                    vpc = (
+                        r_ax[i]/self.toroidal_height*
+                        (np.sqrt(np.mean(x_)**2+np.mean(y_)**2+np.mean(z_)**2)-r_ax[i])/
+                        self.poloidal_height*np.cos(self.vanilla_axis_tan(phi_ax[i]))
+                    )
+                    dr = np.array([
+                        x_[1]-x_[0],
+                        y_[1]-y_[0],
+                        z_[1]-z_[0]
+                    ])
+                    dr /= np.linalg.norm(dr)
+                    b.append(dr*np.mean(b_)*self.polarity)
+                    c.append(np.array([vtc, vpc]))
+            else:
+                b.append([np.nan, np.nan, np.nan])
+                c.append([np.nan, np.nan])
+        b = np.array(b)
+        if b.shape[0] == 1:
+            b = b[0,:]
+        c = np.array(c)
+        if c.shape[0] == 1:
+            c = c[0,:]
+
+        return (b, c)
+
     # from ai.fri3d.impact import impact
 
 """
