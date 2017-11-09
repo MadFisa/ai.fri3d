@@ -813,21 +813,31 @@ class FRi3D:
         return (x, y, z, b)
 
     def data(self, x, y, z, ds=1e-5):
-        """
+        """Evaluate magnetic field measurements at a given point (or
+        trajectory) in space.
+
+        Args:
+            x (float or numpy.ndarray): x coordinate(s) in space.
+            y (float or numpy.ndarray): y coordinate(s) in space.
+            z (float or numpy.ndarray): z coordinate(s) in space.
+            ds (float, optional): length of a relaticve axis section
+                used to integrate the magnetic field measurement.
+
+        Returns:
+            (numpy.ndarray, numpy.ndarray)
+                magnetic field measurements (3, n) and
+                coefficients used for local speed estimation (2, n)
         """
         x = np.array(x, copy=False, ndmin=1)
         y = np.array(y, copy=False, ndmin=1)
         z = np.array(z, copy=False, ndmin=1)
-
         # reverse skew
         r, theta, phi = cs.cart2sp(x, y, z)
         phi -= self.skew*(1-r/self.toroidal_height)
         x, y, z = cs.sp2cart(r, theta, phi)
-
         # reverse orientation
         T = cs.mx_rot_reverse(self.latitude, -self.longitude, -self.tilt)
         x, y, z = cs.mx_apply(T, x, y, z)
-
         # reverse pancaking
         r, theta, phi = cs.cart2sp(x, y, z)
         theta = (
@@ -835,21 +845,18 @@ class FRi3D:
             np.arctan2(self.poloidal_height, self.toroidal_height)
         )
         x, y, z = cs.sp2cart(r, theta, phi)
-
         # inside axis loop mask
         p_in = self.vanilla_axis_height(phi) >= r*np.cos(theta)
-        # outside axis loop mask
-        p_out = np.logical_not(p_in)
         # get r_ax and phi_ax of the closest point on axis
         v_vanilla_axis_min_distance = np.vectorize(
-            self.vanilla_axis_min_distance, 
+            self.vanilla_axis_min_distance,
             otypes=[np.float64, np.float64]
         )
         _, phi_ax = v_vanilla_axis_min_distance(r*np.cos(theta), phi)
         r_ax = self.vanilla_axis_height(phi_ax)
         # get s
         v_vanilla_axis_length = np.vectorize(
-            self.vanilla_axis_length, 
+            self.vanilla_axis_length,
             otypes=[np.float64]
         )
         s = (
@@ -862,32 +869,27 @@ class FRi3D:
         dz = z-z_ax
         r_abs = np.sqrt(dx**2+dy**2+dz**2)
         r = r_abs/(r_ax*self.poloidal_height/self.toroidal_height)
-        
-        def div0(a, b):
-            with np.errstate(divide='ignore', invalid='ignore'):
-                c = np.true_divide(a, b)
-                c[~np.isfinite(c)] = 0  # -inf inf NaN
-            return c
+
+        # def div0(a, b):
+        #     with np.errstate(divide='ignore', invalid='ignore'):
+        #         cc = np.true_divide(a, b)
+        #         cc[~np.isfinite(cc)] = 0  # -inf inf NaN
+        #     return cc
 
         phi = (
             np.piecewise(dz, [dz < 0, dz >= 0], [-1, 1])*
-            np.arccos(div0(np.sqrt(dx**2+dy**2), r_abs))
+            np.arccos(np.sqrt(dx**2+dy**2)/r_abs)
+            # np.arccos(div0(np.sqrt(dx**2+dy**2), r_abs))
         )
         phi[p_in] = np.pi-phi[p_in]
         # reverse twist
         phi -= s*self.twist*np.pi*2*self.chirality
-        # phi -= s*twist*np.pi*2.0*self.chirality
         # reverse rotation to x
         phi -= np.pi/2
-        # only inside FR
-        mask = r <= 1
-        # r = r[mask]
-        # phi = phi[mask]
-        # s = s[mask]
-        
-        # get magnetic field along sc trajectory
+
+        # get magnetic field and speed coefficients along sc trajectory
         b = []
-        c = []
+        vc = []
         for i in range(r.size):
             if r[i] <= 1:
                 x_, y_, z_, b_ = self.line(
@@ -897,13 +899,21 @@ class FRi3D:
                 )
                 if x_.size < 2 or y_.size < 2 or z_.size < 2:
                     b.append([np.nan, np.nan, np.nan])
-                    c.append([np.nan, np.nan])
+                    vc.append([np.nan, np.nan])
                 else:
                     vtc = r_ax[i]/self.toroidal_height
                     vpc = (
                         r_ax[i]/self.toroidal_height*
-                        (np.sqrt(np.mean(x_)**2+np.mean(y_)**2+np.mean(z_)**2)-r_ax[i])/
-                        self.poloidal_height*np.cos(self.vanilla_axis_tan(phi_ax[i]))
+                        (
+                            np.sqrt(
+                                np.mean(x_)**2
+                                +np.mean(y_)**2
+                                +np.mean(z_)**2
+                            )
+                            -r_ax[i]
+                        )
+                        /self.poloidal_height
+                        *np.cos(self.vanilla_axis_tan(phi_ax[i]))
                     )
                     dr = np.array([
                         x_[1]-x_[0],
@@ -912,20 +922,114 @@ class FRi3D:
                     ])
                     dr /= np.linalg.norm(dr)
                     b.append(dr*np.mean(b_)*self.polarity)
-                    c.append(np.array([vtc, vpc]))
+                    vc.append(np.array([vtc, vpc]))
             else:
                 b.append([np.nan, np.nan, np.nan])
-                c.append([np.nan, np.nan])
+                vc.append([np.nan, np.nan])
         b = np.array(b)
         if b.shape[0] == 1:
-            b = b[0,:]
-        c = np.array(c)
-        if c.shape[0] == 1:
-            c = c[0,:]
+            b = b[0, :]
+        vc = np.array(vc)
+        if vc.shape[0] == 1:
+            vc = vc[0, :]
 
-        return (b, c)
+        return (b, vc)
 
-    # from ai.fri3d.impact import impact
+    def impact(self, x, y, z):
+        """Estimate the impact distance.
+
+        Args:
+            Args:
+            x (float or numpy.ndarray): x coordinate(s) in space.
+            y (float or numpy.ndarray): y coordinate(s) in space.
+            z (float or numpy.ndarray): z coordinate(s) in space.
+
+        Returns:
+            (float): impact distance
+            (float, float, float, float, float, float): don't remember,
+                something to do with magnetic field map reconstruction.
+        """
+        x0 = x
+        y0 = y
+        z0 = z
+        # reverse skew
+        r, theta, phi = cs.cart2sp(x, y, z)
+        phi -= self.skew*(1-r/self.toroidal_height)
+        x, y, z = cs.sp2cart(r, theta, phi)
+        # reverse orientation
+        T = cs.mx_rot_reverse(self.latitude, -self.longitude, -self.tilt)
+        x, y, z = cs.mx_apply(T, x, y, z)
+        # reverse pancaking
+        r, theta, phi = cs.cart2sp(x, y, z)
+        theta = (
+            theta/self.pancaking*
+            np.arctan2(self.poloidal_height, self.toroidal_height)
+        )
+        # get r_ax and phi_ax of the closest point on axis
+        v_vanilla_axis_min_distance = np.vectorize(
+            self.vanilla_axis_min_distance,
+            otypes=[np.float64]
+        )
+        phi_ax = v_vanilla_axis_min_distance(r*np.cos(theta), phi)
+        r_ax = self.vanilla_axis_height(phi_ax)
+        x_ax, y_ax, z_ax = cs.sp2cart(r_ax, np.zeros(r_ax.size), phi_ax)
+        # pancaking
+        r, theta, phi = cs.cart2sp(x_ax, y_ax, z_ax)
+        theta = (
+            theta/np.arctan2(self.poloidal_height, self.toroidal_height)*
+            self.pancaking
+        )
+        x, y, z = cs.sp2cart(r, theta, phi)
+        # orientation
+        T = cs.mx_rot(-self.latitude, self.longitude, self.tilt)
+        x, y, z = cs.mx_apply(T, x, y, z)
+        # skew
+        r, theta, phi = cs.cart2sp(x, y, z)
+        phi += self.skew*(1-r/self.toroidal_height)
+        x, y, z = cs.sp2cart(r, theta, phi)
+        # get r_ax and phi_ax of the closest delta points on axis
+        dphi = 1e-5
+        phi_ax1 = phi_ax-dphi
+        phi_ax2 = phi_ax+dphi
+        r_ax1 = self.vanilla_axis_height(phi_ax1)
+        r_ax2 = self.vanilla_axis_height(phi_ax2)
+        x_ax1, y_ax1, z_ax1 = cs.sp2cart(r_ax1, np.zeros(r_ax1.size), phi_ax1)
+        x_ax2, y_ax2, z_ax2 = cs.sp2cart(r_ax2, np.zeros(r_ax2.size), phi_ax2)
+        # pancaking
+        r, theta, phi = cs.cart2sp(x_ax1, y_ax1, z_ax1)
+        theta = (
+            theta/np.arctan2(self.poloidal_height, self.toroidal_height)*
+            self.pancaking
+        )
+        x1, y1, z1 = cs.sp2cart(r, theta, phi)
+        r, theta, phi = cs.cart2sp(x_ax2, y_ax2, z_ax2)
+        theta = (
+            theta/np.arctan2(self.poloidal_height, self.toroidal_height)*
+            self.pancaking
+        )
+        x2, y2, z2 = cs.sp2cart(r, theta, phi)
+        # orientation
+        T = cs.mx_rot(-self.latitude, self.longitude, self.tilt)
+        x1, y1, z1 = cs.mx_apply(T, x1, y1, z1)
+        x2, y2, z2 = cs.mx_apply(T, x2, y2, z2)
+        # skew
+        r, theta, phi = cs.cart2sp(x1, y1, z1)
+        phi += self.skew*(1-r/self.toroidal_height)
+        x1, y1, z1 = cs.sp2cart(r, theta, phi)
+        r, theta, phi = cs.cart2sp(x2, y2, z2)
+        phi += self.skew*(1-r/self.toroidal_height)
+        x2, y2, z2 = cs.sp2cart(r, theta, phi)
+        d = np.array([x2, y2, z1])-np.array([x1, y1, z1])
+        d /= np.linalg.norm(d)
+        return(
+            np.linalg.norm(np.array([x-x0, y-y0, z-z0])),
+            x,
+            y,
+            z,
+            d[0],
+            d[1],
+            d[2]
+        )
 
 """
 class Evolution:
@@ -1243,5 +1347,13 @@ class Evolution:
         return bmap.T
 """
 def subtract_period(value, period):
-    """Reduce angle by period."""
+    """Reduce angle by period.
+
+    Args:
+        value (float): initial angle [rad].
+        period (float): period [rad].
+
+    Returns:
+        (float): angle reduced by correct number of periods.
+    """
     return value-math.copysign(value, 1)*(math.fabs(value)//period)*period
