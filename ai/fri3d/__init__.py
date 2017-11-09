@@ -60,6 +60,11 @@ class FRi3D:
         self.polarity = kwargs.get('polarity', 1)
         self.chirality = kwargs.get('chirality', 1)
         self._reload = kwargs.get('_reload', False)
+        self._n_coeff_angle_phi = kwargs.get('_n_coeff_angle_phi', 100)
+        self._n_coeff_angle = kwargs.get('_n_coeff_angle', 100)
+        self._n_flattening = kwargs.get('_n_flattening', 100)
+        self._n_relative_length = kwargs.get('_n_relative_length', 100)
+        self._ratio = kwargs.get('_ratio', 1-1e-5)
         self._location_interpolator_axis_length = kwargs.get(
             '_location_interpolator_axis_length',
             os.path.join(
@@ -92,7 +97,13 @@ class FRi3D:
                 open(self._location_interpolator_axis_phi, 'rb')
             )
         except FileNotFoundError:
-            self.init_axis_interpolators()
+            self._init_axis_interpolators(
+                n_coeff_angle_phi=self._n_coeff_angle_phi,
+                n_coeff_angle=self._n_coeff_angle,
+                n_flattening=self._n_flattening,
+                n_relative_length=self._n_relative_length,
+                ratio=self._ratio
+            )
 
     @property
     def latitude(self):
@@ -517,7 +528,7 @@ class FRi3D:
             )/self.coeff_angle
         )
 
-    def init_axis_interpolators(
+    def _init_axis_interpolators(
             self,
             n_coeff_angle_phi=100,
             n_coeff_angle=100,
@@ -702,7 +713,7 @@ class FRi3D:
 
         Returns:
             (numpy.ndarray, numpy.ndarray, numpy.ndarray)
-                (x, y, z) coordinates of of the shell skin [m].
+                (x, y, z) coordinates of the shell points [m].
         """
         s = np.array(s, copy=False, ndmin=1)
         phi = np.array(phi, copy=False, ndmin=1)
@@ -903,8 +914,8 @@ class FRi3D:
                 else:
                     vtc = r_ax[i]/self.toroidal_height
                     vpc = (
-                        r_ax[i]/self.toroidal_height*
-                        (
+                        r_ax[i]/self.toroidal_height
+                        *(
                             np.sqrt(
                                 np.mean(x_)**2
                                 +np.mean(y_)**2
@@ -1030,10 +1041,11 @@ class FRi3D:
             d[1],
             d[2]
         )
-
 """
 class Evolution:
-    def __init__(self,
+    # Evolution class provides dynamic description of the FRi3D model.
+
+    def __init__(self, **kwargs):
         latitude=lambda t: u.deg.to(u.rad, 0.0),
         longitude=lambda t: u.deg.to(u.rad, 0.0),
         toroidal_height=lambda t: 
@@ -1048,9 +1060,7 @@ class Evolution:
         flux=lambda t: 5e14,
         sigma=lambda t: 2.0,
         polarity=1.0,
-        chirality=1.0,
-        spline_s_phi_kind='cubic',
-        spline_s_phi_n=200):
+        chirality=1.0):
         
         self.latitude = latitude
         self.longitude = longitude
@@ -1066,8 +1076,6 @@ class Evolution:
         self.sigma = sigma
         self.polarity = polarity
         self.chirality = chirality
-        self.spline_s_phi_kind = spline_s_phi_kind
-        self.spline_s_phi_n = spline_s_phi_n
 
     @property
     def latitude(self):

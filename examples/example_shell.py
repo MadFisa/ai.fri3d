@@ -1,3 +1,7 @@
+"""Example of the shell of the FRi3D model."""
+# pylint: disable=E1101
+# pylint: disable=C0103
+# pylint: disable=W0611
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import proj3d
 from astropy import units as u
@@ -14,9 +18,7 @@ def example_shell(
         flattening=0.5,
         pancaking=u.deg.to(u.rad, 20.0),
         skew=u.deg.to(u.rad, 10.0)):
-    # pylint: disable=too-many-instance-attributes
-    # pylint: disable=E1101
-    # pylint: disable=C0103
+    """Plot the shell of the FRi3D model."""
     fr = FRi3D(
         latitude=latitude,
         longitude=longitude,
@@ -28,7 +30,6 @@ def example_shell(
         pancaking=pancaking,
         skew=skew
     )
-
     fig = plt.figure(figsize=(10, 10))
     ax = fig.add_subplot(111, projection='3d', adjustable='box', aspect=1.0)
     x, y, z = fr.shell()
