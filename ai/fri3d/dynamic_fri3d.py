@@ -5,9 +5,7 @@ description of a CME (varying in time). The CME parameters are provided
 as time-dendent profiles.
 """
 # pylint: disable=too-many-instance-attributes
-# pylint: disable=E1101
 # pylint: disable=C0103
-# pylint: disable=C0302
 import numpy as np
 from ai.fri3d import StaticFRi3D
 
@@ -45,6 +43,15 @@ class DynamicFRi3D:
         self.chirality = kwargs.get('chirality', self._fr.chirality)
 
     def snapshot(self, t):
+        """Returns a snapshot of the FRi3D model at a given moment of
+        time.
+
+        Args:
+            t (float): timestamp
+
+        Returns:
+            StaticFRi3D object
+        """
         self._fr.modify(
             latitude=self.latitude(t),
             longitude=self.longitude(t),
@@ -90,19 +97,123 @@ class DynamicFRi3D:
             z = lambda t: _z
         b = []
         v = []
-        for t_ in t:
-            b_, c_ = self.snapshot(t_).data(x(t_), y(t_), z(t_))
-            b_ = b_[0, :]
-            c_ = c_[0, :]
-            b.append(b_.ravel())
+        for _t in t:
+            _b, _c = self.snapshot(_t).data(x(_t), y(_t), z(_t))
+            _b = _b[0, :]
+            _c = _c[0, :]
+            b.append(_b.ravel())
             v.append(
-                c_[0]*(self.toroidal_height(t_)-self.toroidal_height(t_-1))+
-                c_[1]*(self.poloidal_height(t_)-self.poloidal_height(t_-1))
+                _c[0]*(self.toroidal_height(_t)-self.toroidal_height(_t-1))+
+                _c[1]*(self.poloidal_height(_t)-self.poloidal_height(_t-1))
             )
         return (np.array(b), np.array(v))
 
-    def map(self, t, x, y, z):
-        pass
+    # def impact(self, t, x, y, z):
+    #     fr = FRi3D()
+    #     fr.polarity = self.polarity
+    #     fr.chirality = self.chirality
+    #     fr.spline_s_phi_kind = self.spline_s_phi_kind
+    #     fr.spline_s_phi_n = self.spline_s_phi_n
+    #     impacts = []
+    #     times = []
+    #     for i, t in enumerate(t):
+    #         fr.latitude = self.latitude(t)
+    #         fr.longitude = self.longitude(t)
+    #         fr.toroidal_height = self.toroidal_height(t)
+    #         fr.poloidal_height = self.poloidal_height(t)
+    #         fr.half_width = self.half_width(t)
+    #         fr.tilt = self.tilt(t)
+    #         fr.flattening = self.flattening(t)
+    #         fr.pancaking = self.pancaking(t)
+    #         fr.skew = self.skew(t)
+    #         fr.twist = self.twist(t)
+    #         fr.flux = self.flux(t)
+    #         fr.sigma = self.sigma(t)
+    #         if i == 0:
+    #             fr.toroidal_height = 1.0
+    #             fr.init()
+    #             fr._unit_spline_initial_axis_s_phi = \
+    #                 fr._spline_initial_axis_s_phi
+    #             fr.toroidal_height = self.toroidal_height(t)
+    #             fr.init()
+    #         fr._spline_initial_axis_s_phi = lambda s: \
+    #             fr._unit_spline_initial_axis_s_phi(s/fr.toroidal_height)
+    #         impact, _, _, _, _, _, _ = fr.impact(x, y, z)
+    #         impacts.append(impact)
+    #         times.append(t)
+    #     impacts = np.array(impacts)
+    #     times = np.array(times)
+    #     index = np.argmin(impacts)
+    #     return (impacts[index], times[index])
 
-    def impact(self, t, x, y, z):
-        pass
+    # def map(self, t, x, y, z, 
+    #     dx=u.au.to(u.m, np.linspace(-0.2, 0.2, 100)),
+    #     dy=u.au.to(u.m, np.linspace(-0.2, 0.2, 100))):
+
+    #     _, t = self.impact(t, x, y, z)
+
+    #     fr = FRi3D()
+    #     fr.polarity = self.polarity
+    #     fr.chirality = self.chirality
+    #     fr.spline_s_phi_kind = self.spline_s_phi_kind
+    #     fr.spline_s_phi_n = self.spline_s_phi_n
+    #     fr.latitude = self.latitude(t)
+    #     fr.longitude = self.longitude(t)
+    #     fr.toroidal_height = self.toroidal_height(t)
+    #     fr.poloidal_height = self.poloidal_height(t)
+    #     fr.half_width = self.half_width(t)
+    #     fr.tilt = self.tilt(t)
+    #     fr.flattening = self.flattening(t)
+    #     fr.pancaking = self.pancaking(t)
+    #     fr.skew = self.skew(t)
+    #     fr.twist = self.twist(t)
+    #     fr.flux = self.flux(t)
+    #     fr.sigma = self.sigma(t)
+    #     fr.toroidal_height = 1.0
+    #     fr.init()
+    #     fr._unit_spline_initial_axis_s_phi = \
+    #         fr._spline_initial_axis_s_phi
+    #     fr.toroidal_height = self.toroidal_height(t)
+    #     fr.init()
+
+    #     _, xa, ya, za, xt, yt, zt = fr.impact(x, y, z)
+    #     vtan = np.array([np.mean(xt), np.mean(yt), np.mean(zt)])
+    #     if np.dot(vtan, fr.data(xa, ya, za)) < 0.0:
+    #         vtan = -vtan
+    #     # vtan = fr.data(xa, ya, za)
+    #     # vtan /= np.linalg.norm(vtan)
+    #     vsc = np.array([x, y, z])
+    #     vsc /= np.linalg.norm(vsc)
+
+    #     vmcy = np.cross(vtan, vsc)
+    #     vmcy /= np.linalg.norm(vmcy)
+    #     if vmcy[0] < 0.0:
+    #         vmcy = -vmcy
+    #     vmcx = np.cross(vmcy, vtan)
+    #     vmcx /= np.linalg.norm(vmcx)
+
+    #     print(vmcx, vmcy, vtan)
+
+    #     xg = np.zeros([dx.size, dy.size])
+    #     yg = np.zeros([dx.size, dy.size])
+    #     zg = np.zeros([dx.size, dy.size])
+
+    #     for i in range(dx.size):
+    #         for k in range(dy.size):
+    #             p = np.array([x, y, z])+dx[i]*vmcx+dy[k]*vmcy
+    #             xg[i,k] = p[0]
+    #             yg[i,k] = p[1]
+    #             zg[i,k] = p[2]
+    #     print(
+    #         xg.shape, xg.flatten().shape,
+    #         yg.shape, yg.flatten().shape,
+    #         zg.shape, zg.flatten().shape
+    #     )
+    #     b = fr.data(xg.flatten(), yg.flatten(), zg.flatten())
+    #     print(b.shape)
+    #     bmap = np.zeros(b.shape[0])
+    #     for i in range(b.shape[0]):
+    #         bmap[i] = np.dot(b[i,:], vtan)
+    #     bmap = np.reshape(bmap, [dx.size, dy.size])
+
+    #     return bmap.T
