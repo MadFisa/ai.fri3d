@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Static FRi3D class definition.
 
 This module defines static FRi3D class. It provides a static description
@@ -9,15 +8,14 @@ of a CME (snapshot, not varying in time).
 # pylint: disable=C0103
 # pylint: disable=C0302
 import os
-import math
 import pickle
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator, LinearNDInterpolator
 from scipy.integrate import fixed_quad
 from scipy.optimize import minimize_scalar
-from astropy import constants as c
 from astropy import units as u
 from ai.shared import cs
+from ai.shared.utils import subtract_period
 
 class StaticFRi3D:
     """FRi3D model class. It provides static description of the model.
@@ -70,7 +68,7 @@ class StaticFRi3D:
                 os.path.realpath(
                     os.path.join(os.getcwd(), os.path.dirname(__file__))
                 ),
-                'FRi3D__interpolator_axis_length.pkl'
+                '__interpolator_axis_length.pkl'
             )
         )
         self._location_interpolator_axis_phi = kwargs.get(
@@ -79,7 +77,7 @@ class StaticFRi3D:
                 os.path.realpath(
                     os.path.join(os.getcwd(), os.path.dirname(__file__))
                 ),
-                'FRi3D__interpolator_axis_phi.pkl'
+                '__interpolator_axis_phi.pkl'
             )
         )
         if self._reload:
@@ -879,17 +877,9 @@ class StaticFRi3D:
         dz = z-z_ax
         r_abs = np.sqrt(dx**2+dy**2+dz**2)
         r = r_abs/(r_ax*self.poloidal_height/self.toroidal_height)
-
-        # def div0(a, b):
-        #     with np.errstate(divide='ignore', invalid='ignore'):
-        #         cc = np.true_divide(a, b)
-        #         cc[~np.isfinite(cc)] = 0  # -inf inf NaN
-        #     return cc
-
         phi = (
-            np.piecewise(dz, [dz < 0, dz >= 0], [-1, 1])*
-            np.arccos(np.sqrt(dx**2+dy**2)/r_abs)
-            # np.arccos(div0(np.sqrt(dx**2+dy**2), r_abs))
+            np.piecewise(dz, [dz < 0, dz >= 0], [-1, 1])
+            *np.arccos(np.sqrt(dx**2+dy**2)/r_abs)
         )
         phi[p_in] = np.pi-phi[p_in]
         # reverse twist
@@ -945,19 +935,21 @@ class StaticFRi3D:
 
         return (b, vc)
 
-    def impact(self, x, y, z):
+    def impact(self, x, y, z, dphi=1e-5):
         """Estimate the impact distance.
 
         Args:
             Args:
-            x (float or numpy.ndarray): x coordinate(s) in space.
-            y (float or numpy.ndarray): y coordinate(s) in space.
-            z (float or numpy.ndarray): z coordinate(s) in space.
+            x (float): x coordinate in space.
+            y (float): y coordinate in space.
+            z (float): z coordinate in space.
 
         Returns:
             (float): impact distance
-            (float, float, float, float, float, float): don't remember,
-                something to do with magnetic field map reconstruction.
+            (np.ndarray): (x, y, z)-coordinates of the closest point on
+                the axis impact  don't remember
+            (np.ndarray): (x, y, z)-vector (unit) of the tangent to the
+                the axis near the closest point.
         """
         x0 = x
         y0 = y
@@ -976,20 +968,9 @@ class StaticFRi3D:
             np.arctan2(self.poloidal_height, self.toroidal_height)
         )
         # get r_ax and phi_ax of the closest point on axis
-        v_vanilla_axis_min_distance = np.vectorize(
-            self.vanilla_axis_min_distance,
-            otypes=[np.float64]
-        )
-        phi_ax = v_vanilla_axis_min_distance(r*np.cos(theta), phi)
+        phi_ax = self.vanilla_axis_min_distance(r*np.cos(theta), phi)
         r_ax = self.vanilla_axis_height(phi_ax)
-        x_ax, y_ax, z_ax = cs.sp2cart(r_ax, np.zeros(r_ax.size), phi_ax)
-        # pancaking
-        r, theta, phi = cs.cart2sp(x_ax, y_ax, z_ax)
-        theta = (
-            theta/np.arctan2(self.poloidal_height, self.toroidal_height)*
-            self.pancaking
-        )
-        x, y, z = cs.sp2cart(r, theta, phi)
+        x, y, z = cs.sp2cart(r_ax, np.zeros(r_ax.size), phi_ax)
         # orientation
         T = cs.mx_rot(-self.latitude, self.longitude, self.tilt)
         x, y, z = cs.mx_apply(T, x, y, z)
@@ -998,26 +979,12 @@ class StaticFRi3D:
         phi += self.skew*(1-r/self.toroidal_height)
         x, y, z = cs.sp2cart(r, theta, phi)
         # get r_ax and phi_ax of the closest delta points on axis
-        dphi = 1e-5
         phi_ax1 = phi_ax-dphi
         phi_ax2 = phi_ax+dphi
         r_ax1 = self.vanilla_axis_height(phi_ax1)
         r_ax2 = self.vanilla_axis_height(phi_ax2)
-        x_ax1, y_ax1, z_ax1 = cs.sp2cart(r_ax1, np.zeros(r_ax1.size), phi_ax1)
-        x_ax2, y_ax2, z_ax2 = cs.sp2cart(r_ax2, np.zeros(r_ax2.size), phi_ax2)
-        # pancaking
-        r, theta, phi = cs.cart2sp(x_ax1, y_ax1, z_ax1)
-        theta = (
-            theta/np.arctan2(self.poloidal_height, self.toroidal_height)*
-            self.pancaking
-        )
-        x1, y1, z1 = cs.sp2cart(r, theta, phi)
-        r, theta, phi = cs.cart2sp(x_ax2, y_ax2, z_ax2)
-        theta = (
-            theta/np.arctan2(self.poloidal_height, self.toroidal_height)*
-            self.pancaking
-        )
-        x2, y2, z2 = cs.sp2cart(r, theta, phi)
+        x1, y1, z1 = cs.sp2cart(r_ax1, np.zeros(r_ax1.size), phi_ax1)
+        x2, y2, z2 = cs.sp2cart(r_ax2, np.zeros(r_ax2.size), phi_ax2)
         # orientation
         T = cs.mx_rot(-self.latitude, self.longitude, self.tilt)
         x1, y1, z1 = cs.mx_apply(T, x1, y1, z1)
@@ -1033,10 +1000,6 @@ class StaticFRi3D:
         d /= np.linalg.norm(d)
         return(
             np.linalg.norm(np.array([x-x0, y-y0, z-z0])),
-            x,
-            y,
-            z,
-            d[0],
-            d[1],
-            d[2]
+            np.array([x, y, z]),
+            d
         )
