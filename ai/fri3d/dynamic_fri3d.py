@@ -1,6 +1,20 @@
+"""Dynamic FRi3D class definition.
+
+This module defines dynamic FRi3D class. It provides a dynamic
+description of a CME (varying in time). The CME parameters are provided
+as time-dendent profiles.
+"""
+# pylint: disable=too-many-instance-attributes
+# pylint: disable=E1101
+# pylint: disable=C0103
+# pylint: disable=C0302
+import numpy as np
 from ai.fri3d import StaticFRi3D
 
 class DynamicFRi3D:
+    """FRi3D model dynamic class. It provides static description of the
+    model.
+    """
     def __init__(self, **kwargs):
         self._fr = StaticFRi3D()
         self.latitude = kwargs.get('latitude', lambda t: self._fr.latitude)
@@ -50,7 +64,42 @@ class DynamicFRi3D:
         return self._fr
 
     def insitu(self, t, x, y, z):
-        pass
+        """Calculate synthetic in-situ measurements.
+
+        Args:
+            t (float or np.ndarray): time (unix timestamp) for which
+                the in-situ measurements are estimated. Can be a single
+                time or an array of timestamps.
+            x, y, z (float or func): synthetic spacecraft coordinates.
+                Can be a single point in space or func(t) which describe
+                the spacecraft trajectory.
+
+        Returns:
+            (np.ndarray(3), np.ndarray): magnetic field components and
+                absolute speed.
+        """
+        t = np.array(t, copy=False, ndmin=1)
+        if not callable(x):
+            _x = x
+            x = lambda t: _x
+        if not callable(y):
+            _y = y
+            y = lambda t: _y
+        if not callable(z):
+            _z = z
+            z = lambda t: _z
+        b = []
+        v = []
+        for t_ in t:
+            b_, c_ = self.snapshot(t_).data(x(t_), y(t_), z(t_))
+            b_ = b_[0, :]
+            c_ = c_[0, :]
+            b.append(b_.ravel())
+            v.append(
+                c_[0]*(self.toroidal_height(t_)-self.toroidal_height(t_-1))+
+                c_[1]*(self.poloidal_height(t_)-self.poloidal_height(t_-1))
+            )
+        return (np.array(b), np.array(v))
 
     def map(self, t, x, y, z):
         pass

@@ -1,9 +1,8 @@
-from .fri3d import FRi3D
 from .static_fri3d import StaticFRi3D
 from .dynamic_fri3d import DynamicFRi3D
-from .base_fri3d_fit import BaseFRi3DFit
-from .fri3d_fit_cor import FRi3DFitCor
-from .fri3d_fit_insitu import FRi3DFitInSitu
+# from .base_fri3d_fit import BaseFRi3DFit
+# from .fri3d_fit_cor import FRi3DFitCor
+# from .fri3d_fit_insitu import FRi3DFitInSitu
 
 """
 class Evolution:
@@ -318,14 +317,3 @@ class Evolution:
 
         return bmap.T
 """
-def subtract_period(value, period):
-    """Reduce angle by period.
-
-    Args:
-        value (float): initial angle [rad].
-        period (float): period [rad].
-
-    Returns:
-        (float): angle reduced by correct number of periods.
-    """
-    return value-math.copysign(value, 1)*(math.fabs(value)//period)*period

@@ -18,7 +18,8 @@ from ai.shared import cs
 from ai.shared.utils import subtract_period
 
 class StaticFRi3D:
-    """FRi3D model class. It provides static description of the model.
+    """FRi3D model static class. It provides static description of the
+    model.
     """
     def __init__(self, **kwargs):
         self._latitude = None
@@ -101,6 +102,17 @@ class StaticFRi3D:
                 n_relative_length=self._n_relative_length,
                 ratio=self._ratio
             )
+
+    def modify(self, **kwargs):
+        """Modify the model properties."""
+        allowed_attr = (
+            'latitude', 'longitude', 'toroidal_height', 'poloidal_height',
+            'half_width', 'tilt', 'flattening', 'pancaking', 'skew',
+            'sigma', 'flux', 'polarity', 'chirality'
+        )
+        for k, v in kwargs.items():
+            if k in allowed_attr:
+                setattr(self, k, v)
 
     @property
     def latitude(self):
@@ -877,16 +889,21 @@ class StaticFRi3D:
         dz = z-z_ax
         r_abs = np.sqrt(dx**2+dy**2+dz**2)
         r = r_abs/(r_ax*self.poloidal_height/self.toroidal_height)
+        def div0(a, b):
+            """Handling the division by zero by defaulting to zero.""" 
+            with np.errstate(divide='ignore', invalid='ignore'):
+                cc = np.true_divide(a, b)
+                cc[~np.isfinite(cc)] = 0  # -inf inf NaN
+            return cc
         phi = (
             np.piecewise(dz, [dz < 0, dz >= 0], [-1, 1])
-            *np.arccos(np.sqrt(dx**2+dy**2)/r_abs)
+            *np.arccos(div0(np.sqrt(dx**2+dy**2), r_abs))
         )
         phi[p_in] = np.pi-phi[p_in]
         # reverse twist
         phi -= s*self.twist*np.pi*2*self.chirality
         # reverse rotation to x
         phi -= np.pi/2
-
         # get magnetic field and speed coefficients along sc trajectory
         b = []
         vc = []
@@ -926,14 +943,7 @@ class StaticFRi3D:
             else:
                 b.append([np.nan, np.nan, np.nan])
                 vc.append([np.nan, np.nan])
-        b = np.array(b)
-        if b.shape[0] == 1:
-            b = b[0, :]
-        vc = np.array(vc)
-        if vc.shape[0] == 1:
-            vc = vc[0, :]
-
-        return (b, vc)
+        return (np.array(b), np.array(vc))
 
     def impact(self, x, y, z, dphi=1e-5):
         """Estimate the impact distance.
