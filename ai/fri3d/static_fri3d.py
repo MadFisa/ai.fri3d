@@ -113,6 +113,8 @@ class StaticFRi3D:
         for k, v in kwargs.items():
             if k in allowed_attr:
                 setattr(self, k, v)
+            else:
+                raise KeyError('Unsupported parameter encountered.')
 
     @property
     def latitude(self):

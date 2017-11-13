@@ -42,6 +42,8 @@ class DynamicFRi3D:
         self.polarity = kwargs.get('polarity', self._fr.polarity)
         self.chirality = kwargs.get('chirality', self._fr.chirality)
 
+    # need possibility to modify the model here + getters/setters
+
     def snapshot(self, t):
         """Returns a snapshot of the FRi3D model at a given moment of
         time.
