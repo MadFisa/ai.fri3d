@@ -108,7 +108,7 @@ class StaticFRi3D:
         allowed_attr = (
             'latitude', 'longitude', 'toroidal_height', 'poloidal_height',
             'half_width', 'tilt', 'flattening', 'pancaking', 'skew',
-            'sigma', 'flux', 'polarity', 'chirality'
+            'twist', 'flux', 'sigma', 'polarity', 'chirality'
         )
         for k, v in kwargs.items():
             if k in allowed_attr:

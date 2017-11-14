@@ -6,6 +6,7 @@ as time-dendent profiles.
 """
 # pylint: disable=too-many-instance-attributes
 # pylint: disable=C0103
+# pylint: disable=E1102
 import numpy as np
 from ai.fri3d import StaticFRi3D
 
@@ -15,6 +16,20 @@ class DynamicFRi3D:
     """
     def __init__(self, **kwargs):
         self._fr = StaticFRi3D()
+        self._latitude = None
+        self._longitude = None
+        self._toroidal_height = None
+        self._poloidal_height = None
+        self._half_width = None
+        self._tilt = None
+        self._flattening = None
+        self._pancaking = None
+        self._skew = None
+        self._twist = None
+        self._flux = None
+        self._sigma = None
+        self._polarity = None
+        self._chirality = None
         self.latitude = kwargs.get('latitude', lambda t: self._fr.latitude)
         self.longitude = kwargs.get('longitude', lambda t: self._fr.longitude)
         self.toroidal_height = kwargs.get(
@@ -42,7 +57,186 @@ class DynamicFRi3D:
         self.polarity = kwargs.get('polarity', self._fr.polarity)
         self.chirality = kwargs.get('chirality', self._fr.chirality)
 
-    # need possibility to modify the model here + getters/setters
+    def modify(self, **kwargs):
+        """Modify the time profiles."""
+        allowed_attr = (
+            'latitude', 'longitude', 'toroidal_height', 'poloidal_height',
+            'half_width', 'tilt', 'flattening', 'pancaking', 'skew',
+            'twist', 'flux', 'sigma', 'polarity', 'chirality'
+        )
+        for k, v in kwargs.items():
+            if k in allowed_attr:
+                setattr(self, k, v)
+            else:
+                raise KeyError('Unsupported parameter encountered.')
+
+    @property
+    def latitude(self):
+        """func(t): time profile of latitude."""
+        return self._latitude
+    @latitude.setter
+    def latitude(self, func):
+        if callable(func):
+            self._latitude = func
+        else:
+            raise ValueError('Latitude profile is expected to be a callable.')
+
+    @property
+    def longitude(self):
+        """func(t): time profile of longitude."""
+        return self._longitude
+    @longitude.setter
+    def longitude(self, func):
+        if callable(func):
+            self._longitude = func
+        else:
+            raise ValueError('Longitude profile is expected to be a callable.')
+
+    @property
+    def toroidal_height(self):
+        """func(t): time profile of toroidal height."""
+        return self._toroidal_height
+    @toroidal_height.setter
+    def toroidal_height(self, func):
+        if callable(func):
+            self._toroidal_height = func
+        else:
+            raise ValueError(
+                'Toroidal height profile is expected to be a callable.'
+            )
+
+    @property
+    def poloidal_height(self):
+        """func(t): time profile of poloidal height."""
+        return self._poloidal_height
+    @poloidal_height.setter
+    def poloidal_height(self, func):
+        if callable(func):
+            self._poloidal_height = func
+        else:
+            raise ValueError(
+                'Poloidal height profile is expected to be a callable.'
+            )
+
+    @property
+    def half_width(self):
+        """func(t): time profile of half width."""
+        return self._half_width
+    @half_width.setter
+    def half_width(self, func):
+        if callable(func):
+            self._half_width = func
+        else:
+            raise ValueError(
+                'Half width profile is expected to be a callable.'
+            )
+
+    @property
+    def tilt(self):
+        """func(t): time profile of tilt."""
+        return self._tilt
+    @tilt.setter
+    def tilt(self, func):
+        if callable(func):
+            self._tilt = func
+        else:
+            raise ValueError(
+                'Tilt profile is expected to be a callable.'
+            )
+
+    @property
+    def flattening(self):
+        """func(t): time profile of flattening."""
+        return self._flattening
+    @flattening.setter
+    def flattening(self, func):
+        if callable(func):
+            self._flattening = func
+        else:
+            raise ValueError(
+                'Flattening profile is expected to be a callable.'
+            )
+
+    @property
+    def pancaking(self):
+        """func(t): time profile of pancaking."""
+        return self._pancaking
+    @pancaking.setter
+    def pancaking(self, func):
+        if callable(func):
+            self._pancaking = func
+        else:
+            raise ValueError(
+                'Pancaking profile is expected to be a callable.'
+            )
+
+    @property
+    def skew(self):
+        """func(t): time profile of skew."""
+        return self._skew
+    @skew.setter
+    def skew(self, func):
+        if callable(func):
+            self._skew = func
+        else:
+            raise ValueError(
+                'Skew profile is expected to be a callable.'
+            )
+
+    @property
+    def twist(self):
+        """func(t): time profile of twist."""
+        return self._twist
+    @twist.setter
+    def twist(self, func):
+        if callable(func):
+            self._twist = func
+        else:
+            raise ValueError(
+                'Twist profile is expected to be a callable.'
+            )
+
+    @property
+    def flux(self):
+        """func(t): time profile of flux."""
+        return self._flux
+    @flux.setter
+    def flux(self, func):
+        if callable(func):
+            self._flux = func
+        else:
+            raise ValueError(
+                'Flux profile is expected to be a callable.'
+            )
+
+    @property
+    def sigma(self):
+        """func(t): time profile of sigma."""
+        return self._sigma
+    @sigma.setter
+    def sigma(self, func):
+        if callable(func):
+            self._sigma = func
+        else:
+            raise ValueError(
+                'Sigma profile is expected to be a callable.'
+            )
+
+    @property
+    def polarity(self):
+        """float: polarity."""
+        return self._fr.polarity
+    @polarity.setter
+    def polarity(self, val):
+        self._fr.polarity = val
+
+    @property
+    def chirality(self):
+        """float: chirality."""
+        return self._fr.chirality
+    @chirality.setter
+    def chirality(self, val):
+        self._fr.chirality = val
 
     def snapshot(self, t):
         """Returns a snapshot of the FRi3D model at a given moment of
