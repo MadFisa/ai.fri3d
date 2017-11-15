@@ -7,70 +7,76 @@ class FRi3DFitInSitu(BaseFRi3DFit):
         super(FRi3DFitInSitu, self).__init__(DynamicFRi3D, **kwargs)
 
     def fit(self, **kwargs):
-        self._dfr = DynamicFRi3D()
-        self._latitude = kwargs.get(
-            'latitude',
-            ConstProfile(self._dfr.latitude(0))
-        )
-        self._longitude = kwargs.get(
-            'longitude',
-            ConstProfile(self._dfr.longitude(0))
-        )
-        def residual(**kwargs):
-            pass
+        allowed_attr = (
+            'latitude', 'longitude', 'toroidal_height', 'poloidal_height',
+            'half_width', 'tilt', 'flattening', 'pancaking', 'skew',
+            'twist', 'flux', 'sigma', 'polarity', 'chirality')
+        for attr in allowed_attr:
+            setattr(
+                self,
+                attr,
+                kwargs.get(attr, PolyProfile(getattr(self.fr, attr)(0)))
+            )
+        def residual(params):
+            i = 0
+            for attr in allowed_attr:
+                if getattr(self, attr).bounds is not None:
+                    n = len(getattr(self, attr).params)*2
+                    getattr(self, attr).params = params[i:i+n]
+                    setattr(self.fr, attr, getattr(self, attr).eval)
+                    i += n
+            self.fr.insitu()
         res = differential_evolution(residual, bounds=bounds)
 
     @property
     def latitude(self):
         return self._latitude
+    def latitude(self, val):
+        if isinstance(val, BaseProfile):
+            self._latitude = val
+        else:
+            raise ValueError('Instance of BaseProfile is expected.')
 
     @property
     def longitude(self):
         return self._longitude
 
+    @property
+    def toroidal_height(self):
+        return self._toroidal_height
+
 class BaseProfile:
-    def __init__(self, profile):
-        self._profile = profile
-
-    @property
-    def profile(self):
-        return self._profile
-
-class ConstProfile:
-    def __init__(self, value):
-        super(PolyProfile, self).__init__('const')
-        self._value = value
-
-    def eval(self, t):
-        return self._value
-
-    @property
-    def params(self, t):
-        return self._value
-
-    @property
-    def bounds(self, t):
-        return None
-
-class PolyProfile(BaseProfile):
-    def __init__(self, params, bounds):
-        super(PolyProfile, self).__init__('poly')
-        self._params = params
-        self._bounds = bounds
-
-    def eval(self, t):
-        np.polyval(self._params, t)
+    def __init__(self, params, bounds=None):
+        self._params = None
+        self._bounds = None
+        self.params = params
+        self.bounds = bounds
 
     @property
     def params(self):
         return self._params
+    @params.setter
+    def params(self, val):
+        self._params = val
 
     @property
     def bounds(self):
         return self._bounds
+    @bounds.setter
+    def bounds(self, val):
+        self._bounds = val
+
+class PolyProfile(BaseProfile):
+    def eval(self, t):
+        return np.polyval(self.params, t)
 
 class ExpProfile(BaseProfile):
-    pass
+    def eval(self, t):
+        return self.params[0]*np.exp(self.params[1]*t)+self.params[2]
+
+
+
+
 
 def fit2insitu(t, b, v,
     x=u.au.to(u.m, 1.0), 
