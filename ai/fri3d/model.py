@@ -353,7 +353,7 @@ class StaticFRi3D(BaseFRi3D):
         if val > 0:
             self._flux = val
             if self.sigma is not None:
-                self._unit_b = self.val/(2.0*np.pi*self.sigma**2)
+                self._unit_b = self.flux/(2.0*np.pi*self.sigma**2)
         else:
             raise ValueError('Flux should be positive.')
 
@@ -1280,8 +1280,8 @@ class DynamicFRi3D(BaseFRi3D):
             twist=self.twist(t),
             flux=self.flux(t),
             sigma=self.sigma(t),
-            polarity=self.polarity,
-            chirality=self.chirality
+            polarity=self.polarity(t),
+            chirality=self.chirality(t)
         )
         return self.__sfr
 

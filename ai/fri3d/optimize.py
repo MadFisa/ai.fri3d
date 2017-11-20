@@ -10,10 +10,11 @@ import numpy as np
 from scipy.interpolate import interp1d
 from scipy.optimize import differential_evolution
 from scipy.spatial.distance import euclidean
+from astropy import units as u
 from fastdtw import fastdtw
 from ai.fri3d.model import StaticFRi3D, DynamicFRi3D
 
-def fit2insitu(t, x, y, z, b, v=None, sampling=50, **kwargs):
+def fit2insitu(t, x, y, z, b, v=None, sampling=50, relative_time=None, **kwargs):
     """Fits FRi3D model to in-situ data (magnetic field and speed).
 
     Args:
@@ -48,15 +49,30 @@ def fit2insitu(t, x, y, z, b, v=None, sampling=50, **kwargs):
         else:
             profiles[prop] = kwargs[prop]
             if profiles[prop].bounds is None:
-                setattr(dfr, prop, profiles[prop].eval)
+                if relative_time is None:
+                    setattr(dfr, prop, profiles[prop].eval)
+                else:
+                    setattr(
+                        dfr,
+                        prop,
+                        lambda t: profiles[prop].eval(t-relative_time)
+                    )
     def residual(params):
+        print(params)
         i = 0
         for prop, profile in profiles.items():
             if profile.bounds is not None:
                 n = len(profile.bounds)
                 profile.params = params[i:i+n]
                 i += n
-                setattr(dfr, prop, profile.eval)
+                if relative_time is None:
+                    setattr(dfr, prop, profile.eval)
+                else:
+                    setattr(
+                        dfr,
+                        prop,
+                        lambda t: profile.eval(t-relative_time)
+                    )
         t_model = np.arange(
             t_real[0]-dt_real*sampling,
             t_real[-1]+dt_real*(sampling+1),
@@ -87,7 +103,10 @@ def fit2insitu(t, x, y, z, b, v=None, sampling=50, **kwargs):
             return np.inf
     bounds = []
     for prop in dfr._props:
-        bounds.append(kwargs[prop].bounds)
+        if kwargs[prop].bounds is not None:
+            for i in range(len(kwargs[prop].bounds)):
+                bounds.append(kwargs[prop].bounds[i])
+    print(bounds)
     res = differential_evolution(residual, bounds=bounds)
     i = 0
     for prop, profile in profiles.items():

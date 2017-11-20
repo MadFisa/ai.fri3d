@@ -1,10 +1,12 @@
 
 from datetime import datetime
+import calendar
 import numpy as np
 from scipy.interpolate import interp1d
 from matplotlib import pyplot as plt
+from astropy import units as u
 from ai import cdas
-from ai import ssc
+from ai.shared.data import getSTA
 from ai.fri3d.optimize import PolyProfile, fit2insitu
 
 # cdas.set_cache(True, './data')
@@ -35,18 +37,49 @@ from ai.fri3d.optimize import PolyProfile, fit2insitu
 # f = interp1d(data_v['epoch'], data['proton_bulk_speed'], kind='linear', axis=0)
 # v = f(t)
 
-# t, b, v, p = getSTA(
-#     datetime(2010, 12, 15, 10, 20),
-#     datetime(2010, 12, 16, 4),
-# )
+d, b, _, p = getSTA(
+    datetime(2010, 12, 15, 10, 20),
+    datetime(2010, 12, 16, 4),
+)
 
 # print(v)
 
-# dfr = fit2insitu(t, b, v)
+t = [calendar.timegm(x.timetuple()) for x in d]
+dfr = fit2insitu(
+    t,
+    np.mean(p[:, 0]),
+    np.mean(p[:, 1]),
+    np.mean(p[:, 2]),
+    b,
+    latitude=PolyProfile(bounds=[u.deg.to(u.rad, [-15, 5]).tolist()]),
+    longitude=PolyProfile(params=u.deg.to(u.rad, [55]).tolist()),
+    toroidal_height=PolyProfile(bounds=[
+        (400e3, 600e3),
+        (u.au.to(u.m, 0.5), u.au.to(u.m, 1.2))
+    ]),
+    poloidal_height=PolyProfile(bounds=[u.au.to(u.m, [0.01, 0.2]).tolist()]),
+    half_width=PolyProfile(params=u.deg.to(u.rad, [55]).tolist()),
+    tilt=PolyProfile(bounds=[u.deg.to(u.rad, [10, 30]).tolist()]),
+    flattening=PolyProfile(bounds=[(0.2, 0.8)]),
+    pancaking=PolyProfile(bounds=[u.deg.to(u.rad, [15, 30]).tolist()]),
+    skew=PolyProfile(params=[0]),
+    twist=PolyProfile(bounds=[(0, 3)]),
+    flux=PolyProfile(bounds=[(1e13, 1e15)]),
+    sigma=PolyProfile(params=[2]),
+    polarity=PolyProfile(params=[-1]),
+    chirality=PolyProfile(params=[1]),
+    relative_time=t[0]-6*3600
+)
 
-fig = plt.figure()
-ax = fig.add_subplot(211)
-ax.plot(t, b)
-ax = fig.add_subplot(212)
-ax.plot(t, v)
-plt.show()
+# t0
+# Rt = V*(t-t0)+
+# Rt = V*(t-t0)+0.5 = V*t - V*t0+0.5
+# 0 = V*t0 + R0
+# 0.5 = V*t0 + R0
+# R0 = 0.5 - V*t0
+# fig = plt.figure()
+# ax = fig.add_subplot(211)
+# ax.plot(t, b)
+# ax = fig.add_subplot(212)
+# ax.plot(t, v)
+# plt.show()
