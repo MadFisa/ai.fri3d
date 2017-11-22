@@ -19,8 +19,9 @@ from ai.fri3d.model import StaticFRi3D, DynamicFRi3D
 d_prev = np.inf
 
 def fit2insitu(
-        t, x, y, z, b, v=None,
-        sampling=50, relative=True, verbose=False, **kwargs):
+        x, y, z, t, b, vt=None,
+        sampling=50, relative=True, weights={'t': 1, 'b': 1, 'vt': 1},
+        verbose=False, **kwargs):
     """Fits FRi3D model to in-situ data (magnetic field and speed).
 
     Args:
@@ -29,10 +30,13 @@ def fit2insitu(
         y (float): y-coordinate of the spacecraft
         z (float): z-coordinate of the spacecraft
         b (np.ndarray): array of magnetic field vectors (n, 3)
-        v (np.ndarray): array of absolute speed values (n)
+        vt (np.ndarray): array of absolute speed values (n)
         sampling (int): number of sampling points used for fitting
         relative (bool): flag for using relative time-profiles (relative
             to the starting time of the fitted data t[0])
+        weights (dict): importance weigths for the fitting
+        verbose (bool): verbose mode - print parameters and draw plots
+            during fitting
         **kwargs: keyworded profiles for all model parameters
 
     Returns:
@@ -42,19 +46,14 @@ def fit2insitu(
     """
     t_real = np.linspace(t[0], t[-1], sampling)
     dt_real = t_real[1]-t_real[0]
-    f = interp1d(t, b, kind='linear', axis=0)
-    b_real = f(t_real)
-    mask = np.logical_not(np.any(np.isnan(b_real), axis=1))
-    tb_real = t_real[mask]
-    b_real = b_real[mask, :]
+    m = np.logical_not(np.any(np.isnan(b), axis=1))
+    tb_real = t[m]
+    b_real = b[m, :]
     bt_real = np.sqrt(b_real[:, 0]**2+b_real[:, 1]**2+b_real[:, 2]**2)
-    if v is not None:
-        f = interp1d(t, v, kind='linear', axis=0)
-        v_real = f(t_real)
-        mask = np.logical_not(np.isnan(v_real))
-        tv_real = t_real[mask]
-        v_real = v_real[mask]
-
+    if vt is not None:
+        m = np.logical_not(np.isnan(vt))
+        tvt_real = t[m]
+        vt_real = vt[m]
     dfr = DynamicFRi3D()
     profiles = {}
     for prop in dfr._props:
@@ -70,7 +69,7 @@ def fit2insitu(
                         dfr,
                         prop,
                         lambda t, profile=profiles[prop]:
-                            profile.eval(t-t_real[0])
+                        profile.eval(t-t_real[0])
                     )
                 else:
                     setattr(dfr, prop, profiles[prop].eval)
@@ -95,7 +94,7 @@ def fit2insitu(
             t_real[-1]+dt_real*(sampling+1),
             dt_real
         )
-        b_model, v_model = dfr.insitu(t_model, x, y, z)
+        b_model, vt_model = dfr.insitu(t_model, x, y, z)
         bt_model = np.sqrt(b_model[:, 0]**2+b_model[:, 1]**2+b_model[:, 2]**2)
         nonzero_indices = np.where(np.isfinite(bt_model))[0]
         if nonzero_indices.size >= 2:
@@ -103,28 +102,51 @@ def fit2insitu(
             if t_model[0] > t_real[-1] or t_model[-1] < t_real[0]:
                 return np.inf
             b_model = b_model[nonzero_indices[0]:nonzero_indices[-1]+1, :]
-            v_model = v_model[nonzero_indices[0]:nonzero_indices[-1]+1]
+            vt_model = vt_model[nonzero_indices[0]:nonzero_indices[-1]+1]
+            m = np.logical_and(
+                tb_real >= t_model[0],
+                tb_real <= t_model[-1]
+            )
             db = fastdtw(
                 np.hstack((
-                    (np.array([t_model]).T-t_real[0])/(t_real[-1]-t_real[0]),
-                    b_model/np.amax(bt_real)
+                    (np.array([t_model]).T-t_real[0])
+                    /(t_real[-1]-t_real[0])*weights['t'],
+                    b_model/np.amax(bt_real)*weights['b']
                 )),
                 np.hstack((
-                    (np.array([tb_real]).T-t_real[0])/(t_real[-1]-t_real[0]),
-                    b_real/np.amax(bt_real)
+                    (np.array([tb_real]).T-t_real[0])
+                    /(t_real[-1]-t_real[0])*weights['t'],
+                    b_real/np.amax(bt_real)*weights['b']
                 )),
                 dist=euclidean
             )[0]
+            m = np.logical_and(
+                tvt_real >= t_model[0],
+                tvt_real <= t_model[-1]
+            )
             dv = fastdtw(
-                np.vstack((t_model, v_model)).T,
-                np.vstack((tv_real, v_real)).T,
+                np.vstack((
+                    (t_model-t_real[0])
+                    /(t_real[-1]-t_real[0])*weights['t'],
+                    (vt_model-np.amin(vt_real))
+                    /(np.amax(vt_real)-np.amin(vt_real))*weights['vt']
+                )).T,
+                np.vstack((
+                    (tvt_real-t_real[0])
+                    /(t_real[-1]-t_real[0])*weights['t'],
+                    (vt_real-np.amin(vt_real))
+                    /(np.amax(vt_real)-np.amin(vt_real))*weights['vt']
+                )).T,
                 dist=euclidean
-            )[0] if v is not None else 0
+            )[0] if vt is not None else 0
             if verbose and db+dv < d_prev:
                 d_prev = db+dv
 
-                d_real = np.array(
-                    [datetime.fromtimestamp(t) for t in t_real]
+                db_real = np.array(
+                    [datetime.fromtimestamp(t) for t in tb_real]
+                )
+                dv_real = np.array(
+                    [datetime.fromtimestamp(t) for t in tvt_real]
                 )
                 d_model = np.array(
                     [datetime.fromtimestamp(t) for t in t_model]
@@ -134,7 +156,7 @@ def fit2insitu(
                 plt.subplots_adjust(hspace=0.001)
                 ax1 = fig.add_subplot(211)
                 ax1.plot(
-                    d_real,
+                    db_real,
                     np.sqrt(
                         b_real[:, 0]**2+
                         b_real[:, 1]**2+
@@ -143,17 +165,17 @@ def fit2insitu(
                     'k'
                 )
                 ax1.plot(
-                    d_real,
+                    db_real,
                     b_real[:, 0],
                     'r'
                 )
                 ax1.plot(
-                    d_real,
+                    db_real,
                     b_real[:, 1],
                     'g'
                 )
                 ax1.plot(
-                    d_real,
+                    db_real,
                     b_real[:, 2],
                     'b'
                 )
@@ -181,17 +203,17 @@ def fit2insitu(
                     b_model[:, 2],
                     '--b'
                 )
-                # ax2 = fig.add_subplot(212, sharex=ax1)
-                # ax2.plot(
-                #     d_real,
-                #     v_real,
-                #     'k'
-                # )
-                # ax2.plot(
-                #     d_model,
-                #     v_model,
-                #     '--k'
-                # )
+                ax2 = fig.add_subplot(212, sharex=ax1)
+                ax2.plot(
+                    dv_real,
+                    vt_real,
+                    'k'
+                )
+                ax2.plot(
+                    d_model,
+                    vt_model,
+                    '--k'
+                )
 
                 plt.setp(ax1.get_xticklabels(), visible=False)
                 plt.ion()
@@ -199,7 +221,7 @@ def fit2insitu(
                 plt.pause(0.1)
                 plt.show()
 
-                print(d_prev, params)
+                print(d_prev, db, dv, params)
             return db+dv
         else:
             return np.inf
@@ -208,7 +230,14 @@ def fit2insitu(
         if kwargs[prop].bounds is not None:
             for i in range(len(kwargs[prop].bounds)):
                 bounds.append(kwargs[prop].bounds[i])
-    res = differential_evolution(residual, bounds=bounds)
+    res = differential_evolution(
+        residual,
+        bounds=bounds,
+        maxiter=200,
+        popsize=1,
+        mutation=0.6702,
+        recombination=0.2368
+    )
     i = 0
     for prop, profile in profiles.items():
         if profile.bounds is not None:

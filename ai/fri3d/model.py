@@ -226,11 +226,11 @@ class StaticFRi3D(BaseFRi3D):
         self.polarity = kwargs.get('polarity', 1)
         self.chirality = kwargs.get('chirality', 1)
         self._reload = kwargs.get('_reload', False)
-        self._n_coeff_angle_phi = kwargs.get('_n_coeff_angle_phi', 100)
-        self._n_coeff_angle = kwargs.get('_n_coeff_angle', 100)
-        self._n_flattening = kwargs.get('_n_flattening', 100)
-        self._n_relative_length = kwargs.get('_n_relative_length', 100)
-        self._ratio = kwargs.get('_ratio', 1-1e-5)
+        self._n_coeff_angle_phi = kwargs.get('_n_coeff_angle_phi', 10)
+        self._n_coeff_angle = kwargs.get('_n_coeff_angle', 10)
+        self._n_flattening = kwargs.get('_n_flattening', 10)
+        self._n_relative_length = kwargs.get('_n_relative_length', 10)
+        self._ratio = kwargs.get('_ratio', 1-1e-4)
         self._location_interpolator_axis_length = kwargs.get(
             '_location_interpolator_axis_length',
             os.path.join(
@@ -573,16 +573,25 @@ class StaticFRi3D(BaseFRi3D):
             (float) length of the axis from origin footpoint towards the
                 location defined by angular coordinate phi.
         """
-        return(
-            self.toroidal_height
-            *self._interpolator_axis_length(
-                (
-                    self._coeff_angle*phi,
-                    self._coeff_angle,
-                    self.flattening
+        try:
+            return(
+                self.toroidal_height
+                *self._interpolator_axis_length(
+                    (
+                        self._coeff_angle*phi,
+                        self._coeff_angle,
+                        self.flattening
+                    )
                 )
             )
-        )
+        except ValueError as e:
+            print(
+                phi,
+                self._coeff_angle*phi,
+                self._coeff_angle,
+                self.flattening,
+                e
+            )
 
     def vanilla_axis_phi(self, length):
         """Evaluate polar coordinate of the axis as a function of its
@@ -613,7 +622,7 @@ class StaticFRi3D(BaseFRi3D):
             n_coeff_angle=100,
             n_flattening=100,
             n_relative_length=100,
-            ratio=1-1e-5):
+            ratio=1-1e-4):
         """Initialize the axis interpolators:
         1. length=function(coeff_angle*phi, coeff_angle, flattening)
         2. coeff_angle*phi=function(
@@ -730,7 +739,8 @@ class StaticFRi3D(BaseFRi3D):
         )
         self._interpolator_axis_length = RegularGridInterpolator(
             (coeff_angle_phi_array, coeff_angle_array, flattening_array),
-            length_grid
+            length_grid,
+            bounds_error=False
         )
         relative_length_grid = length_grid/self._interpolator_axis_length(
             (
@@ -762,7 +772,8 @@ class StaticFRi3D(BaseFRi3D):
         )
         self._interpolator_axis_phi = RegularGridInterpolator(
             (relative_length_array, coeff_angle_array, flattening_array),
-            coeff_angle_phi_grid
+            coeff_angle_phi_grid,
+            bounds_error=False
         )
         with open(self._location_interpolator_axis_length, 'wb') as output:
             pickle.dump(
