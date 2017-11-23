@@ -226,10 +226,10 @@ class StaticFRi3D(BaseFRi3D):
         self.polarity = kwargs.get('polarity', 1)
         self.chirality = kwargs.get('chirality', 1)
         self._reload = kwargs.get('_reload', False)
-        self._n_coeff_angle_phi = kwargs.get('_n_coeff_angle_phi', 10)
-        self._n_coeff_angle = kwargs.get('_n_coeff_angle', 10)
-        self._n_flattening = kwargs.get('_n_flattening', 10)
-        self._n_relative_length = kwargs.get('_n_relative_length', 10)
+        self._n_coeff_angle_phi = kwargs.get('_n_coeff_angle_phi', 100)
+        self._n_coeff_angle = kwargs.get('_n_coeff_angle', 100)
+        self._n_flattening = kwargs.get('_n_flattening', 100)
+        self._n_relative_length = kwargs.get('_n_relative_length', 100)
         self._ratio = kwargs.get('_ratio', 1-1e-4)
         self._location_interpolator_axis_length = kwargs.get(
             '_location_interpolator_axis_length',

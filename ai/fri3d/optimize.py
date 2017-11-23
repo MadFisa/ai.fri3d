@@ -221,7 +221,16 @@ def fit2insitu(
                 plt.pause(0.1)
                 plt.show()
 
-                print(d_prev, db, dv, params)
+                print('---------------------')
+                for prop, profile in profiles.items():
+                    if prop in (
+                            'latitude', 'longitude', 'half_width', 'tilt',
+                            'pancaking', 'skew'):
+                        print(prop, u.rad.to(u.deg, profile.params))
+                    elif prop in ('toroidal_height', 'poloidal_height'):
+                        print(prop, u.m.to(u.au, profile.params))
+                    else:
+                        print(prop, profile.params)
             return db+dv
         else:
             return np.inf

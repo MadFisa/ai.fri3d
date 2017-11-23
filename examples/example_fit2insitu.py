@@ -67,7 +67,7 @@ vt = u.Unit('km/s').to(u.Unit('m/s'), vt)
 # ax.plot(t, vt)
 # plt.show()
 
-dfr = fit2insitu(
+dfr, profiles = fit2insitu(
     np.mean(p[:, 0]),
     np.mean(p[:, 1]),
     np.mean(p[:, 2]),
@@ -98,3 +98,9 @@ dfr = fit2insitu(
     weights={'t': 1, 'b': 1, 'vt': 0.5},
     verbose=True
 )
+
+for prop, profile in profiles.items():
+    plt.figure()
+    plt.plot(t, profile.eval(t))
+    plt.set_ylabel(prop)
+plt.show()
