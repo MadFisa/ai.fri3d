@@ -1,4 +1,4 @@
-"""The module defines the fitting functions used to fit teh model to
+"""The module defines the fitting functions used to fit the model to
 white-light and in-situ data.
 """
 # pylint: disable=E1101
@@ -8,7 +8,6 @@ white-light and in-situ data.
 # pylint: disable=W0212
 from datetime import datetime
 import numpy as np
-from scipy.interpolate import interp1d
 from scipy.optimize import differential_evolution
 from scipy.spatial.distance import euclidean
 from matplotlib import pyplot as plt
