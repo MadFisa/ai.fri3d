@@ -89,13 +89,15 @@ def fit2insitu(
                 else:
                     setattr(dfr, prop, profile.eval)
         t_model = np.arange(
-            t_real[0]-dt_real*sampling,
-            t_real[-1]+dt_real*(sampling+1),
+            t_real[0]-dt_real*np.round(sampling/2),
+            t_real[-1]+dt_real*np.round((sampling+1)/2),
             dt_real
         )
         b_model, vt_model = dfr.insitu(t_model, x, y, z)
         bt_model = np.sqrt(b_model[:, 0]**2+b_model[:, 1]**2+b_model[:, 2]**2)
         nonzero_indices = np.where(np.isfinite(bt_model))[0]
+        if not (np.isnan(bt_model[0]) and np.isnan(bt_model[-1])):
+            return np.inf
         if nonzero_indices.size >= 2:
             t_model = t_model[nonzero_indices[0]:nonzero_indices[-1]+1]
             if t_model[0] > t_real[-1] or t_model[-1] < t_real[0]:

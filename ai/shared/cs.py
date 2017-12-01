@@ -25,8 +25,8 @@ def cyl2cart(r, phi, z):
 
 def mx_rot_x(gamma):
     return np.matrix([
-        [1.0, 0.0, 0.0], 
-        [0.0, np.cos(gamma), -np.sin(gamma)], 
+        [1.0, 0.0, 0.0],
+        [0.0, np.cos(gamma), -np.sin(gamma)],
         [0.0, np.sin(gamma), np.cos(gamma)]
     ])
 
