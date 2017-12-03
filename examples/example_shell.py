@@ -1,11 +1,15 @@
 """Example of the shell of the FRi3D model."""
 # pylint: disable=E1101
-# pylint: disable=C0103
 # pylint: disable=W0611
+# pylint: disable=C0103
+# pylint: disable=C0413
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import proj3d
 from astropy import units as u
-from ai.fri3d import FRi3D
+from ai.fri3d.model import StaticFRi3D
 from ai.shared.color import BLIND_PALETTE
 
 def example_shell(
@@ -19,7 +23,7 @@ def example_shell(
         pancaking=u.deg.to(u.rad, 20.0),
         skew=u.deg.to(u.rad, 10.0)):
     """Plot the shell of the FRi3D model."""
-    fr = FRi3D(
+    fr = StaticFRi3D(
         latitude=latitude,
         longitude=longitude,
         toroidal_height=toroidal_height,

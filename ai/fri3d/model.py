@@ -496,7 +496,7 @@ class StaticFRi3D(BaseFRi3D):
         phi = minimize_scalar(
             lambda phi: self.vanilla_axis_distance(phi, r_sc, phi_sc),
             bounds=[-self.half_width, self.half_width],
-            method='Bounded'
+            method='bounded'
         ).x
         return(self.vanilla_axis_distance(phi, r_sc, phi_sc), phi)
 
@@ -1026,7 +1026,7 @@ class StaticFRi3D(BaseFRi3D):
                 vc.append([np.nan, np.nan])
         return (np.array(b), np.array(vc))
 
-    def impact(self, x, y, z, dphi=1e-5):
+    def impact(self, x, y, z, dphi=1e-3):
         """Estimate the impact distance.
 
         Args:
@@ -1059,7 +1059,7 @@ class StaticFRi3D(BaseFRi3D):
             np.arctan2(self.poloidal_height, self.toroidal_height)
         )
         # get r_ax and phi_ax of the closest point on axis
-        phi_ax = self.vanilla_axis_min_distance(r*np.cos(theta), phi)
+        _, phi_ax = self.vanilla_axis_min_distance(r*np.cos(theta), phi)
         r_ax = self.vanilla_axis_height(phi_ax)
         x, y, z = cs.sp2cart(r_ax, np.zeros(r_ax.size), phi_ax)
         # orientation
@@ -1087,7 +1087,7 @@ class StaticFRi3D(BaseFRi3D):
         r, theta, phi = cs.cart2sp(x2, y2, z2)
         phi += self.skew*(1-r/self.toroidal_height)
         x2, y2, z2 = cs.sp2cart(r, theta, phi)
-        d = np.array([x2, y2, z1])-np.array([x1, y1, z1])
+        d = np.array([x2, y2, z2])-np.array([x1, y1, z1])
         d /= np.linalg.norm(d)
         return(
             np.linalg.norm(np.array([x-x0, y-y0, z-z0])),
@@ -1334,43 +1334,37 @@ class DynamicFRi3D(BaseFRi3D):
             )
         return (np.array(b), np.array(v))
 
-    # def impact(self, t, x, y, z):
-    #     fr = FRi3D()
-    #     fr.polarity = self.polarity
-    #     fr.chirality = self.chirality
-    #     fr.spline_s_phi_kind = self.spline_s_phi_kind
-    #     fr.spline_s_phi_n = self.spline_s_phi_n
-    #     impacts = []
-    #     times = []
-    #     for i, t in enumerate(t):
-    #         fr.latitude = self.latitude(t)
-    #         fr.longitude = self.longitude(t)
-    #         fr.toroidal_height = self.toroidal_height(t)
-    #         fr.poloidal_height = self.poloidal_height(t)
-    #         fr.half_width = self.half_width(t)
-    #         fr.tilt = self.tilt(t)
-    #         fr.flattening = self.flattening(t)
-    #         fr.pancaking = self.pancaking(t)
-    #         fr.skew = self.skew(t)
-    #         fr.twist = self.twist(t)
-    #         fr.flux = self.flux(t)
-    #         fr.sigma = self.sigma(t)
-    #         if i == 0:
-    #             fr.toroidal_height = 1.0
-    #             fr.init()
-    #             fr._unit_spline_initial_axis_s_phi = \
-    #                 fr._spline_initial_axis_s_phi
-    #             fr.toroidal_height = self.toroidal_height(t)
-    #             fr.init()
-    #         fr._spline_initial_axis_s_phi = lambda s: \
-    #             fr._unit_spline_initial_axis_s_phi(s/fr.toroidal_height)
-    #         impact, _, _, _, _, _, _ = fr.impact(x, y, z)
-    #         impacts.append(impact)
-    #         times.append(t)
-    #     impacts = np.array(impacts)
-    #     times = np.array(times)
-    #     index = np.argmin(impacts)
-    #     return (impacts[index], times[index])
+    def impact(self, t, x, y, z):
+        """Estimate minimal impact distance.
+
+        Args:
+            t (float or np.ndarray): time (unix timestamp) for which
+                the in-situ measurements are estimated. Can be a single
+                time or an array of timestamps.
+            x, y, z (float or func): synthetic spacecraft coordinates.
+                Can be a single point in space or func(t) which describe
+                the spacecraft trajectory.
+
+        Returns:
+            (float, int): minimal impact distance and the timestamp of
+                the closest impact.
+        """
+        t = np.array(t, copy=False, ndmin=1)
+        if not callable(x):
+            _x = x
+            x = lambda t: _x
+        if not callable(y):
+            _y = y
+            y = lambda t: _y
+        if not callable(z):
+            _z = z
+            z = lambda t: _z
+        res = minimize_scalar(
+            lambda _t: self.snapshot(_t).impact(x(_t), y(_t), z(_t))[0],
+            bounds=(t[0], t[-1]),
+            method='bounded'
+        )
+        return (res.fun, res.x)
 
     # def map(self, t, x, y, z,
     #     dx=u.au.to(u.m, np.linspace(-0.2, 0.2, 100)),
