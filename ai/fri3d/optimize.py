@@ -5,15 +5,19 @@ white-light and in-situ data.
 # pylint: disable=E1102
 # pylint: disable=E0401
 # pylint: disable=C0103
+# pylint: disable=W0102
 # pylint: disable=W0212
 from datetime import datetime
 import numpy as np
 from scipy.optimize import differential_evolution
 from scipy.spatial.distance import euclidean
 from matplotlib import pyplot as plt
+from matplotlib import gridspec
 from astropy import units as u
 from fastdtw import fastdtw
 from ai.fri3d.model import StaticFRi3D, DynamicFRi3D
+from ai.shared import cs
+from ai.shared.color import BLIND_PALETTE
 
 d_prev = np.inf
 
@@ -104,10 +108,6 @@ def fit2insitu(
                 return np.inf
             b_model = b_model[nonzero_indices[0]:nonzero_indices[-1]+1, :]
             vt_model = vt_model[nonzero_indices[0]:nonzero_indices[-1]+1]
-            m = np.logical_and(
-                tb_real >= t_model[0],
-                tb_real <= t_model[-1]
-            )
             db = fastdtw(
                 np.hstack((
                     (np.array([t_model]).T-t_real[0])
@@ -229,7 +229,17 @@ def fit2insitu(
                             'pancaking', 'skew'):
                         print(prop, u.rad.to(u.deg, profile.params))
                     elif prop in ('toroidal_height', 'poloidal_height'):
-                        print(prop, u.m.to(u.au, profile.params))
+                        if len(profile.params) == 1:
+                            print(prop, u.m.to(u.au, profile.params))
+                        else:
+                            print(
+                                prop,
+                                u.Unit('m/s').to(
+                                    u.Unit('km/s'),
+                                    profile.params[:-1]
+                                ),
+                                u.m.to(u.au, profile.params[-1])
+                            )
                     else:
                         print(prop, profile.params)
             return db+dv
@@ -257,7 +267,29 @@ def fit2insitu(
         setattr(dfr, prop, profile.eval)
     return (dfr, profiles)
 
-def fit2cor(**kwargs):
+def fit2cor(
+        cor2a_img_path=None,
+        cor2a_aov=u.deg.to(u.rad, 4),
+        cor2a_dx=0,
+        cor2a_dy=0,
+        sta_r=u.au.to(u.m, 1),
+        sta_lat=0,
+        sta_lon=0,
+        cor2b_img_path=None,
+        cor2b_aov=u.deg.to(u.rad, 4),
+        cor2b_dx=0,
+        cor2b_dy=0,
+        stb_r=u.au.to(u.m, 1),
+        stb_lat=0,
+        stb_lon=0,
+        c3_img_path=None,
+        c3_fov=u.R_sun.to(u.m, 30),
+        c3_dx=0,
+        c3_dy=0,
+        soho_r=u.au.to(u.m, 1),
+        soho_lat=0,
+        soho_lon=0,
+        **kwargs):
     """Fits FRi3D model to coronagraph image.
 
     Args:
@@ -267,10 +299,152 @@ def fit2cor(**kwargs):
         (StaticFRi3D) fitted static FRi3D model
     """
     sfr = StaticFRi3D()
-    return sfr
-
-def fit2hi(**kwargs):
-    sfr = StaticFRi3D()
+    sfr.modify(**kwargs)
+    x0, y0, z0 = sfr.shell()
+    ncols = (
+        (cor2b_img_path is not None)
+        +(c3_img_path is not None)
+        +(cor2a_img_path is not None)
+    )
+    nrows = 2
+    plt.figure(figsize=((ncols+1)*2, (nrows+1)*2))
+    gs = gridspec.GridSpec(
+        nrows,
+        ncols,
+        wspace=0,
+        hspace=0,
+        top=1.-0.5/(nrows+1),
+        bottom=0.5/(nrows+1),
+        left=0.5/(ncols+1),
+        right=1-0.5/(ncols+1)
+    )
+    i = 0
+    if cor2b_img_path is not None:
+        cor2b_fov = stb_r*np.tan(cor2b_aov)
+        ax = plt.subplot(gs[i])
+        ax.imshow(
+            plt.imread(cor2b_img_path),
+            zorder=0,
+            extent=[
+                -cor2b_fov-cor2b_dx,
+                cor2b_fov-cor2b_dx,
+                -cor2b_fov-cor2b_dy,
+                cor2b_fov-cor2b_dy
+            ]
+        )
+        ax.set_xlim([-cor2b_fov-cor2b_dx, cor2b_fov-cor2b_dx])
+        ax.set_ylim([-cor2b_fov-cor2b_dy, cor2b_fov-cor2b_dy])
+        ax.set_facecolor('black')
+        plt.axis('off')
+        ax = plt.subplot(gs[i+ncols])
+        ax.imshow(
+            plt.imread(cor2b_img_path),
+            zorder=0,
+            extent=[
+                -cor2b_fov-cor2b_dx,
+                cor2b_fov-cor2b_dx,
+                -cor2b_fov-cor2b_dy,
+                cor2b_fov-cor2b_dy
+            ]
+        )
+        T = cs.mx_rot_y(stb_lat)*cs.mx_rot_z(-stb_lon)
+        x, y, z = cs.mx_apply(T, x0, y0, z0)
+        y = stb_r/(stb_r-x)*y
+        z = stb_r/(stb_r-x)*z
+        ax.scatter(
+            y, z, 3,
+            color=BLIND_PALETTE['yellow'],
+            marker='.'
+        )
+        ax.set_xlim([-cor2b_fov-cor2b_dx, cor2b_fov-cor2b_dx])
+        ax.set_ylim([-cor2b_fov-cor2b_dy, cor2b_fov-cor2b_dy])
+        ax.set_facecolor('black')
+        plt.axis('off')
+        i += 1
+    if c3_img_path is not None:
+        ax = plt.subplot(gs[i])
+        ax.imshow(
+            plt.imread(c3_img_path),
+            zorder=0,
+            extent=[
+                -c3_fov-c3_dx,
+                c3_fov-c3_dx,
+                -c3_fov-c3_dy,
+                c3_fov-c3_dy
+            ]
+        )
+        ax.set_xlim([-c3_fov-c3_dx, c3_fov-c3_dx])
+        ax.set_ylim([-c3_fov-c3_dy, c3_fov-c3_dy])
+        ax.set_facecolor('black')
+        plt.axis('off')
+        ax = plt.subplot(gs[i+ncols])
+        ax.imshow(
+            plt.imread(c3_img_path),
+            zorder=0,
+            extent=[
+                -c3_fov-c3_dx,
+                c3_fov-c3_dx,
+                -c3_fov-c3_dy,
+                c3_fov-c3_dy
+            ]
+        )
+        T = cs.mx_rot_y(soho_lat)*cs.mx_rot_z(-soho_lon)
+        x, y, z = cs.mx_apply(T, x0, y0, z0)
+        y = soho_r/(soho_r-x)*y
+        z = soho_r/(soho_r-x)*z
+        ax.scatter(
+            y, z, 3,
+            color=BLIND_PALETTE['yellow'],
+            marker='.'
+        )
+        ax.set_xlim([-c3_fov-c3_dx, c3_fov-c3_dx])
+        ax.set_ylim([-c3_fov-c3_dy, c3_fov-c3_dy])
+        ax.set_facecolor('black')
+        plt.axis('off')
+        i += 1
+    if cor2a_img_path is not None:
+        cor2a_fov = sta_r*np.tan(cor2a_aov)
+        ax = plt.subplot(gs[i])
+        ax.imshow(
+            plt.imread(cor2a_img_path),
+            zorder=0,
+            extent=[
+                -cor2a_fov-cor2a_dx,
+                cor2a_fov-cor2a_dx,
+                -cor2a_fov-cor2a_dy,
+                cor2a_fov-cor2a_dy
+            ]
+        )
+        ax.set_xlim([-cor2a_fov-cor2a_dx, cor2a_fov-cor2a_dx])
+        ax.set_ylim([-cor2a_fov-cor2a_dy, cor2a_fov-cor2a_dy])
+        ax.set_facecolor('black')
+        plt.axis('off')
+        ax = plt.subplot(gs[i+ncols])
+        ax.imshow(
+            plt.imread(cor2a_img_path),
+            zorder=0,
+            extent=[
+                -cor2a_fov-cor2a_dx,
+                cor2a_fov-cor2a_dx,
+                -cor2a_fov-cor2a_dx,
+                cor2a_fov-cor2a_dy
+            ]
+        )
+        T = cs.mx_rot_y(sta_lat)*cs.mx_rot_z(-sta_lon)
+        x, y, z = cs.mx_apply(T, x0, y0, z0)
+        y = sta_r/(sta_r-x)*y
+        z = sta_r/(sta_r-x)*z
+        ax.scatter(
+            y, z, 3,
+            color=BLIND_PALETTE['yellow'],
+            marker='.'
+        )
+        ax.set_xlim([-cor2a_fov-cor2a_dx, cor2a_fov-cor2a_dx])
+        ax.set_ylim([-cor2a_fov-cor2a_dy, cor2a_fov-cor2a_dy])
+        ax.set_facecolor('black')
+        plt.axis('off')
+        i += 1
+    plt.show()
     return sfr
 
 class BaseProfile:
