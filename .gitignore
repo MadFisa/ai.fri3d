@@ -7,12 +7,6 @@
 *.mp4
 *.png
 
-# Data cache
-data/
-
-# Virtual environment
-py3env/
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
