@@ -1091,8 +1091,8 @@ class StaticFRi3D(BaseFRi3D):
         d /= np.linalg.norm(d)
         return(
             np.linalg.norm(np.array([x-x0, y-y0, z-z0])),
-            np.array([x, y, z]),
-            d
+            np.array([x, y, z]).flatten(),
+            d.flatten()
         )
 
 class DynamicFRi3D(BaseFRi3D):
@@ -1366,74 +1366,62 @@ class DynamicFRi3D(BaseFRi3D):
         )
         return (res.fun, res.x)
 
-    # def map(self, t, x, y, z,
-    #     dx=u.au.to(u.m, np.linspace(-0.2, 0.2, 100)),
-    #     dy=u.au.to(u.m, np.linspace(-0.2, 0.2, 100))):
+    def map(
+            self, t, x, y, z,
+            dx=u.au.to(u.m, np.linspace(-0.2, 0.2, 100)),
+            dy=u.au.to(u.m, np.linspace(-0.2, 0.2, 100))):
+        """Calculates transverse magnetic field map similar to GSR.
 
-    #     _, t = self.impact(t, x, y, z)
+        Args:
+            t (np.ndarray): time (unix timestamp) for which
+                the in-situ measurements are estimated. Can be a single
+                time or an array of timestamps.
+            x, y, z (float or func): synthetic spacecraft coordinates.
+                Can be a single point in space or func(t) which describe
+                the spacecraft trajectory.
+            dx, dy (np.ndarray): grid in X and Y transverse directions
+                for map reconstruction.
 
-    #     fr = FRi3D()
-    #     fr.polarity = self.polarity
-    #     fr.chirality = self.chirality
-    #     fr.spline_s_phi_kind = self.spline_s_phi_kind
-    #     fr.spline_s_phi_n = self.spline_s_phi_n
-    #     fr.latitude = self.latitude(t)
-    #     fr.longitude = self.longitude(t)
-    #     fr.toroidal_height = self.toroidal_height(t)
-    #     fr.poloidal_height = self.poloidal_height(t)
-    #     fr.half_width = self.half_width(t)
-    #     fr.tilt = self.tilt(t)
-    #     fr.flattening = self.flattening(t)
-    #     fr.pancaking = self.pancaking(t)
-    #     fr.skew = self.skew(t)
-    #     fr.twist = self.twist(t)
-    #     fr.flux = self.flux(t)
-    #     fr.sigma = self.sigma(t)
-    #     fr.toroidal_height = 1.0
-    #     fr.init()
-    #     fr._unit_spline_initial_axis_s_phi = \
-    #         fr._spline_initial_axis_s_phi
-    #     fr.toroidal_height = self.toroidal_height(t)
-    #     fr.init()
-
-    #     _, xa, ya, za, xt, yt, zt = fr.impact(x, y, z)
-    #     vtan = np.array([np.mean(xt), np.mean(yt), np.mean(zt)])
-    #     if np.dot(vtan, fr.data(xa, ya, za)) < 0.0:
-    #         vtan = -vtan
-    #     # vtan = fr.data(xa, ya, za)
-    #     # vtan /= np.linalg.norm(vtan)
-    #     vsc = np.array([x, y, z])
-    #     vsc /= np.linalg.norm(vsc)
-
-    #     vmcy = np.cross(vtan, vsc)
-    #     vmcy /= np.linalg.norm(vmcy)
-    #     if vmcy[0] < 0.0:
-    #         vmcy = -vmcy
-    #     vmcx = np.cross(vmcy, vtan)
-    #     vmcx /= np.linalg.norm(vmcx)
-
-    #     print(vmcx, vmcy, vtan)
-
-    #     xg = np.zeros([dx.size, dy.size])
-    #     yg = np.zeros([dx.size, dy.size])
-    #     zg = np.zeros([dx.size, dy.size])
-
-    #     for i in range(dx.size):
-    #         for k in range(dy.size):
-    #             p = np.array([x, y, z])+dx[i]*vmcx+dy[k]*vmcy
-    #             xg[i,k] = p[0]
-    #             yg[i,k] = p[1]
-    #             zg[i,k] = p[2]
-    #     print(
-    #         xg.shape, xg.flatten().shape,
-    #         yg.shape, yg.flatten().shape,
-    #         zg.shape, zg.flatten().shape
-    #     )
-    #     b = fr.data(xg.flatten(), yg.flatten(), zg.flatten())
-    #     print(b.shape)
-    #     bmap = np.zeros(b.shape[0])
-    #     for i in range(b.shape[0]):
-    #         bmap[i] = np.dot(b[i,:], vtan)
-    #     bmap = np.reshape(bmap, [dx.size, dy.size])
-
-    #     return bmap.T
+        Returns:
+            (np.ndarray): transverse magnetic field in all the points of
+                the provided grid.
+        """
+        t = np.array(t, copy=False, ndmin=1)
+        if callable(x):
+            x = np.mean(x(t))
+        if callable(y):
+            y = np.mean(y(t))
+        if callable(z):
+            z = np.mean(z(t))
+        _, t = self.impact(t, x, y, z)
+        sfr = self.snapshot(t)
+        _, axis_point, b_direction = sfr.impact(x, y, z)
+        vtan = np.array([b_direction[0], b_direction[1], b_direction[2]])
+        if np.dot(
+                sfr.data(axis_point[0], axis_point[1], axis_point[2])[0],
+                vtan
+            ) < 0.0:
+            vtan *= -1
+        vsc = np.array([x, y, z])
+        vsc /= np.linalg.norm(vsc)
+        vmcy = np.cross(vtan, vsc)
+        vmcy /= np.linalg.norm(vmcy)
+        if vmcy[0] < 0.0:
+            vmcy = -vmcy
+        vmcx = np.cross(vmcy, vtan)
+        vmcx /= np.linalg.norm(vmcx)
+        xg = np.zeros([dx.size, dy.size])
+        yg = np.zeros([dx.size, dy.size])
+        zg = np.zeros([dx.size, dy.size])
+        for i in range(dx.size):
+            for k in range(dy.size):
+                p = np.array([x, y, z])+dx[i]*vmcx+dy[k]*vmcy
+                xg[i, k] = p[0]
+                yg[i, k] = p[1]
+                zg[i, k] = p[2]
+        b, _ = sfr.data(xg.flatten(), yg.flatten(), zg.flatten())
+        bmap = np.zeros(b.shape[0])
+        for i in range(b.shape[0]):
+            bmap[i] = np.dot(b[i, :], vtan)
+        bmap = np.reshape(bmap, [dx.size, dy.size])
+        return bmap.T
