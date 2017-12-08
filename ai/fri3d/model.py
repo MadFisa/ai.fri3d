@@ -44,7 +44,7 @@ class BaseFRi3D:
 
     @property
     def latitude(self):
-        """float, profile function or profile object:
+        """scalar, profile function or profile object:
         latitude orientation of CME [rad].
         """
         return self._latitude
@@ -54,7 +54,7 @@ class BaseFRi3D:
 
     @property
     def longitude(self):
-        """float, profile function or profile object:
+        """scalar, profile function or profile object:
         longitude orientation of CME [rad].
         """
         return self._longitude
@@ -64,7 +64,7 @@ class BaseFRi3D:
 
     @property
     def toroidal_height(self):
-        """float, profile function or profile object:
+        """scalar, profile function or profile object:
         distance from the origin (Sun) to the apex of
         the CME's axis [m].
         """
@@ -75,7 +75,7 @@ class BaseFRi3D:
 
     @property
     def poloidal_height(self):
-        """float, profile function or profile object:
+        """scalar, profile function or profile object:
         distance from the apex of the CME's axis to its global apex [m].
         """
         return self._poloidal_height
@@ -85,7 +85,7 @@ class BaseFRi3D:
 
     @property
     def half_width(self):
-        """float, profile function or profile object:
+        """scalar, profile function or profile object:
         angular half width of the CME [rad].
         """
         return self._half_width
@@ -95,7 +95,7 @@ class BaseFRi3D:
 
     @property
     def tilt(self):
-        """float, profile function or profile object:
+        """scalar, profile function or profile object:
         tilt of the CME, measured from equatorial plane using right-hand
         rule around the axis with origin in the Sun [rad].
         """
@@ -106,7 +106,7 @@ class BaseFRi3D:
 
     @property
     def flattening(self):
-        """float, profile function or profile object:
+        """scalar, profile function or profile object:
         coefficient that controls the front flattening
         of the CME [unitless].
         0 corresponds to total flattening,
@@ -119,7 +119,7 @@ class BaseFRi3D:
 
     @property
     def pancaking(self):
-        """float, profile function or profile object:
+        """scalar, profile function or profile object:
         angular half height of the CME, measured in the plane
         of the CME [rad].
         """
@@ -130,7 +130,7 @@ class BaseFRi3D:
 
     @property
     def skew(self):
-        """float, profile function or profile object:
+        """scalar, profile function or profile object:
         rotational skewing angle of the CME, happens due to rotation
         of the Sun [rad], corresponds to rotation angle of the Sun.
         """
@@ -141,7 +141,7 @@ class BaseFRi3D:
 
     @property
     def twist(self):
-        """float, profile function or profile object:
+        """scalar, profile function or profile object:
         constant twist of the flux rope, measured as number of full
         rotations of magnetic fields around CME's axis [unitless].
         """
@@ -152,7 +152,7 @@ class BaseFRi3D:
 
     @property
     def flux(self):
-        """float, profile function or profile object:
+        """scalar, profile function or profile object:
         total magnetic flux of the CME [Wb].
         """
         return self._flux
@@ -162,7 +162,7 @@ class BaseFRi3D:
 
     @property
     def sigma(self):
-        """float, profile function or profile object:
+        """scalar, profile function or profile object:
         sigma coefficient of the Gaussian distribution of total magnetic
         field in cross-section of CME [unitless].
         """
@@ -173,7 +173,7 @@ class BaseFRi3D:
 
     @property
     def polarity(self):
-        """float, profile function or profile object:
+        """scalar, profile function or profile object:
         defines the polarity of the flux rope (direction of the axial
         magnetic field) [unitless].
         +1 corresponds to east-to-west direction of magnetic field from
@@ -188,7 +188,7 @@ class BaseFRi3D:
 
     @property
     def chirality(self):
-        """float, profile function or profile object:
+        """scalar, profile function or profile object:
         defines the chirality (handedness) of the flux rope [unitless].
         +1 correponds to right-handed twist of magnetic field lines.
         -1 correponds to left-handed twist of magnetic field lines.
@@ -342,8 +342,7 @@ class StaticFRi3D(BaseFRi3D):
         if val >= 0.0:
             self._twist = val
         else:
-            self._twist = -val
-            self._chirality *= -1
+            raise ValueError('Twist should be positive.')
 
     @BaseFRi3D.flux.setter
     def flux(self, val):
@@ -393,19 +392,19 @@ class StaticFRi3D(BaseFRi3D):
         that rotational skewing is not taken into account.
 
         Args:
-            phi (float): angular coordinate of a point on the
+            phi (scalar or array): angular coordinate of a point on the
                 axis [rad] in polar coordinates, lies in the range
                 [-half_width, half_width].
-            toroidal_height (float, optional): custom toroidal height
+            toroidal_height (scalar or array): custom toroidal height
                 for the calculation [m].
-            coeff_angle (float, optional): custom angle coefficient for
+            coeff_angle (scalar or array): custom angle coefficient for
                 the calculation [unitless].
-            flattening (float, optional): custom angle coefficient for
+            flattening (scalar or array): custom angle coefficient for
                 the calculation [unitless].
 
         Returns:
-            (float) radial coordinate of the point of the axis in polar
-                coordinates [m].
+            (scalar or array) radial coordinate of the point of the axis
+                in polar coordinates [m].
         """
         if toroidal_height is None:
             toroidal_height = self.toroidal_height
@@ -425,19 +424,19 @@ class StaticFRi3D(BaseFRi3D):
         that rotational skewing is not taken into account.
 
         Args:
-            phi (float): angular coordinate of a point on the
+            phi (scalar or array): angular coordinate of a point on the
                 axis [rad] in polar coordinates, lies in the range
                 [-half_width, half_width].
-            toroidal_height (float, optional): custom toroidal height
+            toroidal_height (scalar or array): custom toroidal height
                 for the calculation [m].
-            coeff_angle (float, optional): custom angle coefficient for
+            coeff_angle (scalar or array): custom angle coefficient for
                 the calculation [unitless].
-            flattening (float, optional): custom angle coefficient for
+            flattening (scalar or array): custom angle coefficient for
                 the calculation [unitless].
 
         Returns:
-            (float) dr/d(phi) avulated at an angular point phi in polar
-                coordinates [m/rad].
+            (scalar or array) dr/d(phi) avulated at an angular point phi
+                in polar coordinates [m/rad].
         """
         if toroidal_height is None:
             toroidal_height = self.toroidal_height
@@ -460,14 +459,14 @@ class StaticFRi3D(BaseFRi3D):
         an arbitrary point in space (r_sc, phi_sc).
 
         Args:
-            phi (float): angular coordinate of a point on the
+            phi (scalar or array): angular coordinate of a point on the
                 axis [rad] in polar coordinates, lies in the range
                 [-half_width, half_width].
-            r_sc (float): radial coordinate of a point in space [m].
-            phi_sc (float): radial coordinate of a point in space [rad].
+            r_sc (scalar or array): radial coordinate of a point in space [m].
+            phi_sc (scalar or array): radial coordinate of a point in space [rad].
 
         Returns:
-            (float) distance from (r_sc, phi_sc) to the phi point of the
+            (scalar or array) distance from (r_sc, phi_sc) to the phi point of the
                 axis [m].
         """
         return(
@@ -486,11 +485,11 @@ class StaticFRi3D(BaseFRi3D):
         point in space (r_sc, phi_sc).
 
         Args:
-            r_sc (float): radial coordinate of a point in space [m].
-            phi_sc (float): radial coordinate of a point in space [rad].
+            r_sc (scalar): radial coordinate of a point in space [m].
+            phi_sc (scalar): radial coordinate of a point in space [rad].
 
         Returns:
-            (float) minimal distance from (r_sc, phi_sc) to the
+            (scalar) minimal distance from (r_sc, phi_sc) to the
             axis [m].
         """
         phi = minimize_scalar(
@@ -505,12 +504,12 @@ class StaticFRi3D(BaseFRi3D):
         location.
 
         Args:
-            phi (float): angular coordinate of a point on the
+            phi (scalar or array): angular coordinate of a point on the
                 axis [rad] in polar coordinates, lies in the range
                 [-half_width, half_width].
 
         Returns:
-            (float) tangent angle to the axis at a given angular
+            (scalar or array) tangent angle to the axis at a given angular
                 location [rad].
         """
         return np.arctan(
@@ -528,18 +527,18 @@ class StaticFRi3D(BaseFRi3D):
         rotational skewing is not taken into account.
 
         Args:
-            phi (float): angular coordinate of a point on the
+            phi (scalar or array): angular coordinate of a point on the
                 axis [rad] in polar coordinates, lies in the range
                 [-half_width, half_width].
-            toroidal_height (float, optional): custom toroidal height
+            toroidal_height (scalar or array): custom toroidal height
                 for the calculation [m].
-            coeff_angle (float, optional): custom angle coefficient for
+            coeff_angle (scalar or array): custom angle coefficient for
                 the calculation [unitless].
-            flattening (float, optional): custom angle coefficient for
+            flattening (scalar or array): custom angle coefficient for
                 the calculation [unitless].
 
         Returns:
-            (float) ds/d(phi) evaluated at a phi angular location of the
+            (scalar or array) ds/d(phi) evaluated at a phi angular location of the
                 axis [m/rad].
         """
         if toroidal_height is None:
@@ -565,33 +564,24 @@ class StaticFRi3D(BaseFRi3D):
         does not take into account rotational skewing.
 
         Args:
-            phi (float): angular coordinate of a point on the
+            phi (scalar or array): angular coordinate of a point on the
                 axis [rad] in polar coordinates, lies in the range
                 [-half_width, half_width].
 
         Returns:
-            (float) length of the axis from origin footpoint towards the
+            (scalar or array) length of the axis from origin footpoint towards the
                 location defined by angular coordinate phi.
         """
-        try:
-            return(
-                self.toroidal_height
-                *self._interpolator_axis_length(
-                    (
-                        self._coeff_angle*phi,
-                        self._coeff_angle,
-                        self.flattening
-                    )
+        return(
+            self.toroidal_height
+            *self._interpolator_axis_length(
+                (
+                    self._coeff_angle*phi,
+                    self._coeff_angle,
+                    self.flattening
                 )
             )
-        except ValueError as e:
-            print(
-                phi,
-                self._coeff_angle*phi,
-                self._coeff_angle,
-                self.flattening,
-                e
-            )
+        )
 
     def vanilla_axis_phi(self, length):
         """Evaluate polar coordinate of the axis as a function of its
@@ -599,11 +589,11 @@ class StaticFRi3D(BaseFRi3D):
         rotational skewing.
 
         Args:
-            length (float): length of the section of the axis from
+            length (scalar or array): length of the section of the axis from
                 origin footpoint towards some point of the axis [m].
 
         Returns:
-            (float) angular coordinate of a point of the axis, distance
+            (scalar or array) angular coordinate of a point of the axis, distance
                 to which is equal to length [rad].
         """
         return(
@@ -806,6 +796,8 @@ class StaticFRi3D(BaseFRi3D):
                 (x, y, z) coordinates of the shell points [m].
         """
         s = np.array(s, copy=False, ndmin=1)
+        if np.any(s < 0) or np.any(s > 1):
+            raise ValueError('s should be in the range [0, 1]')
         phi = np.array(phi, copy=False, ndmin=1)
         s = np.transpose(np.tile(s, (phi.size, 1)))
         phi = np.tile(phi, (s.shape[0], 1))
@@ -846,18 +838,18 @@ class StaticFRi3D(BaseFRi3D):
         r, phi, z = cs.cart2cyl(x, y, z)
         phi += self.skew*(1-r/self.toroidal_height)
         x, y, z = cs.cyl2cart(r, phi, z)
-        return(x, y, z)
+        return(x.squeeze(), y.squeeze(), z.squeeze())
 
-    def line(self, r=0, phi=0, s=np.linspace(0, 1, 50)):
+    def line(self, r, phi, s=np.linspace(0, 1, 50)):
         """Evaluate the 3D magnetic field line of the flux rope.
 
         Args:
-            r (float, optional): relative radial coordinate of the line
+            r (scalar): relative radial coordinate of the line
                 origin in origin footpoint cross-section [m], goes from
                 0 (center) to 1 (edge).
-            phi (float, optional): angular coordinate of the line origin
+            phi (scalar): angular coordinate of the line origin
                 in origin footpoint cross-section [rad].
-            s (numpy.ndarray, optional): relative sampling [unitless] of
+            s (array): relative sampling [unitless] of
                 the line, assuming that distance along the line goes
                 from 0 to 1.
 
@@ -866,8 +858,12 @@ class StaticFRi3D(BaseFRi3D):
                 (x, y, z, b) coordinates of the line point and total
                 magnetic field along the line.
         """
-        s = np.array(s, copy=False, ndmin=1)
+        s = np.array(s, copy=False, ndmin=1).flatten()
         phi = np.ones(s.size)*phi
+        if r < 0 or r > 1:
+            raise ValueError('r should be in the range [0, 1]')
+        if np.any(s < 0) or np.any(s > 1):
+            raise ValueError('s should be in the range [0, 1]')
         # twist
         phi += s*self.twist*np.pi*2.0*self.chirality
         # elongation
@@ -911,29 +907,29 @@ class StaticFRi3D(BaseFRi3D):
         r, phi, z = cs.cart2cyl(x, y, z)
         phi += self.skew*(1-r/self.toroidal_height)
         x, y, z = cs.cyl2cart(r, phi, z)
-        return (x, y, z, b)
+        return (np.array([x, y, z]).T.squeeze(), b.squeeze())
 
-    def data(self, x, y, z, ds=1e-5):
+    def data(self, pos, ds=1e-5):
         """Evaluate magnetic field measurements at a given point (or
         trajectory) in space.
 
         Args:
-            x (float or numpy.ndarray): x coordinate(s) in space.
-            y (float or numpy.ndarray): y coordinate(s) in space.
-            z (float or numpy.ndarray): z coordinate(s) in space.
-            ds (float, optional): length of a relaticve axis section
+            pos (array(3) or array(n, 3)) coordinate(s) in space.
+            ds (scalar): length of a relaticve axis section
                 used to integrate the magnetic field measurement.
 
         Returns:
-            (numpy.ndarray, numpy.ndarray)
+            (array, array)
                 magnetic field measurements (3, n) and
                 coefficients used for local speed estimation (2, n)
         """
-        x = np.array(x, copy=False, ndmin=1)
-        y = np.array(y, copy=False, ndmin=1)
-        z = np.array(z, copy=False, ndmin=1)
+        pos = np.array(pos, ndmin=2)
+        if pos.shape[1] != 3:
+            raise ValueError(
+                'pos should be an array of shape (3,) or (n, 3)'
+            )
         # reverse skew
-        r, theta, phi = cs.cart2sp(x, y, z)
+        r, theta, phi = cs.cart2sp(pos[:, 0], pos[:, 1], pos[:, 2])
         phi -= self.skew*(1-r/self.toroidal_height)
         x, y, z = cs.sp2cart(r, theta, phi)
         # reverse orientation
@@ -990,12 +986,12 @@ class StaticFRi3D(BaseFRi3D):
         vc = []
         for i in range(r.size):
             if r[i] <= 1:
-                x_, y_, z_, b_ = self.line(
+                xyz_, b_ = self.line(
                     r[i],
                     phi[i],
                     [s[i]-ds, s[i]+ds]
                 )
-                if x_.size < 2 or y_.size < 2 or z_.size < 2:
+                if xyz_.shape[0] != 2:
                     b.append([np.nan, np.nan, np.nan])
                     vc.append([np.nan, np.nan])
                 else:
@@ -1004,29 +1000,25 @@ class StaticFRi3D(BaseFRi3D):
                         r_ax[i]/self.toroidal_height
                         *(
                             np.sqrt(
-                                np.mean(x_)**2
-                                +np.mean(y_)**2
-                                +np.mean(z_)**2
+                                np.mean(xyz_[:, 0])**2
+                                +np.mean(xyz_[:, 1])**2
+                                +np.mean(xyz_[:, 2])**2
                             )
                             -r_ax[i]
                         )
                         /self.poloidal_height
                         *np.cos(self.vanilla_axis_tan(phi_ax[i]))
                     )
-                    dr = np.array([
-                        x_[1]-x_[0],
-                        y_[1]-y_[0],
-                        z_[1]-z_[0]
-                    ])
+                    dr = np.diff(xyz_, axis=0).flatten()
                     dr /= np.linalg.norm(dr)
                     b.append(dr*np.mean(b_)*self.polarity)
                     vc.append(np.array([vtc, vpc]))
             else:
                 b.append([np.nan, np.nan, np.nan])
                 vc.append([np.nan, np.nan])
-        return (np.array(b), np.array(vc))
+        return (np.array(b).squeeze(), np.array(vc).squeeze())
 
-    def impact(self, x, y, z, dphi=1e-3):
+    def axis_min_distance(self, pos, dphi=1e-3):
         """Estimate the impact distance.
 
         Args:
@@ -1042,6 +1034,14 @@ class StaticFRi3D(BaseFRi3D):
             (np.ndarray): (x, y, z)-vector (unit) of the tangent to the
                 the axis near the closest point.
         """
+        pos = np.array(pos, ndmin=1).flatten()
+        if pos.size != 3:
+            raise ValueError(
+                'pos should be an array of shape (3,)'
+            )
+        x = pos[0]
+        y = pos[1]
+        z = pos[2]
         x0 = x
         y0 = y
         z0 = z
@@ -1366,8 +1366,34 @@ class DynamicFRi3D(BaseFRi3D):
         )
         return (res.fun, res.x)
 
+    def local_axis(self, t, x, y, z):
+        t = np.array(t, copy=False, ndmin=1)
+        if not callable(x):
+            _x = x
+            x = lambda t: _x
+        if not callable(y):
+            _y = y
+            y = lambda t: _y
+        if not callable(z):
+            _z = z
+            z = lambda t: _z
+        _, t_min_impact = self.impact(t, x, y, z)
+        sfr = self.snapshot(t_min_impact)
+        _, axis_point, axis_direction = sfr.impact(
+            x(t_min_impact),
+            y(t_min_impact),
+            z(t_min_impact)
+        )
+        if np.dot(
+                sfr.data(axis_point[0], axis_point[1], axis_point[2])[0],
+                axis_direction
+            ) < 0:
+            axis_direction *= -1
+        return axis_direction
+
     def map(
             self, t, x, y, z,
+            xn=None, yn=None, zn=None,
             dx=u.au.to(u.m, np.linspace(-0.2, 0.2, 100)),
             dy=u.au.to(u.m, np.linspace(-0.2, 0.2, 100))):
         """Calculates transverse magnetic field map similar to GSR.
@@ -1393,15 +1419,15 @@ class DynamicFRi3D(BaseFRi3D):
             y = np.mean(y(t))
         if callable(z):
             z = np.mean(z(t))
-        _, t = self.impact(t, x, y, z)
-        sfr = self.snapshot(t)
-        _, axis_point, b_direction = sfr.impact(x, y, z)
-        vtan = np.array([b_direction[0], b_direction[1], b_direction[2]])
-        if np.dot(
-                sfr.data(axis_point[0], axis_point[1], axis_point[2])[0],
-                vtan
-            ) < 0.0:
-            vtan *= -1
+        # _, t = self.impact(t, x, y, z)
+        # sfr = self.snapshot(t)
+        # _, axis_point, b_direction = sfr.impact(x, y, z)
+        # vtan = np.array([b_direction[0], b_direction[1], b_direction[2]])
+        # if np.dot(
+        #         sfr.data(axis_point[0], axis_point[1], axis_point[2])[0],
+        #         vtan
+        #     ) < 0:
+        #     vtan *= -1
         vsc = np.array([x, y, z])
         vsc /= np.linalg.norm(vsc)
         vmcy = np.cross(vtan, vsc)
