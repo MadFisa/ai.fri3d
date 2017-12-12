@@ -16,7 +16,7 @@ from matplotlib import gridspec
 from astropy import units as u
 from fastdtw import fastdtw
 from ai.fri3d.model import StaticFRi3D, DynamicFRi3D
-from ai.shared import cs
+from ai import cs
 from ai.shared.color import BLIND_PALETTE
 
 d_prev = np.inf
