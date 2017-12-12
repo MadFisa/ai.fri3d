@@ -184,4 +184,3 @@ class TestStaticFRi3D:
         assert res[0] == approx(0, abs=1e-3)
         assert res[1] == approx(np.array([u.au.to(u.m, 1), 0, 0]), abs=1e-3)
         assert res[2] == approx(np.array([0, 1, 0]))
-
