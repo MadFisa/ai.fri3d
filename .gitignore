@@ -1,7 +1,6 @@
 *.pkl
 *.npz
 *.sav
-*.txt
 *.cdf
 *.gz
 *.mp4
