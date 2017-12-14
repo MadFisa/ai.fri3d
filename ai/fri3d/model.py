@@ -210,7 +210,7 @@ class StaticFRi3D(BaseFRi3D):
         self.latitude = kwargs.get('latitude', 0)
         self.longitude = kwargs.get('longitude', 0)
         self.toroidal_height = kwargs.get('toroidal_height', 149597870700)
-        self.poloidal_height = kwargs.get('poloidal_height', 149597870700*0.2)
+        self.poloidal_height = kwargs.get('poloidal_height', 149597870700*0.1)
         self.half_width = kwargs.get('half_width', 40*np.pi/180)
         self.tilt = kwargs.get('tilt', 0)
         self.flattening = kwargs.get('flattening', 0.5)
@@ -271,7 +271,7 @@ class StaticFRi3D(BaseFRi3D):
             )
 
     def modify(self, **kwargs):
-        """Modify the model parameters.
+        """Modifies the model parameters.
 
         Args:
             **kwargs: Scalar model parameters. Allowed keywords:
@@ -1031,9 +1031,9 @@ class StaticFRi3D(BaseFRi3D):
                 used to integrate the magnetic field measurement.
 
         Returns:
-            tuple: magnetic field measurements array of shape (3) or
-                (3, n) and array of coefficients used for local speed
-                estimation of shape (2) or (2, n).
+            tuple: (array, array), magnetic field measurements array of
+                shape (3) or (3, n) and array of coefficients used for
+                local speed estimation of shape (2) or (2, n).
         """
         x = np.asarray(x)
         y = np.asarray(y)
@@ -1207,6 +1207,48 @@ class StaticFRi3D(BaseFRi3D):
             d.squeeze()
         )
 
+    def map(self, x, y, z, xmc, ymc,
+            xgrid=np.linspace(-0.5, 0.5, 100)*149597870700,
+            ygrid=np.linspace(-0.5, 0.5, 100)*149597870700):
+        """Calculates magnetic field map, i.e., cross-section of the
+        flux rope, in any plane.
+
+        Args:
+            x (scalar): X-component of coordinate of the point in space.
+            y (scalar): Y-component of coordinate of the point in space.
+            z (scalar): Z-component of coordinate of the point in space.
+            xmc (array_like): basis unit vector for X axis in coordinate
+                system of magnetic cloud, i.e., flux-rope cross-section,
+                of size (3)
+            ymc (array_like): basis unit vector for Y axis in coordinate
+                system of magnetic cloud, i.e., flux-rope cross-section,
+                of size (3)
+            xgrid (array_like, optional): map grid in X direction.
+            ygrid (array_like, optional): map grid in Y direction.
+
+        Returns:
+            array: transverse magnetic field 2D arrayin all the points
+                of the provided grid.
+        """
+        xmc = np.asarray(xmc)
+        ymc = np.asarray(ymc)
+        zmc = np.cross(xmc, ymc)
+        xg = np.zeros([xgrid.size, ygrid.size])
+        yg = np.zeros([xgrid.size, ygrid.size])
+        zg = np.zeros([xgrid.size, ygrid.size])
+        for i in range(xgrid.size):
+            for k in range(ygrid.size):
+                p = np.array([x, y, z])+xgrid[i]*xmc+ygrid[k]*ymc
+                xg[i, k] = p[0]
+                yg[i, k] = p[1]
+                zg[i, k] = p[2]
+        b, _ = self.data(xg.flatten(), yg.flatten(), zg.flatten())
+        bmap = np.zeros(b.shape[0])
+        for i in range(b.shape[0]):
+            bmap[i] = np.dot(b[i, :], zmc)
+        bmap = np.reshape(bmap, [xgrid.size, ygrid.size]).T
+        return bmap
+
 class DynamicFRi3D(BaseFRi3D):
     """FRi3D model dynamic class. It provides dynamic description of the
     model.
@@ -1251,7 +1293,14 @@ class DynamicFRi3D(BaseFRi3D):
         )
 
     def modify(self, **kwargs):
-        """Modify the time profiles."""
+        """Modifies the model parameters.
+
+        Args:
+            **kwargs: Callable model parameters. Allowed keywords:
+                latitude, longitude, toroidal_height, poloidal_height,
+                half_width, tilt, flattening, pancaking, skew, twist,
+                flux, sigma, polarity, chirality. Each parameter should
+                be function of time."""
         for k, v in kwargs.items():
             if k in self._props:
                 setattr(self, k, v)
@@ -1385,10 +1434,10 @@ class DynamicFRi3D(BaseFRi3D):
         time.
 
         Args:
-            t (float): timestamp
+            t (scalar): timestamp [s].
 
         Returns:
-            StaticFRi3D object
+            StaticFRi3D: a static model object for a given time.
         """
         self.__sfr.modify(
             latitude=self.latitude(t),
@@ -1409,21 +1458,33 @@ class DynamicFRi3D(BaseFRi3D):
         return self.__sfr
 
     def insitu(self, t, x, y, z):
-        """Calculate synthetic in-situ measurements.
+        """Calculates synthetic in-situ measurements for given time
+        interval and a given point of space.
 
         Args:
-            t (float or np.ndarray): time (unix timestamp) for which
+            t (scalar or array_like): time (unix timestamp), for which
                 the in-situ measurements are estimated. Can be a single
-                time or an array of timestamps.
-            x, y, z (float or func): synthetic spacecraft coordinates.
-                Can be a single point in space or func(t) which describe
-                the spacecraft trajectory.
+                timestamp or an array of timestamps.
+            x (scalar or callable): X-component of synthetic spacecraft
+                coordinates. Can be a single point in space or func(t),
+                which describe the spacecraft trajectory.
+            y (scalar or callable): Y-component of synthetic spacecraft
+                coordinates. Can be a single point in space or func(t),
+                which describe the spacecraft trajectory.
+            z (scalar or callable): Z-component of synthetic spacecraft
+                coordinates. Can be a single point in space or func(t),
+                which describe the spacecraft trajectory.
 
         Returns:
-            (np.ndarray(3), np.ndarray): magnetic field components and
-                absolute speed.
+            tuple: (array, scalar or array): magnetic field components
+                array of shape (3) or (3, n) and absolute speed, which
+                can be a scalar or an array of shape (n).
         """
-        t = np.array(t, copy=False, ndmin=1)
+        t = np.asarray(t)
+        scalar_input = False
+        if t.ndim == 0:
+            t = t[None]
+            scalar_input = True
         if not callable(x):
             _x = x
             x = lambda t: _x
@@ -1434,34 +1495,47 @@ class DynamicFRi3D(BaseFRi3D):
             _z = z
             z = lambda t: _z
         b = []
-        v = []
+        vt = []
         for _t in t:
             _b, _c = self.snapshot(_t).data(x(_t), y(_t), z(_t))
             _b = _b[0, :]
             _c = _c[0, :]
             b.append(_b.ravel())
-            v.append(
-                _c[0]*(self.toroidal_height(_t)-self.toroidal_height(_t-1))+
-                _c[1]*(self.poloidal_height(_t)-self.poloidal_height(_t-1))
+            vt.append(
+                _c[0]*(self.toroidal_height(_t)-self.toroidal_height(_t-1))
+                +_c[1]*(self.poloidal_height(_t)-self.poloidal_height(_t-1))
             )
-        return (np.array(b), np.array(v))
+        b = np.array(b)
+        vt = np.array(vt)
+        if scalar_input:
+            return (b.squeeze(), vt.squeeze())
+        return (b, vt)
 
     def impact(self, t, x, y, z):
-        """Estimate minimal impact distance.
+        """Estimates the impact distance for a given time interval and
+            at a given point in space (or trajectory).
 
         Args:
-            t (float or np.ndarray): time (unix timestamp) for which
-                the in-situ measurements are estimated. Can be a single
-                time or an array of timestamps.
-            x, y, z (float or func): synthetic spacecraft coordinates.
-                Can be a single point in space or func(t) which describe
-                the spacecraft trajectory.
+            t (scalar or array_like): time (unix timestamp), for which
+                the impact distance is estimated. Can be a single
+                timestamp or an array of timestamps.
+            x (scalar or callable): X-component of synthetic spacecraft
+                coordinates. Can be a single point in space or func(t),
+                which describe the spacecraft trajectory.
+            y (scalar or callable): Y-component of synthetic spacecraft
+                coordinates. Can be a single point in space or func(t),
+                which describe the spacecraft trajectory.
+            z (scalar or callable): Z-component of synthetic spacecraft
+                coordinates. Can be a single point in space or func(t),
+                which describe the spacecraft trajectory.
 
         Returns:
-            (float, int): minimal impact distance and the timestamp of
-                the closest impact.
+            tuple: (float, int): impact distance and the timestamp of
+                the closest approach.
         """
-        t = np.array(t, copy=False, ndmin=1)
+        t = np.asarray(t)
+        if t.ndim == 0:
+            t = t[None]
         if not callable(x):
             _x = x
             x = lambda t: _x
@@ -1480,100 +1554,14 @@ class DynamicFRi3D(BaseFRi3D):
         )
         return (res.fun, res.x)
 
-    def local_axis(self, t, x, y, z):
-        t = np.array(t, copy=False, ndmin=1)
-        if not callable(x):
-            _x = x
-            x = lambda t: _x
-        if not callable(y):
-            _y = y
-            y = lambda t: _y
-        if not callable(z):
-            _z = z
-            z = lambda t: _z
-        _, t_min_impact = self.impact(t, x, y, z)
-        sfr = self.snapshot(t_min_impact)
-        _, axis_point, axis_direction = sfr.impact(
-            x(t_min_impact),
-            y(t_min_impact),
-            z(t_min_impact)
-        )
-        if np.dot(
-                sfr.data(axis_point[0], axis_point[1], axis_point[2])[0],
-                axis_direction
-            ) < 0:
-            axis_direction *= -1
-        return axis_direction
-
-    def map(
-            self, t, x, y, z,
-            xn=None, yn=None, zn=None,
-            dx=np.linspace(-0.2, 0.2, 100)*149597870700,
-            dy=np.linspace(-0.2, 0.2, 100)*149597870700):
-        """Calculates transverse magnetic field map similar to GSR.
-
-        Args:
-            t (np.ndarray): time (unix timestamp) for which
-                the in-situ measurements are estimated. Can be a single
-                time or an array of timestamps.
-            x, y, z (float or func): synthetic spacecraft coordinates.
-                Can be a single point in space or func(t) which describe
-                the spacecraft trajectory.
-            dx, dy (np.ndarray): grid in X and Y transverse directions
-                for map reconstruction.
-
-        Returns:
-            (np.ndarray): transverse magnetic field in all the points of
-                the provided grid.
-        """
-        t = np.array(t, copy=False, ndmin=1)
-        if callable(x):
-            x = np.mean(x(t))
-        if callable(y):
-            y = np.mean(y(t))
-        if callable(z):
-            z = np.mean(z(t))
-        # _, t = self.impact(t, x, y, z)
-        # sfr = self.snapshot(t)
-        # _, axis_point, b_direction = sfr.impact(x, y, z)
-        # vtan = np.array([b_direction[0], b_direction[1], b_direction[2]])
-        # if np.dot(
-        #         sfr.data(axis_point[0], axis_point[1], axis_point[2])[0],
-        #         vtan
-        #     ) < 0:
-        #     vtan *= -1
-        vsc = np.array([x, y, z])
-        vsc /= np.linalg.norm(vsc)
-        vmcy = np.cross(vtan, vsc)
-        vmcy /= np.linalg.norm(vmcy)
-        if vmcy[0] < 0.0:
-            vmcy = -vmcy
-        vmcx = np.cross(vmcy, vtan)
-        vmcx /= np.linalg.norm(vmcx)
-        xg = np.zeros([dx.size, dy.size])
-        yg = np.zeros([dx.size, dy.size])
-        zg = np.zeros([dx.size, dy.size])
-        for i in range(dx.size):
-            for k in range(dy.size):
-                p = np.array([x, y, z])+dx[i]*vmcx+dy[k]*vmcy
-                xg[i, k] = p[0]
-                yg[i, k] = p[1]
-                zg[i, k] = p[2]
-        b, _ = sfr.data(xg.flatten(), yg.flatten(), zg.flatten())
-        bmap = np.zeros(b.shape[0])
-        for i in range(b.shape[0]):
-            bmap[i] = np.dot(b[i, :], vtan)
-        bmap = np.reshape(bmap, [dx.size, dy.size])
-        return bmap.T
-
 def subtract_period(value, period):
-    """Reduce angle by period.
+    """Reduces angle by period.
 
     Args:
         value (scalar): initial angle [rad].
         period (scalar): period [rad].
 
     Returns:
-        scalar angle reduced by correct number of periods.
+        scalar: angle reduced by correct number of periods.
     """
     return value-math.copysign(value, 1)*(math.fabs(value)//period)*period
