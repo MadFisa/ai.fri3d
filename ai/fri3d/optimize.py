@@ -28,24 +28,23 @@ def fit2insitu(
     """Fits FRi3D model to in-situ data (magnetic field and speed).
 
     Args:
-        t (np.ndarray): array of timestamps (n)
-        x (float): x-coordinate of the spacecraft
-        y (float): y-coordinate of the spacecraft
-        z (float): z-coordinate of the spacecraft
-        b (np.ndarray): array of magnetic field vectors (n, 3)
-        vt (np.ndarray): array of absolute speed values (n)
-        sampling (int): number of sampling points used for fitting
-        relative (bool): flag for using relative time-profiles (relative
-            to the starting time of the fitted data t[0])
-        weights (dict): importance weigths for the fitting
-        verbose (bool): verbose mode - print parameters and draw plots
-            during fitting
-        **kwargs: keyworded profiles for all model parameters
+        t (array_like): Vector of timestamps of size (3).
+        x (scalar or callable): X-coordinate of the spacecraft.
+        y (scalar or callable): Y-coordinate of the spacecraft.
+        z (scalar or callable): Z-coordinate of the spacecraft.
+        b (array_like): Array of magnetic field vectors of shape (n, 3).
+        vt (array_like): Vector of absolute speed values of size (n).
+        sampling (int): Number of sampling points used for the fitting.
+        relative (bool): Flag for using relative time-profiles (relative
+            to the starting time of the fitted data t[0]).
+        weights (dict): Importance weigths for the fitted parameters.
+        verbose (bool): Verbose mode - print parameters and draw plots
+            during fitting.
+        **kwargs: Keyworded profiles for all model parameters.
 
     Returns:
-        (DynamicFRi3D) fitted dynamic FRi3D model
-        (dict) dictionary of fitted profiles for all the model
-            parameters
+        tuple: (DynamicFRi3D, dict), fitted dynamic FRi3D model
+        and dictionary of fitted profiles for all model parameters.
     """
     t_real = np.linspace(t[0], t[-1], sampling)
     dt_real = t_real[1]-t_real[0]
@@ -294,9 +293,8 @@ def fit2cor(
 
     Args:
 
-
     Returns:
-        (StaticFRi3D) fitted static FRi3D model
+        StaticFRi3D: Fitted static FRi3D model.
     """
     sfr = StaticFRi3D()
     sfr.modify(**kwargs)
