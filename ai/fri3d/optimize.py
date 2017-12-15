@@ -21,6 +21,16 @@ from ai.shared.color import BLIND_PALETTE
 
 d_prev = np.inf
 
+#TODO
+# /users/cpa/alexeyi/.virtualenvs/ai.fri3d.py3/lib/python3.6/site-packages/numpy/core/_methods.py:112: RuntimeWarning: invalid value encountered in subtract
+#   x = asanyarray(arr - arrmean)
+# /users/cpa/alexeyi/Development/ai.fri3d/ai/fri3d/model.py:974: RuntimeWarning: invalid value encountered in less
+#   if np.any(s < 0) or np.any(s > 1):
+# /users/cpa/alexeyi/Development/ai.fri3d/ai/fri3d/model.py:974: RuntimeWarning: invalid value encountered in greater
+#   if np.any(s < 0) or np.any(s > 1):
+# /users/cpa/alexeyi/Development/ai.fri3d/ai/fri3d/model.py:999: RuntimeWarning: invalid value encountered in less
+#   x[x < 0] = 0
+
 def fit2insitu(
         x, y, z, t, b, vt=None,
         sampling=50, relative=True, weights={'t': 1, 'b': 1, 'vt': 1},
@@ -157,28 +167,12 @@ def fit2insitu(
                 ax1 = fig.add_subplot(211)
                 ax1.plot(
                     db_real,
-                    np.sqrt(
-                        b_real[:, 0]**2+
-                        b_real[:, 1]**2+
-                        b_real[:, 2]**2
-                    ),
+                    np.sqrt(b_real[:, 0]**2+b_real[:, 1]**2+b_real[:, 2]**2),
                     'k'
                 )
-                ax1.plot(
-                    db_real,
-                    b_real[:, 0],
-                    'r'
-                )
-                ax1.plot(
-                    db_real,
-                    b_real[:, 1],
-                    'g'
-                )
-                ax1.plot(
-                    db_real,
-                    b_real[:, 2],
-                    'b'
-                )
+                ax1.plot(db_real, b_real[:, 0], 'r')
+                ax1.plot(db_real, b_real[:, 1], 'g')
+                ax1.plot(db_real, b_real[:, 2], 'b')
                 ax1.plot(
                     d_model,
                     np.sqrt(
@@ -188,32 +182,12 @@ def fit2insitu(
                     ),
                     '--k'
                 )
-                ax1.plot(
-                    d_model,
-                    b_model[:, 0],
-                    '--r'
-                )
-                ax1.plot(
-                    d_model,
-                    b_model[:, 1],
-                    '--g'
-                )
-                ax1.plot(
-                    d_model,
-                    b_model[:, 2],
-                    '--b'
-                )
+                ax1.plot(d_model, b_model[:, 0], '--r')
+                ax1.plot(d_model, b_model[:, 1], '--g')
+                ax1.plot(d_model, b_model[:, 2], '--b')
                 ax2 = fig.add_subplot(212, sharex=ax1)
-                ax2.plot(
-                    dv_real,
-                    vt_real,
-                    'k'
-                )
-                ax2.plot(
-                    d_model,
-                    vt_model,
-                    '--k'
-                )
+                ax2.plot(dv_real, vt_real, 'k')
+                ax2.plot(d_model, vt_model, '--k')
 
                 plt.setp(ax1.get_xticklabels(), visible=False)
                 plt.ion()
@@ -221,26 +195,25 @@ def fit2insitu(
                 plt.pause(0.1)
                 plt.show()
 
-                print('---------------------')
+                print('fitness', d_prev)
                 for prop, profile in profiles.items():
+                    params = profile.params
                     if prop in (
                             'latitude', 'longitude', 'half_width', 'tilt',
                             'pancaking', 'skew'):
-                        print(prop, u.rad.to(u.deg, profile.params))
+                        params = u.rad.to(u.deg, params)
                     elif prop in ('toroidal_height', 'poloidal_height'):
                         if len(profile.params) == 1:
-                            print(prop, u.m.to(u.au, profile.params))
+                            params = u.m.to(u.au, params)
                         else:
-                            print(
-                                prop,
-                                u.Unit('m/s').to(
-                                    u.Unit('km/s'),
-                                    profile.params[:-1]
-                                ),
-                                u.m.to(u.au, profile.params[-1])
+                            params = profile.params
+                            params[:-1] = u.Unit('m/s').to(
+                                u.Unit('km/s'),
+                                params[:-1]
                             )
-                    else:
-                        print(prop, profile.params)
+                            params[-1] = u.m.to(u.au, params[-1])
+                    print(prop, params)
+                print("\n")
             return db+dv
         else:
             return np.inf
@@ -469,6 +442,16 @@ class BaseProfile:
     @bounds.setter
     def bounds(self, val):
         self._bounds = val
+
+class SignProfile(BaseProfile):
+    """Binary sign profile. Corresponds to +1 or -1 values."""
+    def signature(self):
+        """Returns the sign profile function signature."""
+        return 'sign(p[0])'
+
+    def eval(self, t):
+        """Evaluates the profile function at a given time."""
+        return int(np.copysign(1, self.params[0]))
 
 class PolyProfile(BaseProfile):
     """Polynomial profile."""
