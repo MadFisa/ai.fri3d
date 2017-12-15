@@ -266,6 +266,7 @@ def fit2insitu(
         setattr(dfr, prop, profile.eval)
     return (dfr, profiles)
 
+# TODO make independent of specific isntruments
 def fit2cor(
         cor2a_img_path=None,
         cor2a_aov=u.deg.to(u.rad, 4),

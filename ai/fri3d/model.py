@@ -344,18 +344,22 @@ class StaticFRi3D(BaseFRi3D):
         """If negative twist is submitted the setter will revert the
         chirality.
         """
-        self._twist = np.absolute(val)
-        self.chirality = np.sign(val)
+        if val >= 0:
+            self._twist = np.absolute(val)
+        else:
+            raise ValueError('Twist should be positive.')
 
     @BaseFRi3D.flux.setter
     def flux(self, val):
         """Set not only magnetic flux but also unit magnetic field if
         sigma is already defined.
         """
-        self._flux = np.absolute(val)
-        self.polarity = np.sign(val)
-        if self.sigma is not None:
-            self._unit_b = self.flux/(2*np.pi*self.sigma**2)
+        if val >= 0:
+            self._flux = np.absolute(val)
+            if self.sigma is not None:
+                self._unit_b = self.flux/(2*np.pi*self.sigma**2)
+        else:
+            raise ValueError('Flux should be positive.')
 
     @BaseFRi3D.sigma.setter
     def sigma(self, val):
@@ -1498,8 +1502,8 @@ class DynamicFRi3D(BaseFRi3D):
         vt = []
         for _t in t:
             _b, _c = self.snapshot(_t).data(x(_t), y(_t), z(_t))
-            _b = _b[0, :]
-            _c = _c[0, :]
+            _b = _b[:]
+            _c = _c[:]
             b.append(_b.ravel())
             vt.append(
                 _c[0]*(self.toroidal_height(_t)-self.toroidal_height(_t-1))
