@@ -1231,7 +1231,7 @@ class StaticFRi3D(BaseFRi3D):
             ygrid (array_like, optional): map grid in Y direction.
 
         Returns:
-            array: transverse magnetic field 2D arrayin all the points
+            array: transverse magnetic field 2D array in all the points
                 of the provided grid.
         """
         xmc = np.asarray(xmc)
@@ -1252,6 +1252,78 @@ class StaticFRi3D(BaseFRi3D):
             bmap[i] = np.dot(b[i, :], zmc)
         bmap = np.reshape(bmap, [xgrid.size, ygrid.size]).T
         return bmap
+
+    def forcemap(
+            self, x, y, z, xmc, ymc,
+            xgrid=np.linspace(-0.05, 0.05, 100)*149597870700,
+            ygrid=np.linspace(-0.05, 0.05, 100)*149597870700):
+        """Calculates force map, i.e., |jxB| of the flux rope, in any
+        plane.
+
+        Args:
+            x (scalar): X-component of coordinate of the point in space.
+            y (scalar): Y-component of coordinate of the point in space.
+            z (scalar): Z-component of coordinate of the point in space.
+            xmc (array_like): basis unit vector for X axis in coordinate
+                system of magnetic cloud, i.e., flux-rope cross-section,
+                of size (3)
+            ymc (array_like): basis unit vector for Y axis in coordinate
+                system of magnetic cloud, i.e., flux-rope cross-section,
+                of size (3)
+            xgrid (array_like, optional): map grid in X direction.
+            ygrid (array_like, optional): map grid in Y direction.
+
+        Returns:
+            array: force 2D array in all the points of the provided
+                grid.
+        """
+        xmc = np.asarray(xmc)
+        ymc = np.asarray(ymc)
+        zmc = np.cross(xmc, ymc)
+        xg = np.zeros([xgrid.size, ygrid.size])
+        yg = np.zeros([xgrid.size, ygrid.size])
+        zg = np.zeros([xgrid.size, ygrid.size])
+        forcemap = np.zeros([xgrid.size, ygrid.size])
+        import numdifftools as nd
+        def b(pos):
+            return self.data(pos[0], pos[1], pos[2])[0]
+        for i in range(xgrid.size):
+            for k in range(ygrid.size):
+                p = np.array([x, y, z])+xgrid[i]*xmc+ygrid[k]*ymc
+                jac = nd.Jacobian(b)(p)
+                # j = np.array([
+                #     jac[2, 1]-jac[1, 2],
+                #     jac[0, 2]-jac[2, 0],
+                #     jac[1, 0]-jac[0, 1]
+                # ])/1.25663706e-06
+                # j /= np.linalg.norm(j)
+                # b_ = b(p)
+                # b_ /= np.linalg.norm(b_)
+                # forcemap[i, k] = np.linalg.norm(np.cross(j, b_))
+                # forcemap[i, k] = np.arccos(np.dot(j, b_))
+                # forcemap[i, k] = np.linalg.norm(
+                #     np.cross(
+                #         np.array([
+                #             jac[2, 1]-jac[1, 2],
+                #             jac[0, 2]-jac[2, 0],
+                #             jac[1, 0]-jac[0, 1]
+                #         ])/1.25663706e-06,
+                #         b(p)
+                #     )
+                # )
+                j = np.array([
+                    jac[2, 1]-jac[1, 2],
+                    jac[0, 2]-jac[2, 0],
+                    jac[1, 0]-jac[0, 1]
+                ])/1.25663706e-06
+                b_ = b(p)
+                b_ /= np.linalg.norm(b_)
+                print(b_)
+                jpar = np.dot(j, b_)*b_
+                jperp = j-jpar
+                print(np.linalg.norm(jpar), np.linalg.norm(jperp), np.linalg.norm(jperp)/np.linalg.norm(jpar))
+                forcemap[i, k] = np.linalg.norm(jperp)/np.linalg.norm(jpar)
+        return forcemap.T
 
 class DynamicFRi3D(BaseFRi3D):
     """FRi3D model dynamic class. It provides dynamic description of the

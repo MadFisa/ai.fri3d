@@ -130,10 +130,11 @@ def fit2insitu(
                 )),
                 dist=euclidean
             )[0]
-            m = np.logical_and(
-                tvt_real >= t_model[0],
-                tvt_real <= t_model[-1]
-            )
+            if vt is not None:
+                m = np.logical_and(
+                    tvt_real >= t_model[0],
+                    tvt_real <= t_model[-1]
+                )
             dv = fastdtw(
                 np.vstack((
                     (t_model-t_real[0])
@@ -155,9 +156,10 @@ def fit2insitu(
                 db_real = np.array(
                     [datetime.fromtimestamp(t) for t in tb_real]
                 )
-                dv_real = np.array(
-                    [datetime.fromtimestamp(t) for t in tvt_real]
-                )
+                if vt is not None:
+                    dv_real = np.array(
+                        [datetime.fromtimestamp(t) for t in tvt_real]
+                    )
                 d_model = np.array(
                     [datetime.fromtimestamp(t) for t in t_model]
                 )
@@ -185,11 +187,12 @@ def fit2insitu(
                 ax1.plot(d_model, b_model[:, 0], '--r')
                 ax1.plot(d_model, b_model[:, 1], '--g')
                 ax1.plot(d_model, b_model[:, 2], '--b')
-                ax2 = fig.add_subplot(212, sharex=ax1)
-                ax2.plot(dv_real, vt_real, 'k')
-                ax2.plot(d_model, vt_model, '--k')
+                if vt is not None:
+                    ax2 = fig.add_subplot(212, sharex=ax1)
+                    ax2.plot(dv_real, vt_real, 'k')
+                    ax2.plot(d_model, vt_model, '--k')
 
-                plt.setp(ax1.get_xticklabels(), visible=False)
+                    plt.setp(ax1.get_xticklabels(), visible=False)
                 plt.ion()
                 plt.draw()
                 plt.pause(0.1)
@@ -421,11 +424,13 @@ def fit2cor(
 
 class BaseProfile:
     """Base profile class."""
-    def __init__(self, params=None, bounds=None):
+    def __init__(self, params=None, bounds=None, relative=None):
         self._params = None
         self._bounds = None
+        self._relative = 0
         self.params = params
         self.bounds = bounds
+        self.relative = relative
 
     @property
     def params(self):
@@ -442,6 +447,17 @@ class BaseProfile:
     @bounds.setter
     def bounds(self, val):
         self._bounds = val
+
+    @property
+    def relative(self):
+        """scalar: relative timestamp for the profile."""
+        return self._relative
+    @relative.setter
+    def relative(self, val):
+        if np.isscalar(val):
+            self._relative = val
+        else:
+            self._relative = 0
 
 class SignProfile(BaseProfile):
     """Binary sign profile. Corresponds to +1 or -1 values."""
@@ -461,7 +477,7 @@ class PolyProfile(BaseProfile):
 
     def eval(self, t):
         """Evaluates the profile function at a given time."""
-        return np.polyval(self.params, t)
+        return np.polyval(self.params, t-self.relative)
 
 class ExpProfile(BaseProfile):
     """Exponential profile."""
@@ -471,4 +487,8 @@ class ExpProfile(BaseProfile):
 
     def eval(self, t):
         """Evaluates the profile function at a given time."""
-        return self.params[0]*np.exp(self.params[1]*t)+self.params[2]
+        return (
+            self.params[0]
+            *np.exp(self.params[1]*(t-self.relative))
+            +self.params[2]
+        )
