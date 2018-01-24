@@ -1,7 +1,8 @@
 
+
 import numpy as np
 from matplotlib import pyplot as plt
-from sympy import symbols, cos
+from sympy import pprint, symbols, cos, sin
 from sympy.solvers.solveset import linsolve
 from astropy import units as u
 
@@ -78,17 +79,18 @@ def dradius_dlength(
     )
 
 def solve():
-    r, phi, z, T0, Rc, Bz, Bzr, Bzphi, Bzz, a = symbols('r phi z T0 Rc Bz Bzr Bzphi Bzz a')
+    r, phi, z, T0, Rc, Bz, Bzr, Bzphi, Bzz = symbols('r phi z T0 Rc Bz Bzr Bzphi Bzz')
     eqns = [
-        -Bzr-(T0*(2-r*cos(phi)/Rc)/(1-r*cos(phi)/Rc)**2*Bz+T0*r/(1-r*cos(phi)/Rc)*Bzr-a*Bzphi)*T0*r/(1-r*cos(phi)/Rc),
-        Bzphi/r-(T0*(2-r*cos(phi)/Rc)/(1-r*cos(phi)/Rc)**2*Bz+T0*r/(1-r*cos(phi)/Rc)*Bzr-a*Bzphi)*a*r,
-        Bzphi/r*T0*r/(1-r*cos(phi)/Rc)+Bzr*a*r
+        -r/z**2/(1-r*cos(phi)/Rc)*Bz+r/z/(1-r*cos(phi)/Rc)*Bzz-Bzr-(T0*(2-r*cos(phi)/Rc)/(1-r*cos(phi)/Rc)**2*Bz+T0*r/(1-r*cos(phi)/Rc)*Bzr-1/z*r/Rc*sin(phi)/(1-r*cos(phi)/Rc)**2*Bz-1/z/(1-r*cos(phi)/Rc)*Bzphi)*T0*r/(1-r*cos(phi)/Rc),
+        Bzphi/r-T0*r/(1-r*cos(phi)/Rc)*Bzz-(T0*(2-r*cos(phi)/Rc)/(1-r*cos(phi)/Rc)**2*Bz+T0*r/(1-r*cos(phi)/Rc)*Bzr-1/z*r/Rc*sin(phi)/(1-r*cos(phi)/Rc)**2*Bz-1/z/(1-r*cos(phi)/Rc)*Bzphi)*r/z/(1-r*cos(phi)/Rc),
+        (Bzphi/r-T0*r/(1-r*cos(phi)/Rc)*Bzz)*T0*r/(1-r*cos(phi)/Rc)-(-r/z**2/(1-r*cos(phi)/Rc)*Bz+r/z/(1-r*cos(phi)/Rc)*Bzz-Bzr)*r/z/(1-r*cos(phi)/Rc),
+        (2-r*cos(phi)/Rc)/(1-r*cos(phi)/Rc)**2/z*Bz+r/z/(1-r*cos(phi)/Rc)*Bzr-T0*r/Rc*sin(phi)/(1-r*cos(phi)/Rc)**2*Bz+T0/(1-r*cos(phi)/Rc)*Bzphi+Bzz
         #-r/z**2*Bz+r/z*Bzz-Bzr-(T0*(2-r*cos(phi)/Rc)/(1-r*cos(phi)/Rc)**2*Bz+T0*r/(1-r*cos(phi)/Rc)*Bzr-Bzphi/z)*T0*r/(1-r*cos(phi)/Rc),
         #Bzphi/r-T0*r/(1-r*cos(phi)/Rc)*Bzz-(T0*(2-r*cos(phi)/Rc)/(1-r*cos(phi)/Rc)**2*Bz+T0*r/(1-r*cos(phi)/Rc)*Bzr-Bzphi/z)*r/z,
         #(Bzphi/r-T0*r/(1-r*cos(phi)/Rc)*Bzz)*T0/(1-r*cos(phi)/Rc)-(-r/z**2*Bz+r/z*Bzz-Bzr)/z
     ]
-    sol = linsolve(eqns, [Bzr, Bzphi])
-    print(sol)
+    sol = linsolve(eqns, [Bzr, Bzphi, Bzz])
+    print(pprint(sol))
 
 def test_b_quiver(
         phi_axis,
@@ -135,7 +137,14 @@ def test_b_quiver(
             flattening
         )
         *r
-        *bz,
+        *bz
+        /(
+            1
+            -r*np.cos(phi)
+            /axis_curvature_radius(
+                phi_axis, toroidal_height, half_width, flattening
+            )
+        ),
         2*np.pi*twist*r
         /(
             1
