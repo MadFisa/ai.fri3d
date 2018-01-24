@@ -78,13 +78,16 @@ def dradius_dlength(
     )
 
 def solve():
-    r, phi, z, T0, Rc, Bz, Bzr, Bzphi, Bzz = symbols('r phi z T0 Rc Bz Bzr Bzphi Bzz')
+    r, phi, z, T0, Rc, Bz, Bzr, Bzphi, Bzz, a = symbols('r phi z T0 Rc Bz Bzr Bzphi Bzz a')
     eqns = [
-        -r/z**2*Bz+r/z*Bzz-Bzr-(T0*(2-r*cos(phi)/Rc)/(1-r*cos(phi)/Rc)**2*Bz+T0*r/(1-r*cos(phi)/Rc)*Bzr-Bzphi/z)*T0*r/(1-r*cos(phi)/Rc),
-        Bzphi/r-T0*r/(1-r*cos(phi)/Rc)*Bzz-(T0*(2-r*cos(phi)/Rc)/(1-r*cos(phi)/Rc)**2*Bz+T0*r/(1-r*cos(phi)/Rc)*Bzr-Bzphi/z)*r/z,
-        (Bzphi/r-T0*r/(1-r*cos(phi)/Rc)*Bzz)*T0/(1-r*cos(phi)/Rc)-(-r/z**2*Bz+r/z*Bzz-Bzr)/z
+        -Bzr-(T0*(2-r*cos(phi)/Rc)/(1-r*cos(phi)/Rc)**2*Bz+T0*r/(1-r*cos(phi)/Rc)*Bzr-a*Bzphi)*T0*r/(1-r*cos(phi)/Rc),
+        Bzphi/r-(T0*(2-r*cos(phi)/Rc)/(1-r*cos(phi)/Rc)**2*Bz+T0*r/(1-r*cos(phi)/Rc)*Bzr-a*Bzphi)*a*r,
+        Bzphi/r*T0*r/(1-r*cos(phi)/Rc)+Bzr*a*r
+        #-r/z**2*Bz+r/z*Bzz-Bzr-(T0*(2-r*cos(phi)/Rc)/(1-r*cos(phi)/Rc)**2*Bz+T0*r/(1-r*cos(phi)/Rc)*Bzr-Bzphi/z)*T0*r/(1-r*cos(phi)/Rc),
+        #Bzphi/r-T0*r/(1-r*cos(phi)/Rc)*Bzz-(T0*(2-r*cos(phi)/Rc)/(1-r*cos(phi)/Rc)**2*Bz+T0*r/(1-r*cos(phi)/Rc)*Bzr-Bzphi/z)*r/z,
+        #(Bzphi/r-T0*r/(1-r*cos(phi)/Rc)*Bzz)*T0/(1-r*cos(phi)/Rc)-(-r/z**2*Bz+r/z*Bzz-Bzr)/z
     ]
-    sol = linsolve(eqns, [Bzr, Bzphi, Bzz])
+    sol = linsolve(eqns, [Bzr, Bzphi])
     print(sol)
 
 def test_b_quiver(
