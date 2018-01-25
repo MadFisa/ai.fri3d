@@ -2,7 +2,7 @@
 
 import numpy as np
 from matplotlib import pyplot as plt
-from sympy import pprint, symbols, cos, sin
+from sympy import pprint, symbols, cos, sin, integrate
 from sympy.solvers.solveset import linsolve
 from astropy import units as u
 
@@ -81,8 +81,8 @@ def dradius_dlength(
 def solve():
     r, phi, z, T0, Rc, Bz, Bzr, Bzphi, Bzz = symbols('r phi z T0 Rc Bz Bzr Bzphi Bzz')
     eqns = [
-        -r/z**2/(1-r*cos(phi)/Rc)*Bz+r/z/(1-r*cos(phi)/Rc)*Bzz-Bzr-(T0*(2-r*cos(phi)/Rc)/(1-r*cos(phi)/Rc)**2*Bz+T0*r/(1-r*cos(phi)/Rc)*Bzr-1/z*r/Rc*sin(phi)/(1-r*cos(phi)/Rc)**2*Bz-1/z/(1-r*cos(phi)/Rc)*Bzphi)*T0*r/(1-r*cos(phi)/Rc),
-        Bzphi/r-T0*r/(1-r*cos(phi)/Rc)*Bzz-(T0*(2-r*cos(phi)/Rc)/(1-r*cos(phi)/Rc)**2*Bz+T0*r/(1-r*cos(phi)/Rc)*Bzr-1/z*r/Rc*sin(phi)/(1-r*cos(phi)/Rc)**2*Bz-1/z/(1-r*cos(phi)/Rc)*Bzphi)*r/z/(1-r*cos(phi)/Rc),
+        -r/z**2/(1-r*cos(phi)/Rc)*Bz+r/z/(1-r*cos(phi)/Rc)*Bzz-Bzr-(T0*(2-r*cos(phi)/Rc)/(1-r*cos(phi)/Rc)**2*Bz+T0*r/(1-r*cos(phi)/Rc)*Bzr+1/z*r/Rc*sin(phi)/(1-r*cos(phi)/Rc)**2*Bz-1/z/(1-r*cos(phi)/Rc)*Bzphi)*T0*r/(1-r*cos(phi)/Rc),
+        Bzphi/r-T0*r/(1-r*cos(phi)/Rc)*Bzz-(T0*(2-r*cos(phi)/Rc)/(1-r*cos(phi)/Rc)**2*Bz+T0*r/(1-r*cos(phi)/Rc)*Bzr+1/z*r/Rc*sin(phi)/(1-r*cos(phi)/Rc)**2*Bz-1/z/(1-r*cos(phi)/Rc)*Bzphi)*r/z/(1-r*cos(phi)/Rc),
         (Bzphi/r-T0*r/(1-r*cos(phi)/Rc)*Bzz)*T0*r/(1-r*cos(phi)/Rc)-(-r/z**2/(1-r*cos(phi)/Rc)*Bz+r/z/(1-r*cos(phi)/Rc)*Bzz-Bzr)*r/z/(1-r*cos(phi)/Rc),
         (2-r*cos(phi)/Rc)/(1-r*cos(phi)/Rc)**2/z*Bz+r/z/(1-r*cos(phi)/Rc)*Bzr-T0*r/Rc*sin(phi)/(1-r*cos(phi)/Rc)**2*Bz+T0/(1-r*cos(phi)/Rc)*Bzphi+Bzz
         #-r/z**2*Bz+r/z*Bzz-Bzr-(T0*(2-r*cos(phi)/Rc)/(1-r*cos(phi)/Rc)**2*Bz+T0*r/(1-r*cos(phi)/Rc)*Bzr-Bzphi/z)*T0*r/(1-r*cos(phi)/Rc),
@@ -90,7 +90,11 @@ def solve():
         #(Bzphi/r-T0*r/(1-r*cos(phi)/Rc)*Bzz)*T0/(1-r*cos(phi)/Rc)-(-r/z**2*Bz+r/z*Bzz-Bzr)/z
     ]
     sol = linsolve(eqns, [Bzr, Bzphi, Bzz])
-    print(pprint(sol))
+    pprint(sol)
+    # pprint(integrate(sol.args[0][0]/Bz, r))
+    # pprint(integrate(sol.args[0][1]/Bz, phi))
+    # pprint(integrate(sol.args[0][2]/Bz, z))
+
 
 def test_b_quiver(
         phi_axis,
