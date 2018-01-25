@@ -1,9 +1,11 @@
 
 
 import numpy as np
+from scipy.integrate import quad, fixed_quad
 from matplotlib import pyplot as plt
-from sympy import pprint, symbols, cos, sin, integrate
+from sympy import pprint, symbols, cos, sin, integrate, Function
 from sympy.solvers.solveset import linsolve
+from sympy.solvers.pde import pdsolve
 from astropy import units as u
 
 def axis_r(
@@ -79,12 +81,13 @@ def dradius_dlength(
     )
 
 def solve():
-    r, phi, z, T0, Rc, Bz, Bzr, Bzphi, Bzz = symbols('r phi z T0 Rc Bz Bzr Bzphi Bzz')
+    r, phi, z, T0, Rc, Bz, Bzr, Bzphi, Bzz, f, g = symbols('r phi z T0 Rc Bz Bzr Bzphi Bzz f g')
     eqns = [
         -r/z**2/(1-r*cos(phi)/Rc)*Bz+r/z/(1-r*cos(phi)/Rc)*Bzz-Bzr-(T0*(2-r*cos(phi)/Rc)/(1-r*cos(phi)/Rc)**2*Bz+T0*r/(1-r*cos(phi)/Rc)*Bzr+1/z*r/Rc*sin(phi)/(1-r*cos(phi)/Rc)**2*Bz-1/z/(1-r*cos(phi)/Rc)*Bzphi)*T0*r/(1-r*cos(phi)/Rc),
         Bzphi/r-T0*r/(1-r*cos(phi)/Rc)*Bzz-(T0*(2-r*cos(phi)/Rc)/(1-r*cos(phi)/Rc)**2*Bz+T0*r/(1-r*cos(phi)/Rc)*Bzr+1/z*r/Rc*sin(phi)/(1-r*cos(phi)/Rc)**2*Bz-1/z/(1-r*cos(phi)/Rc)*Bzphi)*r/z/(1-r*cos(phi)/Rc),
         (Bzphi/r-T0*r/(1-r*cos(phi)/Rc)*Bzz)*T0*r/(1-r*cos(phi)/Rc)-(-r/z**2/(1-r*cos(phi)/Rc)*Bz+r/z/(1-r*cos(phi)/Rc)*Bzz-Bzr)*r/z/(1-r*cos(phi)/Rc),
-        (2-r*cos(phi)/Rc)/(1-r*cos(phi)/Rc)**2/z*Bz+r/z/(1-r*cos(phi)/Rc)*Bzr-T0*r/Rc*sin(phi)/(1-r*cos(phi)/Rc)**2*Bz+T0/(1-r*cos(phi)/Rc)*Bzphi+Bzz
+        # Bzz+f/z**3
+        # (2-r*cos(phi)/Rc)/(1-r*cos(phi)/Rc)**2/z*Bz+r/z/(1-r*cos(phi)/Rc)*Bzr-T0*r/Rc*sin(phi)/(1-r*cos(phi)/Rc)**2*Bz+T0/(1-r*cos(phi)/Rc)*Bzphi+Bzz
         #-r/z**2*Bz+r/z*Bzz-Bzr-(T0*(2-r*cos(phi)/Rc)/(1-r*cos(phi)/Rc)**2*Bz+T0*r/(1-r*cos(phi)/Rc)*Bzr-Bzphi/z)*T0*r/(1-r*cos(phi)/Rc),
         #Bzphi/r-T0*r/(1-r*cos(phi)/Rc)*Bzz-(T0*(2-r*cos(phi)/Rc)/(1-r*cos(phi)/Rc)**2*Bz+T0*r/(1-r*cos(phi)/Rc)*Bzr-Bzphi/z)*r/z,
         #(Bzphi/r-T0*r/(1-r*cos(phi)/Rc)*Bzz)*T0/(1-r*cos(phi)/Rc)-(-r/z**2*Bz+r/z*Bzz-Bzr)/z
@@ -95,6 +98,43 @@ def solve():
     # pprint(integrate(sol.args[0][1]/Bz, phi))
     # pprint(integrate(sol.args[0][2]/Bz, z))
 
+def solveDiff():
+    r, phi, T0, Rc, A = symbols('r phi T0, Rc A')
+    f = Function('f')
+    u = f(r, phi)
+    ur = u.diff(r)
+    uphi = u.diff(phi)
+    pprint(
+        pdsolve(
+            ur+uphi+r/(1-r*cos(phi)/Rc)*(1-(A-1)*T0*r)/A*u
+        )
+    )
+
+def lnBzr(r, phi, z, T0, Rc):
+    # return -Rc*r*(Rc**2*T0**2*r**2 + 3*Rc**2 - Rc*T0*r*z*np.sin(phi) - 3*Rc*r*np.cos(phi) + r**2*np.cos(phi)**2)/((Rc - r*np.cos(phi))*(Rc**2*T0**2*r**2*z**2 + Rc**2*r**2 + z**2*(Rc - r*np.cos(phi))**2))
+    return -Rc*r*(Rc**2*T0**2*r**2 + 3*Rc**2 - Rc*T0*r*z*np.sin(phi) - 3*Rc*r*np.cos(phi) + r**2*np.cos(phi)**2)/((Rc - r*np.cos(phi))*(Rc**2*T0**2*r**2*z**2 + Rc**2*r**2 + z**2*(Rc - r*np.cos(phi))**2))
+
+def lnBzphi(r, phi, z, T0, Rc):
+    # return Rc**2*T0*r**2*(Rc*r**2 + T0*r*z**3*np.sin(phi) - z**2*(2*Rc - r*np.cos(phi)))/(z*(Rc - r*np.cos(phi))*(Rc**2*T0**2*r**2*z**2 + Rc**2*r**2 + z**2*(Rc - r*np.cos(phi))**2))
+    return Rc**2*T0*r**2*(Rc*r**2 + T0*r*z**3*np.sin(phi) - z**2*(2*Rc - r*np.cos(phi)))/(z*(Rc - r*np.cos(phi))*(Rc**2*T0**2*r**2*z**2 + Rc**2*r**2 + z**2*(Rc - r*np.cos(phi))**2))
+
+def lnBzz(r, phi, z, T0, Rc):
+    # return Rc*(Rc*r**2 + T0*r*z**3*np.sin(phi) - z**2*(2*Rc - r*np.cos(phi)))/(z*(Rc**2*T0**2*r**2*z**2 + Rc**2*r**2 + z**2*(Rc - r*np.cos(phi))**2))
+    return Rc*(Rc*r**2 + T0*r*z**3*np.sin(phi) - z**2*(2*Rc - r*np.cos(phi)))/(z*(Rc**2*T0**2*r**2*z**2 + Rc**2*r**2 + z**2*(Rc - r*np.cos(phi))**2))
+
+
+def Bz(r, phi, z, T0, Rc):
+    return np.exp(
+        fixed_quad(lambda var_r: lnBzr(var_r, phi, z, T0, Rc), 0, r)[0]
+        +fixed_quad(lambda var_phi: lnBzphi(r, var_phi, z, T0, Rc), 0, phi)[0]
+        +fixed_quad(lambda var_z: lnBzz(r, phi, var_z, T0, Rc), 0, z)[0]
+    )
+
+def B(r, phi, z, T0, Rc):
+    b_z = Bz(r, phi, z, T0, Rc)
+    b_r = r/z/(1-r*np.cos(phi)/Rc)*b_z
+    b_phi = T0*r/(1-r*np.cos(phi)/Rc)*b_z
+    return (b_r, b_phi, b_z)
 
 def test_b_quiver(
         phi_axis,
@@ -104,9 +144,8 @@ def test_b_quiver(
         flattening,
         twist):
     
-    bz = 1e-9
-    x = np.linspace(-1, 1, 40)
-    y = np.linspace(-1, 1, 40)
+    x = np.linspace(-1, 1, 10)
+    y = np.linspace(-1, 1, 10)
     x, y = np.meshgrid(x, y)
 
     r = np.sqrt(x**2+y**2)
@@ -221,4 +260,31 @@ def test_b_const(
 
 # print(b)
 
-solve()
+solveDiff()
+# solve()
+
+
+
+# data = []
+# for r in np.linspace(0, 2, 40):
+#     data.append(B(r, 0*np.pi, 1e3, 1*2*np.pi, 1e3)[2])
+#     # data.append([
+#     #     lnBzr(r, np.pi, 1e10, 1*2*np.pi, 1e3),
+#     #     lnBzphi(r, np.pi, 1e10, 1*2*np.pi, 1e3),
+#     #     lnBzz(r, np.pi, 1e10, 1*2*np.pi, 1e3),
+#     #     lnBzr(r, np.pi, 1e10, 1*2*np.pi, 1e3)
+#     #     +lnBzphi(r, np.pi, 1e10, 1*2*np.pi, 1e3)
+#     #     +lnBzz(r, np.pi, 1e10, 1*2*np.pi, 1e3)
+#     # ])
+# plt.plot(data)
+# plt.show()
+
+# print(
+#     B(
+#         r=0,
+#         phi=0*np.pi/180,
+#         z=10,
+#         T0=0*2*np.pi,
+#         Rc=10
+#     )
+# )
