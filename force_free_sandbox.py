@@ -80,6 +80,19 @@ def dradius_dlength(
         )
     )
 
+def solveTaper():
+    r, phi, z, T0, Rc, Bz, Bzr, Bzphi, Bzz = symbols('r phi z T0 Rc Bz Bzr Bzphi Bzz')
+    eqns = [
+        # (-r/z**2*Bz+r/z*Bzz-Bzr)-(2*T0*Bz+T0*r*Bzr-Bzphi/z)*T0*r,
+        # (Bzphi/r-T0*r*Bzz)-(2*T0*Bz+T0*r*Bzr-Bzphi/z)*r/z,
+        # (Bzphi/r-T0*r*Bzz)*T0*r-(-r/z**2*Bz+r/z*Bzz-Bzr)*r/z
+        (-r/z**2*Bz+r/z*Bzz-Bzr),
+        (-r/z**2*Bz+r/z*Bzz-Bzr)*r/z
+    ]
+    sol = linsolve(eqns, [Bzr, Bzz])
+    pprint(sol)
+    solveDiffTaper()
+
 def solve():
     r, phi, z, T0, Rc, Bz, Bzr, Bzphi, Bzz, f, g = symbols('r phi z T0 Rc Bz Bzr Bzphi Bzz f g')
     eqns = [
@@ -107,6 +120,18 @@ def solveDiff():
     pprint(
         pdsolve(
             ur+uphi+r/(1-r*cos(phi)/Rc)*(1-(A-1)*T0*r)/A*u
+        )
+    )
+
+def solveDiffTaper():
+    r, z = symbols('r z')
+    f = Function('f')
+    u = f(r, z)
+    ur = u.diff(r)
+    uz = u.diff(z)
+    pprint(
+        pdsolve(
+            ur-r/z*uz+r/z**2*u
         )
     )
 
@@ -260,7 +285,8 @@ def test_b_const(
 
 # print(b)
 
-solveDiff()
+solveTaper()
+# solveDiff()
 # solve()
 
 
