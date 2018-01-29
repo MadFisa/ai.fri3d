@@ -1,9 +1,9 @@
 
 
 import numpy as np
-from scipy.integrate import quad, fixed_quad
+from scipy.integrate import quad, fixed_quad, dblquad
 from matplotlib import pyplot as plt
-from sympy import pprint, symbols, cos, sin, integrate, Function
+from sympy import pprint, symbols, cos, sin, atan, exp, pi, integrate, Function
 from sympy.solvers.solveset import linsolve
 from sympy.solvers.pde import pdsolve
 from astropy import units as u
@@ -120,22 +120,6 @@ def Bz(
     Rc = axis_curvature_radius(axis_phi, toroidal_height, half_width, flattening)
     a = twist
     b = np.cos(phi)/Rc
-    print(Rc)
-    print(a)
-    print(np.amin(b), np.amax(b))
-    print(np.amin(1-r*b), np.amax(1-r*b))
-    print(
-        np.amin(((1-r*b)**2+a**2*r**2)**(-(2*a**2+b**2)/2/(a**2+b**2))),
-        np.amax(((1-r*b)**2+a**2*r**2)**(-(2*a**2+b**2)/2/(a**2+b**2)))
-    )
-    print(
-        np.amin((1-r*b)*((1-r*b)**2+a**2*r**2)**(-(2*a**2+b**2)/2/(a**2+b**2))),
-        np.amax((1-r*b)*((1-r*b)**2+a**2*r**2)**(-(2*a**2+b**2)/2/(a**2+b**2)))
-    )
-    print(
-        np.amin(np.exp(-a*b/(a**2+b**2)*np.arctan(((a**2+b**2)*r-b)/a))),
-        np.amax(np.exp(-a*b/(a**2+b**2)*np.arctan(((a**2+b**2)*r-b)/a)))
-    )
     return (
         B0
         *(1-r*b)
@@ -145,17 +129,6 @@ def Bz(
             +a*b/(a**2+b**2)*np.arctan(-b/a)
         )
     )
-    # return B0*np.exp(
-    #     -1/(twist**2+(np.cos(phi)/Rc)**2)/2
-    #     *(
-    #         (2*twist**2+(np.cos(phi)/Rc)**2)
-    #         *np.log(r**2*(twist**2+(np.cos(phi)/Rc)**2)-2*np.cos(phi)/Rc*r+1)
-    #         -2*(twist**2+(np.cos(phi)/Rc)**2)*np.log(1-r*np.cos(phi)/Rc)
-    #         +2*twist*np.cos(phi)/Rc*np.arctan(
-    #             (twist**2*r+r*(np.cos(phi)/Rc)**2-np.cos(phi)/Rc)/twist
-    #         )
-    #     )
-    # )
 
 def Bphi(
         r,
@@ -199,6 +172,40 @@ def solveTorus():
     ]
     sol = linsolve(eqns, [Bzr, Bzphi])
     pprint(sol)
+
+def integrateFlux():
+    r, phi, T0, Rc, B0, Rp = symbols('r phi T0 Rc B0 Rp')
+    sol = integrate(
+        B0
+        *(1-r*cos(phi)/Rc)
+        *((1-r*cos(phi)/Rc)**2+T0**2*r**2)**(-(2*T0**2+(cos(phi)/Rc)**2)/2/(T0**2+(cos(phi)/Rc)**2))
+        *exp(
+            -T0*cos(phi)/Rc/(T0**2+(cos(phi)/Rc)**2)*atan(((T0**2+(cos(phi)/Rc)**2)*r-cos(phi)/Rc)/T0)
+            +T0*cos(phi)/Rc/(T0**2+(cos(phi)/Rc)**2)*atan(-cos(phi)/Rc/T0)
+        )
+        *r
+        *2*pi,
+        (phi, 0, 2*pi),
+        (r, 0, Rp)
+    )
+    pprint(sol)
+
+def integrateFluxNumerical(
+        axis_phi,
+        toroidal_height,
+        poloidal_height,
+        half_width,
+        flattening,
+        twist,
+        B0):
+    flux = dblquad(
+        lambda phi, r: Bz(r, phi, axis_phi, toroidal_height, half_width, flattening, twist, B0)*r*np.pi*2,
+        0, cs_r(axis_phi, toroidal_height, poloidal_height, half_width, flattening),
+        lambda r: 0,
+        lambda r: 2*np.pi
+    )
+    print(flux[0])
+    return flux[0]
 
 def checkBrBphi(
         axis_phi,
@@ -293,22 +300,33 @@ def test_b_quiver(
 #     b /= np.linalg.norm(b)
 #     return b
 
-twist = 10*2*np.pi/2.5
-print(twist)
-test_b_quiver(
-    -np.pi/180*0,
-    1,
-    np.pi/180*60,
-    0.5,
-    twist,
-    x=np.linspace(-0.1, 0.1, 50),
-    y=np.linspace(-0.1, 0.1, 50)
-)
+# twist = 0.1*2*np.pi/2.5
+# print(twist)
+# test_b_quiver(
+#     -np.pi/180*0,
+#     1,
+#     np.pi/180*60,
+#     0.5,
+#     twist,
+#     x=np.linspace(-0.1, 0.1, 50),
+#     y=np.linspace(-0.1, 0.1, 50)
+# )
 
 # print(b)
 
 # solve()
 # solveTorus()
+# integrateFlux()
+for i in range(10):
+    integrateFluxNumerical(
+        0,
+        u.au.to(u.m, 1),
+        u.au.to(u.m, 0.1),
+        np.pi/4,
+        0.5,
+        2*2*np.pi/u.au.to(u.m, 2.5),
+        20e-9
+    )
 
 # checkBrBphi(
 #     np.linspace(-np.pi/6, np.pi/6, 100),
