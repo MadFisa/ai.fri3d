@@ -116,6 +116,7 @@ def fit2insitu(
             if t_model[0] > t_real[-1] or t_model[-1] < t_real[0]:
                 return np.inf
             b_model = b_model[nonzero_indices[0]:nonzero_indices[-1]+1, :]
+            bt_model = bt_model[nonzero_indices[0]:nonzero_indices[-1]+1]
             vt_model = vt_model[nonzero_indices[0]:nonzero_indices[-1]+1]
             db = fastdtw(
                 np.hstack((
@@ -228,10 +229,14 @@ def fit2insitu(
     res = differential_evolution(
         residual,
         bounds=bounds,
-        maxiter=200,
-        popsize=1,
-        mutation=0.6702,
-        recombination=0.2368
+        # maxiter=200,
+        # popsize=1,
+        # mutation=0.6702,
+        # recombination=0.2368
+        maxiter=2000,
+        popsize=2,
+        mutation=0.6714,
+        recombination=0.5026
     )
     i = 0
     for prop, profile in profiles.items():
@@ -258,6 +263,10 @@ def fit2cor(
         stb_r=u.au.to(u.m, 1),
         stb_lat=0,
         stb_lon=0,
+        c2_img_path=None,
+        c2_fov=u.R_sun.to(u.m, 6),
+        c2_dx=0,
+        c2_dy=0,
         c3_img_path=None,
         c3_fov=u.R_sun.to(u.m, 30),
         c3_dx=0,
@@ -278,6 +287,7 @@ def fit2cor(
     x0, y0, z0 = sfr.shell()
     ncols = (
         (cor2b_img_path is not None)
+        +(c2_img_path is not None)
         +(c3_img_path is not None)
         +(cor2a_img_path is not None)
     )
@@ -374,6 +384,47 @@ def fit2cor(
         )
         ax.set_xlim([-c3_fov-c3_dx, c3_fov-c3_dx])
         ax.set_ylim([-c3_fov-c3_dy, c3_fov-c3_dy])
+        ax.set_facecolor('black')
+        plt.axis('off')
+        i += 1
+    if c2_img_path is not None:
+        ax = plt.subplot(gs[i])
+        ax.imshow(
+            plt.imread(c2_img_path),
+            zorder=0,
+            extent=[
+                -c2_fov-c2_dx,
+                c2_fov-c2_dx,
+                -c2_fov-c2_dy,
+                c2_fov-c2_dy
+            ]
+        )
+        ax.set_xlim([-c2_fov-c2_dx, c2_fov-c2_dx])
+        ax.set_ylim([-c2_fov-c2_dy, c2_fov-c2_dy])
+        ax.set_facecolor('black')
+        plt.axis('off')
+        ax = plt.subplot(gs[i+ncols])
+        ax.imshow(
+            plt.imread(c2_img_path),
+            zorder=0,
+            extent=[
+                -c2_fov-c2_dx,
+                c2_fov-c2_dx,
+                -c2_fov-c2_dy,
+                c2_fov-c2_dy
+            ]
+        )
+        T = cs.mx_rot_y(soho_lat)*cs.mx_rot_z(-soho_lon)
+        x, y, z = cs.mx_apply(T, x0, y0, z0)
+        y = soho_r/(soho_r-x)*y
+        z = soho_r/(soho_r-x)*z
+        ax.scatter(
+            y, z, 3,
+            color=BLIND_PALETTE['yellow'],
+            marker='.'
+        )
+        ax.set_xlim([-c2_fov-c2_dx, c2_fov-c2_dx])
+        ax.set_ylim([-c2_fov-c2_dy, c2_fov-c2_dy])
         ax.set_facecolor('black')
         plt.axis('off')
         i += 1
