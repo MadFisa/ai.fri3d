@@ -571,7 +571,8 @@ class StaticFRi3D(BaseFRi3D):
             phi = phi[None]
             scalar_input = True
         res = np.arctan(
-            -self._coeff_angle*self.flattening
+            # (-1)* instead of - is here to stop pylint from complaining
+            (-1)*self._coeff_angle*self.flattening
             *np.tan(self._coeff_angle*phi)
         )
         if scalar_input:
