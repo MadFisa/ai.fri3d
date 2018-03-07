@@ -638,6 +638,11 @@ class StaticFRi3D(BaseFRi3D):
             return res.squeeze()
         return res
 
+    def vanilla_axis_length_v2(self, phi):
+        def _vanilla_flat_axis(x):
+            return np.cos(self._coeff_angle*x)**self.flattening
+        
+
     def vanilla_axis_length(self, phi):
         """Evaluates length of the axis. It is an approximation and also
         does not take into account rotational skewing.
