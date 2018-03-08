@@ -968,12 +968,13 @@ class StaticFRi3D(BaseFRi3D):
             tuple: (x, y, z) coordinates of the shell points [m]. Each
                 element of the tuple is either a scalar or 2D array.
         """
-        # 
+        # Sets the default axial coordinate
+        # to cover all of the shell's length
         phi = (
-            phi if phi is not None 
+            phi if phi is not None
             else np.linspace(-self.half_width, self.half_width, 50)
         )
-        # 
+        # Provides support of scalar input
         phi = np.asarray(phi)
         theta = np.asarray(theta)
         scalar_input = False
@@ -981,47 +982,47 @@ class StaticFRi3D(BaseFRi3D):
             phi = phi[None]
             theta = theta[None]
             scalar_input = True
-        if np.any(s < 0) or np.any(s > 1):
-            raise ValueError('s should be in the range [0, 1]')
-        s = np.transpose(np.tile(s, (phi.size, 1)))
-        phi = np.tile(phi, (s.shape[0], 1))
-        # extend to full axis length
-        z = s*self.vanilla_axis_length(self.half_width)
-        # apply tapering
-        r = np.ones(s.shape)
+        # Checks that all of the axial coordinates are valid
+        if np.any(phi < -self.half_width) or np.any(phi > self.half_width):
+            raise ValueError('phi should be in the range of angular width')
+        # Defines distance to axis and normal angle for later usage
+        axis_height = self.vanilla_axis_height(phi)
+        axis_normal = self.vanilla_axis_normal(phi) # TODO: not implemented
+        # Starts with a cylinder aligned with Z axis in cylindrical CS
+        z = self.vanilla_axis_length(phi)
+        # Tapers the cylinder
         r = (
-            r*self.poloidal_height
-            *(
-                self.vanilla_axis_height(self.vanilla_axis_phi(z))
-                /self.toroidal_height
-            )
+            np.ones(phi.shape)
+            *self.poloidal_height
+            *axis_height
+            /self.toroidal_height
         )
+        # Converts coordinates to meshgrid
+        z, _ = np.meshgrid(z, phi, indexing='ij')
+        r, _ = np.meshgrid(r, phi, indexing='ij')
+        axis_height, _ = np.meshgrid(axis_height, phi, indexing='ij')
+        axis_normal, phi = np.meshgrid(axis_normal, phi, indexing='ij')
+        # Converts from cylindrical to cartesian CS
         x, y, z = cs.cyl2cart(r, phi, z)
-        # rotate towards X axis
-        T = cs.mx_rot_y(np.pi/2)
-        x, y, z = cs.mx_apply(T, x, y, z)
-        # remove (tiny) values less than 0, numerical issues
-        x[x < 0] = 0
-        # apply bending
-        phi = self.vanilla_axis_phi(x)
-        r = self.vanilla_axis_height(phi)
-        t = self.vanilla_axis_tan(phi)
-        x = r*np.cos(phi)+np.sin(t-phi-np.pi/2)*y
-        y = r*np.sin(phi)+np.cos(t-phi-np.pi/2)*y
-        # apply pancaking
-        r, theta, phi = cs.cart2sp(x, y, z)
-        theta = (
-            theta/np.arctan2(self.poloidal_height, self.toroidal_height)*
-            self.pancaking
-        )
-        x, y, z = cs.sp2cart(r, theta, phi)
-        # orientation
+        # Bends the cylinder to FR shape
+        x = axis_height*np.cos(phi)+np.sin(axis_normal-phi)*y
+        y = axis_height*np.sin(phi)+np.cos(axis_normal-phi)*y
+        # Applies pancaking deformation to the FR
+        # TODO: implement a better pancaking transformation
+        # r, theta, phi = cs.cart2sp(x, y, z)
+        # theta = (
+        #     theta/np.arctan2(self.poloidal_height, self.toroidal_height)*
+        #     self.pancaking
+        # )
+        # x, y, z = cs.sp2cart(r, theta, phi)
+        # Orients the FR direction and tilt
         T = cs.mx_rot(-self.latitude, self.longitude, self.tilt)
         x, y, z = cs.mx_apply(T, x, y, z)
-        # skew
+        # Applies rotational skew deformation to the FR
         r, phi, z = cs.cart2cyl(x, y, z)
         phi += self.skew*(1-r/self.toroidal_height)
         x, y, z = cs.cyl2cart(r, phi, z)
+        # Handles the scalar output
         if scalar_input:
             return (x.squeeze(), y.squeeze(), z.squeeze())
         return (x, y, z)

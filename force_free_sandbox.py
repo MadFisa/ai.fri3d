@@ -300,10 +300,10 @@ def test_b_quiver(
 #     b /= np.linalg.norm(b)
 #     return b
 
-# twist = 0.1*2*np.pi/2.5
+# twist = 1*2*np.pi/2.5
 # print(twist)
 # test_b_quiver(
-#     -np.pi/180*0,
+#     -np.pi/180*20,
 #     1,
 #     np.pi/180*60,
 #     0.5,
