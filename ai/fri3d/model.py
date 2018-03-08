@@ -882,7 +882,7 @@ class StaticFRi3D(BaseFRi3D):
                 pickle.HIGHEST_PROTOCOL
             )
 
-    def shell(
+    def shell_(
             self,
             s=np.linspace(0, 1, 50),
             phi=np.linspace(0, np.pi*2, 24)):
@@ -905,6 +905,81 @@ class StaticFRi3D(BaseFRi3D):
         if s.ndim == 0 and phi.ndim == 0:
             s = s[None]
             phi = phi[None]
+            scalar_input = True
+        if np.any(s < 0) or np.any(s > 1):
+            raise ValueError('s should be in the range [0, 1]')
+        s = np.transpose(np.tile(s, (phi.size, 1)))
+        phi = np.tile(phi, (s.shape[0], 1))
+        # extend to full axis length
+        z = s*self.vanilla_axis_length(self.half_width)
+        # apply tapering
+        r = np.ones(s.shape)
+        r = (
+            r*self.poloidal_height
+            *(
+                self.vanilla_axis_height(self.vanilla_axis_phi(z))
+                /self.toroidal_height
+            )
+        )
+        x, y, z = cs.cyl2cart(r, phi, z)
+        # rotate towards X axis
+        T = cs.mx_rot_y(np.pi/2)
+        x, y, z = cs.mx_apply(T, x, y, z)
+        # remove (tiny) values less than 0, numerical issues
+        x[x < 0] = 0
+        # apply bending
+        phi = self.vanilla_axis_phi(x)
+        r = self.vanilla_axis_height(phi)
+        t = self.vanilla_axis_tan(phi)
+        x = r*np.cos(phi)+np.sin(t-phi-np.pi/2)*y
+        y = r*np.sin(phi)+np.cos(t-phi-np.pi/2)*y
+        # apply pancaking
+        r, theta, phi = cs.cart2sp(x, y, z)
+        theta = (
+            theta/np.arctan2(self.poloidal_height, self.toroidal_height)*
+            self.pancaking
+        )
+        x, y, z = cs.sp2cart(r, theta, phi)
+        # orientation
+        T = cs.mx_rot(-self.latitude, self.longitude, self.tilt)
+        x, y, z = cs.mx_apply(T, x, y, z)
+        # skew
+        r, phi, z = cs.cart2cyl(x, y, z)
+        phi += self.skew*(1-r/self.toroidal_height)
+        x, y, z = cs.cyl2cart(r, phi, z)
+        if scalar_input:
+            return (x.squeeze(), y.squeeze(), z.squeeze())
+        return (x, y, z)
+
+    def shell(
+            self,
+            phi=None,
+            theta=np.linspace(0, np.pi*2, 24)):
+        """Evaluates the 3D shell of the flux rope.
+
+        Args:
+            s (scalar or array_like, optional): defines sampling along
+                the axis in a relative sense, i.e., `s` goes from 0 to 1
+                from one footpoint to the other [unitless].
+            phi (scalar or array_like, optional) defines angular
+                sampling of the cross-section [rad].
+
+        Returns:
+            tuple: (x, y, z) coordinates of the shell points [m]. Each
+                element of the tuple is either a scalar or 2D array.
+        """
+        # 
+        phi = (
+            phi if phi is not None 
+            else np.linspace(-self.half_width, self.half_width, 50)
+        )
+        # 
+        phi = np.asarray(phi)
+        theta = np.asarray(theta)
+        scalar_input = False
+        if phi.ndim == 0 and theta.ndim == 0:
+            phi = phi[None]
+            theta = theta[None]
             scalar_input = True
         if np.any(s < 0) or np.any(s > 1):
             raise ValueError('s should be in the range [0, 1]')
