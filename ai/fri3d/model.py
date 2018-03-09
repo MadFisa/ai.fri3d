@@ -11,9 +11,11 @@ import os
 import math
 import pickle
 import numpy as np
+import numba as nb
 from scipy.interpolate import RegularGridInterpolator, LinearNDInterpolator
-from scipy.integrate import fixed_quad
+from scipy.integrate import fixed_quad, quad
 from scipy.optimize import minimize_scalar
+from scipy import LowLevelCallable
 from ai import cs
 
 class BaseFRi3D:
@@ -205,12 +207,10 @@ class StaticFRi3D(BaseFRi3D):
         super(StaticFRi3D, self).__init__()
         self._coeff_angle = None
         self._unit_b = None
-        self._interpolator_axis_length = None
-        self._interpolator_axis_phi = None
         self.latitude = kwargs.get('latitude', 0)
         self.longitude = kwargs.get('longitude', 0)
         self.toroidal_height = kwargs.get('toroidal_height', 149597870700)
-        self.poloidal_height = kwargs.get('poloidal_height', 149597870700*0.1)
+        self.poloidal_height = kwargs.get('poloidal_height', 149597870700*0.2)
         self.half_width = kwargs.get('half_width', 40*np.pi/180)
         self.tilt = kwargs.get('tilt', 0)
         self.flattening = kwargs.get('flattening', 0.5)
@@ -224,51 +224,6 @@ class StaticFRi3D(BaseFRi3D):
         self.sigma = kwargs.get('sigma', 2)
         self.polarity = kwargs.get('polarity', 1)
         self.chirality = kwargs.get('chirality', 1)
-        self._reload = kwargs.get('reload', False)
-        self._n_coeff_angle_phi = kwargs.get('n_coeff_angle_phi', 100)
-        self._n_coeff_angle = kwargs.get('n_coeff_angle', 100)
-        self._n_flattening = kwargs.get('n_flattening', 100)
-        self._n_relative_length = kwargs.get('n_relative_length', 100)
-        self._ratio = kwargs.get('ratio', 1-1e-4)
-        self._location_interpolator_axis_length = kwargs.get(
-            '_location_interpolator_axis_length',
-            os.path.join(
-                os.path.realpath(
-                    os.path.join(os.getcwd(), os.path.dirname(__file__))
-                ),
-                '__interpolator_axis_length.pkl'
-            )
-        )
-        self._location_interpolator_axis_phi = kwargs.get(
-            '_location_interpolator_axis_phi',
-            os.path.join(
-                os.path.realpath(
-                    os.path.join(os.getcwd(), os.path.dirname(__file__))
-                ),
-                '__interpolator_axis_phi.pkl'
-            )
-        )
-        if self._reload:
-            try:
-                os.remove(self._location_interpolator_axis_length)
-                os.remove(self._location_interpolator_axis_phi)
-            except FileNotFoundError:
-                pass
-        try:
-            self._interpolator_axis_length = pickle.load(
-                open(self._location_interpolator_axis_length, 'rb')
-            )
-            self._interpolator_axis_phi = pickle.load(
-                open(self._location_interpolator_axis_phi, 'rb')
-            )
-        except FileNotFoundError:
-            self._init_axis_interpolators(
-                n_coeff_angle_phi=self._n_coeff_angle_phi,
-                n_coeff_angle=self._n_coeff_angle,
-                n_flattening=self._n_flattening,
-                n_relative_length=self._n_relative_length,
-                ratio=self._ratio
-            )
 
     def modify(self, **kwargs):
         """Modifies the model parameters.
@@ -387,12 +342,7 @@ class StaticFRi3D(BaseFRi3D):
         else:
             raise ValueError('Chirality should be +1 or -1.')
 
-    def vanilla_axis_height(
-            self,
-            phi,
-            toroidal_height=None,
-            coeff_angle=None,
-            flattening=None):
+    def vanilla_axis_height(self, phi):
         """Evaluates the axis function r(phi) in polar coordinates. Note
         that rotational skewing is not taken into account.
 
@@ -400,15 +350,6 @@ class StaticFRi3D(BaseFRi3D):
             phi (scalar or array_like): Angular coordinate of a point on
                 the axis [rad] in polar coordinates, lies in the range
                 [-half_width, half_width].
-            toroidal_height (scalar or array_like, optional): Custom
-                toroidal height for the calculation [m]. By default
-                `self.toroidal_height` is used.
-            coeff_angle (scalar or array_like, optional): Custom angle
-                coefficient for the calculation [unitless]. By default
-                `self.coeff_angle` is used.
-            flattening (scalar or array_like, optional): Custom
-                flattening coefficient for the calculation [unitless].
-                By default `self.flattening` is used.
 
         Returns:
             scalar or array: Radial coordinate of the point of the axis
@@ -419,72 +360,11 @@ class StaticFRi3D(BaseFRi3D):
         if phi.ndim == 0:
             phi = phi[None]
             scalar_input = True
-        if toroidal_height is None:
-            toroidal_height = self.toroidal_height
-        if coeff_angle is None:
-            coeff_angle = self._coeff_angle
-        if flattening is None:
-            flattening = self.flattening
-        toroidal_height = np.asarray(toroidal_height)
-        coeff_angle = np.asarray(coeff_angle)
-        flattening = np.asarray(flattening)
-        res = toroidal_height*np.abs(np.cos(coeff_angle*phi))**flattening
-        if scalar_input:
-            return res.squeeze()
-        return res
-
-    def vanilla_axis_dheight(
-            self,
+        res = _nb_vanilla_axis_height(
             phi,
-            toroidal_height=None,
-            coeff_angle=None,
-            flattening=None):
-        """Evaluates the derivative of the axis function dr/d(phi). Note
-        that rotational skewing is not taken into account.
-
-        Args:
-            phi (scalar or array_like): Angular coordinate of a point on
-                the axis [rad] in polar coordinates, lies in the range
-                [-half_width, half_width].
-            toroidal_height (scalar or array_like, optional): Custom
-                toroidal height for the calculation [m]. By default
-                `self.toroidal_height` is used. This argument is
-                intended for internal usage only.
-            coeff_angle (scalar or array_like, optional): Custom angle
-                coefficient for the calculation [unitless]. By default
-                `self._coeff_angle` is used. This argument is intended
-                for internal usage only.
-            flattening (scalar or array_like, optional): Custom
-                flattening coefficient for the calculation [unitless].
-                By default `self.flattening` is used. This argument is
-                intended for internal usage only.
-
-        Returns:
-            scalar or array: dr/d(phi) evaluated at an angular point phi
-                in polar coordinates [m/rad].
-        """
-        phi = np.asarray(phi)
-        scalar_input = False
-        if phi.ndim == 0:
-            phi = phi[None]
-            scalar_input = True
-        if toroidal_height is None:
-            toroidal_height = self.toroidal_height
-        if coeff_angle is None:
-            coeff_angle = self._coeff_angle
-        if flattening is None:
-            flattening = self.flattening
-        toroidal_height = np.asarray(toroidal_height)
-        coeff_angle = np.asarray(coeff_angle)
-        flattening = np.asarray(flattening)
-        res = (
-            flattening*coeff_angle*np.abs(np.tan(coeff_angle*phi))
-            *self.vanilla_axis_height(
-                phi,
-                toroidal_height=toroidal_height,
-                coeff_angle=coeff_angle,
-                flattening=flattening
-            )
+            self.toroidal_height,
+            self.half_width,
+            self.flattening
         )
         if scalar_input:
             return res.squeeze()
@@ -552,9 +432,9 @@ class StaticFRi3D(BaseFRi3D):
         ).x
         return (self.vanilla_axis_distance(phi, r_sc, phi_sc), phi)
 
-    def vanilla_axis_tan(self, phi):
-        """Evaluates tangent angle relative to the axis at a given
-        location.
+    def vanilla_axis_normal_angle(self, phi):
+        """Evaluates the angle between normal and radial direction
+            at a given location.
 
         Args:
             phi (scalar or array_like): Angular coordinate of a point on
@@ -562,86 +442,24 @@ class StaticFRi3D(BaseFRi3D):
                 [-half_width, half_width].
 
         Returns:
-            scalar or array: Tangent angle to the axis at a given
-                angular location [rad].
+            scalar or array: Angle between normal and radial direction
+            at a given location [rad].
         """
         phi = np.asarray(phi)
         scalar_input = False
         if phi.ndim == 0:
             phi = phi[None]
             scalar_input = True
-        res = np.arctan(
-            # (-1)* instead of - is here to stop pylint from complaining
-            (-1)*self._coeff_angle*self.flattening
-            *np.tan(self._coeff_angle*phi)
-        )
-        if scalar_input:
-            return res.squeeze()
-        return res
-
-    def vanilla_axis_dlength(
-            self,
-            phi,
-            toroidal_height=None,
-            coeff_angle=None,
-            flattening=None):
-        """Evaluates derivative of the axis length ds/d(phi). Note that
-        rotational skewing is not taken into account.
-
-        Args:
-            phi (scalar or array_like): Angular coordinate of a point on
-                the axis [rad] in polar coordinates, lies in the range
-                [-half_width, half_width].
-            toroidal_height (scalar or array_like, optional): Custom
-                toroidal height for the calculation [m]. By default
-                `self.toroidal_height` is used. This argument is
-                intended for internal usage only.
-            coeff_angle (scalar or array_like, optional): Custom angle
-                coefficient for the calculation [unitless]. By default
-                `self._coeff_angle` is used. This argument is intended
-                for internal usage only.
-            flattening (scalar or array_like, optional): Custom angle
-                coefficient for the calculation [unitless]. By default
-                `self.flattening` is used. This argument is intended for
-                internal usage only.
-
-        Returns:
-            scalar or array: ds/d(phi) evaluated at `phi` angular
-            location of the axis [m/rad].
-        """
-        phi = np.asarray(phi)
-        scalar_input = False
-        if phi.ndim == 0:
-            phi = phi[None]
-            scalar_input = True
-        if toroidal_height is None:
-            toroidal_height = self.toroidal_height
-        if coeff_angle is None:
-            coeff_angle = self._coeff_angle
-        if flattening is None:
-            flattening = self.flattening
-        toroidal_height = np.asarray(toroidal_height)
-        coeff_angle = np.asarray(coeff_angle)
-        flattening = np.asarray(flattening)
-        res = (
-            self.vanilla_axis_height(
-                phi,
-                toroidal_height=toroidal_height,
-                coeff_angle=coeff_angle,
-                flattening=flattening
-            )*np.sqrt(
-                1+coeff_angle**2*flattening**2
-                *np.tan(coeff_angle*phi)**2
+        res = np.abs(
+            np.arctan(
+                self._coeff_angle
+                *self.flattening
+                *np.tan(self._coeff_angle*phi)
             )
         )
         if scalar_input:
             return res.squeeze()
         return res
-
-    def vanilla_axis_length_v2(self, phi):
-        def _vanilla_flat_axis(x):
-            return np.cos(self._coeff_angle*x)**self.flattening
-        
 
     def vanilla_axis_length(self, phi):
         """Evaluates length of the axis. It is an approximation and also
@@ -662,306 +480,26 @@ class StaticFRi3D(BaseFRi3D):
         if phi.ndim == 0:
             phi = phi[None]
             scalar_input = True
-        res = (
-            self.toroidal_height
-            *self._interpolator_axis_length(
-                (
-                    self._coeff_angle*phi,
-                    self._coeff_angle,
-                    self.flattening
-                )
-            )
-        )
+        res = np.array([
+            quad(
+                LowLevelCallable(_nb_vanilla_axis_dlength.ctypes),
+                -self.half_width,
+                p,
+                (self.toroidal_height, self.half_width, self.flattening)
+            )[0]
+            for p in phi
+        ])
         if scalar_input:
             return res.squeeze()
         return res
 
-    def vanilla_axis_phi(self, length):
-        """Evaluates polar coordinate of the axis as a function of its
-        length. It is an approximation and also does not take into
-        account rotational skewing.
-
-        Args:
-            length (scalar or array_like): length of the section of the
-                axis from origin footpoint towards some point of the
-                axis [m].
-
-        Returns:
-            scalar or array: Angular coordinate of a point of the axis,
-                distance to which is equal to `length` [rad].
-        """
-        length = np.asarray(length)
-        scalar_input = False
-        if length.ndim == 0:
-            length = length[None]
-            scalar_input = True
-        res = (
-            self._interpolator_axis_phi(
-                (
-                    length/self.vanilla_axis_length(np.pi/2/self._coeff_angle),
-                    self._coeff_angle,
-                    self.flattening
-                )
-            )/self._coeff_angle
-        )
-        if scalar_input:
-            return res.squeeze()
-        return res
-
-    def _init_axis_interpolators(
-            self,
-            n_coeff_angle_phi,
-            n_coeff_angle,
-            n_flattening,
-            n_relative_length,
-            ratio):
-        """Initializes the axis interpolators:
-        1. length=function(coeff_angle*phi, coeff_angle, flattening)
-        2. coeff_angle*phi=function(
-            relativelength,
-            coeff_angle,
-            flattening
-        )
-        for a curve defined in polar coordinates as
-        r=cos(coeff_angle*phi)^flattening. Interpolation is performed
-        along the following variable ranges:
-        coeff_angle*phi = [-pi/2, pi/2]
-        coeff_angle = [1, 18] (half_angle = [pi/36, pi/2])
-        flattening = [0, 1]
-        relative_length = [0, 1]
-
-        Args:
-            n_coeff_angle_phi (int, optional): Number [unitless] of
-                (linear) samples of the coeff_angle_phi
-                range [-pi/2, pi/2].
-            n_coeff_angle (int, optional): Number [unitless] of
-                (linear) samples of the coeff_angle range [1, 18].
-            n_flattening (int, optional): Number [unitless] of
-                (linear) samples of the flattening range [0, 1].
-            n_relative_length (inlength = np.asarray(length)
-        scalar_input = False
-        if length.ndim == 0:
-            length = length[None]
-            scalar_input = Truet, optional): Number [unitless] of
-                (linear) samples of the relative_length range [0, 1].
-            ratio (float, optional): Numerical integration is applied in
-                the range [-ratio*pi/2, ratio*pi/2]. Outside of this
-                range ds/d(phi) tends to infinity and hence an
-                assumption that length == height is made. Ratio
-                parameter [unitless] can lie in the range [0, 1], though
-                it makes sense to keep it as close to 1 as possible
-                without causing numerical overflow.
-        """
-        def integrate_length(
-                coeff_angle_phi,
-                coeff_angle,
-                flattening,
-                ratio=ratio):
-            """Estimate length along axis by numerical integration."""
-            if coeff_angle_phi <= -np.pi/2*ratio:
-                length = self.vanilla_axis_height(
-                    coeff_angle_phi/coeff_angle,
-                    toroidal_height=1,
-                    coeff_angle=coeff_angle,
-                    flattening=flattening
-                )
-            elif coeff_angle_phi < np.pi/2*ratio:
-                length = (
-                    self.vanilla_axis_height(
-                        -np.pi/2*ratio/coeff_angle,
-                        toroidal_height=1,
-                        coeff_angle=coeff_angle,
-                        flattening=flattening
-                    )+fixed_quad(
-                        lambda coeff_angle_phi: self.vanilla_axis_dlength(
-                            coeff_angle_phi/coeff_angle,
-                            toroidal_height=1,
-                            coeff_angle=coeff_angle,
-                            flattening=flattening)/coeff_angle,
-                        -np.pi/2*ratio,
-                        coeff_angle_phi,
-                        n=1000
-                    )[0]
-                )
-            else:
-                length = (
-                    2*self.vanilla_axis_height(
-                        -np.pi/2*ratio/coeff_angle,
-                        toroidal_height=1,
-                        coeff_angle=coeff_angle,
-                        flattening=flattening
-                    )+fixed_quad(
-                        lambda coeff_angle_phi: self.vanilla_axis_dlength(
-                            coeff_angle_phi/coeff_angle,
-                            toroidal_height=1,
-                            coeff_angle=coeff_angle,
-                            flattening=flattening)/coeff_angle,
-                        -np.pi/2*ratio,
-                        np.pi/2*ratio,
-                        n=1000
-                    )[0]-self.vanilla_axis_height(
-                        coeff_angle_phi/coeff_angle,
-                        toroidal_height=1,
-                        coeff_angle=coeff_angle,
-                        flattening=flattening
-                    )
-                )
-            return length
-
-        coeff_angle_phi_array = np.linspace(
-            -np.pi/2,
-            np.pi/2,
-            n_coeff_angle_phi
-        )
-        coeff_angle_array = np.linspace(1, 18, n_coeff_angle)
-        flattening_array = np.linspace(0.1, 1, n_flattening)
-
-        coeff_angle_phi_grid, coeff_angle_grid, flattening_grid = np.meshgrid(
-            coeff_angle_phi_array,
-            coeff_angle_array,
-            flattening_array,
-            indexing='ij'
-        )
-        v_integrate_length = np.vectorize(
-            integrate_length,
-            otypes=[np.float64]
-        )
-        length_grid = v_integrate_length(
-            coeff_angle_phi_grid,
-            coeff_angle_grid,
-            flattening_grid
-        )
-        self._interpolator_axis_length = RegularGridInterpolator(
-            (coeff_angle_phi_array, coeff_angle_array, flattening_array),
-            length_grid,
-            bounds_error=False
-        )
-        relative_length_grid = length_grid/self._interpolator_axis_length(
-            (
-                np.pi/2,
-                coeff_angle_grid,
-                flattening_grid
-            )
-        )
-        tmp_interpolator_axis_phi = LinearNDInterpolator(
-            (
-                np.ravel(relative_length_grid),
-                np.ravel(coeff_angle_grid),
-                np.ravel(flattening_grid)
-            ),
-            np.ravel(coeff_angle_phi_grid),
-            fill_value=-np.pi/2
-        )
-        relative_length_array = np.linspace(0, 1, n_relative_length)
-        relative_length_grid, coeff_angle_grid, flattening_grid = np.meshgrid(
-            relative_length_array,
-            coeff_angle_array,
-            flattening_array,
-            indexing='ij'
-        )
-        coeff_angle_phi_grid = tmp_interpolator_axis_phi(
-            relative_length_grid,
-            coeff_angle_grid,
-            flattening_grid
-        )
-        self._interpolator_axis_phi = RegularGridInterpolator(
-            (relative_length_array, coeff_angle_array, flattening_array),
-            coeff_angle_phi_grid,
-            bounds_error=False
-        )
-        with open(self._location_interpolator_axis_length, 'wb') as output:
-            pickle.dump(
-                self._interpolator_axis_length,
-                output,
-                pickle.HIGHEST_PROTOCOL
-            )
-        with open(self._location_interpolator_axis_phi, 'wb') as output:
-            pickle.dump(
-                self._interpolator_axis_phi,
-                output,
-                pickle.HIGHEST_PROTOCOL
-            )
-
-    def shell_(
-            self,
-            s=np.linspace(0, 1, 50),
-            phi=np.linspace(0, np.pi*2, 24)):
+    def shell(self, phi=None, theta=np.linspace(0, np.pi*2, 24)):
         """Evaluates the 3D shell of the flux rope.
 
         Args:
-            s (scalar or array_like, optional): defines sampling along
-                the axis in a relative sense, i.e., `s` goes from 0 to 1
-                from one footpoint to the other [unitless].
-            phi (scalar or array_like, optional) defines angular
-                sampling of the cross-section [rad].
-
-        Returns:
-            tuple: (x, y, z) coordinates of the shell points [m]. Each
-                element of the tuple is either a scalar or 2D array.
-        """
-        s = np.asarray(s)
-        phi = np.asarray(phi)
-        scalar_input = False
-        if s.ndim == 0 and phi.ndim == 0:
-            s = s[None]
-            phi = phi[None]
-            scalar_input = True
-        if np.any(s < 0) or np.any(s > 1):
-            raise ValueError('s should be in the range [0, 1]')
-        s = np.transpose(np.tile(s, (phi.size, 1)))
-        phi = np.tile(phi, (s.shape[0], 1))
-        # extend to full axis length
-        z = s*self.vanilla_axis_length(self.half_width)
-        # apply tapering
-        r = np.ones(s.shape)
-        r = (
-            r*self.poloidal_height
-            *(
-                self.vanilla_axis_height(self.vanilla_axis_phi(z))
-                /self.toroidal_height
-            )
-        )
-        x, y, z = cs.cyl2cart(r, phi, z)
-        # rotate towards X axis
-        T = cs.mx_rot_y(np.pi/2)
-        x, y, z = cs.mx_apply(T, x, y, z)
-        # remove (tiny) values less than 0, numerical issues
-        x[x < 0] = 0
-        # apply bending
-        phi = self.vanilla_axis_phi(x)
-        r = self.vanilla_axis_height(phi)
-        t = self.vanilla_axis_tan(phi)
-        x = r*np.cos(phi)+np.sin(t-phi-np.pi/2)*y
-        y = r*np.sin(phi)+np.cos(t-phi-np.pi/2)*y
-        # apply pancaking
-        r, theta, phi = cs.cart2sp(x, y, z)
-        theta = (
-            theta/np.arctan2(self.poloidal_height, self.toroidal_height)*
-            self.pancaking
-        )
-        x, y, z = cs.sp2cart(r, theta, phi)
-        # orientation
-        T = cs.mx_rot(-self.latitude, self.longitude, self.tilt)
-        x, y, z = cs.mx_apply(T, x, y, z)
-        # skew
-        r, phi, z = cs.cart2cyl(x, y, z)
-        phi += self.skew*(1-r/self.toroidal_height)
-        x, y, z = cs.cyl2cart(r, phi, z)
-        if scalar_input:
-            return (x.squeeze(), y.squeeze(), z.squeeze())
-        return (x, y, z)
-
-    def shell(
-            self,
-            phi=None,
-            theta=np.linspace(0, np.pi*2, 24)):
-        """Evaluates the 3D shell of the flux rope.
-
-        Args:
-            s (scalar or array_like, optional): defines sampling along
-                the axis in a relative sense, i.e., `s` goes from 0 to 1
-                from one footpoint to the other [unitless].
-            phi (scalar or array_like, optional) defines angular
+            phi (scalar or array_like, optional): defines angular
+                sampling along the axis [rad].
+            theta (scalar or array_like, optional) defines angular
                 sampling of the cross-section [rad].
 
         Returns:
@@ -987,7 +525,7 @@ class StaticFRi3D(BaseFRi3D):
             raise ValueError('phi should be in the range of angular width')
         # Defines distance to axis and normal angle for later usage
         axis_height = self.vanilla_axis_height(phi)
-        axis_normal = self.vanilla_axis_normal(phi) # TODO: not implemented
+        axis_normal = self.vanilla_axis_normal_angle(phi)
         # Starts with a cylinder aligned with Z axis in cylindrical CS
         z = self.vanilla_axis_length(phi)
         # Tapers the cylinder
@@ -998,15 +536,19 @@ class StaticFRi3D(BaseFRi3D):
             /self.toroidal_height
         )
         # Converts coordinates to meshgrid
-        z, _ = np.meshgrid(z, phi, indexing='ij')
-        r, _ = np.meshgrid(r, phi, indexing='ij')
-        axis_height, _ = np.meshgrid(axis_height, phi, indexing='ij')
-        axis_normal, phi = np.meshgrid(axis_normal, phi, indexing='ij')
-        # Converts from cylindrical to cartesian CS
-        x, y, z = cs.cyl2cart(r, phi, z)
+        z, _ = np.meshgrid(z, theta, indexing='ij')
+        r, _ = np.meshgrid(r, theta, indexing='ij')
+        axis_height, _ = np.meshgrid(axis_height, theta, indexing='ij')
+        axis_normal, _ = np.meshgrid(axis_normal, theta, indexing='ij')
+        phi, theta = np.meshgrid(phi, theta, indexing='ij')
         # Bends the cylinder to FR shape
-        x = axis_height*np.cos(phi)+np.sin(axis_normal-phi)*y
-        y = axis_height*np.sin(phi)+np.cos(axis_normal-phi)*y
+        x = axis_height*np.cos(phi)+r*np.cos(theta)*np.cos(axis_normal+np.abs(phi))
+        y = axis_height*np.sin(phi)+r*np.cos(theta)*np.sin(axis_normal+np.abs(phi))*np.sign(phi)
+        z = r*np.sin(theta)
+        # Applies correction for radial expansion
+        r, _, _ = cs.cart2cyl(x, y, z)
+        _, theta, phi = cs.cart2sp(x, y, z)
+        # x, y, z = cs.sp2cart(r, theta, phi)
         # Applies pancaking deformation to the FR
         # TODO: implement a better pancaking transformation
         # r, theta, phi = cs.cart2sp(x, y, z)
@@ -1014,7 +556,8 @@ class StaticFRi3D(BaseFRi3D):
         #     theta/np.arctan2(self.poloidal_height, self.toroidal_height)*
         #     self.pancaking
         # )
-        # x, y, z = cs.sp2cart(r, theta, phi)
+        # r = (r+self.toroidal_height*2)/3/self.toroidal_height
+        x, y, z = cs.sp2cart(r, theta, phi)
         # Orients the FR direction and tilt
         T = cs.mx_rot(-self.latitude, self.longitude, self.tilt)
         x, y, z = cs.mx_apply(T, x, y, z)
@@ -1723,3 +1266,63 @@ def subtract_period(value, period):
         scalar: angle reduced by correct number of periods.
     """
     return value-math.copysign(value, 1)*(math.fabs(value)//period)*period
+
+@nb.vectorize([nb.float64(nb.float64, nb.float64, nb.float64, nb.float64)])
+def _nb_vanilla_axis_height(
+        phi,
+        toroidal_height,
+        half_width,
+        flattening):
+    """Evaluates the axis function r(phi) in polar coordinates. Note
+    that rotational skewing is not taken into account.
+
+    Args:
+        phi (scalar or array_like): Angular coordinate of a point on
+            the axis [rad] in polar coordinates, lies in the range
+            [-half_width, half_width].
+        toroidal_height (scalar or array_like): Toroidal
+            height for the calculation [m].
+        half_width (scalar or array_like): Half width angle for the
+            calculation [unitless].
+        flattening (scalar or array_like): Flattening coefficient
+            for the calculation [unitless].
+
+    Returns:
+        scalar or array: Radial coordinate of the point of the axis
+            in polar coordinates [m].
+    """
+    res = toroidal_height*np.cos(np.pi/2/half_width*phi)**flattening
+    return res
+
+
+@nb.cfunc(nb.double(nb.intc, nb.types.CPointer(nb.double)))
+def _nb_vanilla_axis_dlength(_, args):
+    """Evaluates derivative of the axis length ds/d(phi). Note that
+    rotational skewing is not taken into account.
+
+    Args:
+        _ (scalar): number of elements in args array,
+            which is always equal to 4 [unitless].
+        args[0] (scalar): Angular coordinate of a point on
+            the axis [rad] in polar coordinates, lies in the range
+            [-half_width, half_width] [rad].
+        args[1] (scalar): Toroidal height [m].
+        args[2] (scalar): Half width agnle [rad].
+        args[3] (scalar): Flattening coefficient [unitless].
+
+    Returns:
+        scalar: ds/d(phi) evaluated at `phi` angular location
+            of the axis [m/rad].
+    """
+    coeff_angle = np.pi/2/args[2]
+    res = (
+        args[1]
+        *np.cos(coeff_angle*args[0])**args[3]
+        *np.sqrt(
+            coeff_angle**2
+            *args[3]**2
+            *np.tan(coeff_angle*args[0])**2
+            +1
+        )
+    )
+    return res
