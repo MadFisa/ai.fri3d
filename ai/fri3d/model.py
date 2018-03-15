@@ -550,6 +550,9 @@ class StaticFRi3D(BaseFRi3D):
         _, theta, phi = cs.cart2sp(x, y, z)
         # x, y, z = cs.sp2cart(r, theta, phi)
         # Applies pancaking deformation to the FR
+        for i in range(100):
+            r *= (1-0.01*r/r.max())
+        r *= self.toroidal_height/r.max()
         # TODO: implement a better pancaking transformation
         # r, theta, phi = cs.cart2sp(x, y, z)
         # theta = (
