@@ -542,17 +542,28 @@ class StaticFRi3D(BaseFRi3D):
         axis_normal, _ = np.meshgrid(axis_normal, theta, indexing='ij')
         phi, theta = np.meshgrid(phi, theta, indexing='ij')
         # Bends the cylinder to FR shape
-        x = axis_height*np.cos(phi)+r*np.cos(theta)*np.cos(axis_normal+np.abs(phi))
-        y = axis_height*np.sin(phi)+r*np.cos(theta)*np.sin(axis_normal+np.abs(phi))*np.sign(phi)
+        x = (
+            axis_height*np.cos(phi)
+            +r*np.cos(theta)*np.cos(axis_normal+np.abs(phi))
+        )
+        y = (
+            axis_height*np.sin(phi)
+            +r*np.cos(theta)*np.sin(axis_normal+np.abs(phi))*np.sign(phi)
+        )
         z = r*np.sin(theta)
         # Applies correction for radial expansion
         r, _, _ = cs.cart2cyl(x, y, z)
         _, theta, phi = cs.cart2sp(x, y, z)
         # x, y, z = cs.sp2cart(r, theta, phi)
         # Applies pancaking deformation to the FR
+<<<<<<< HEAD
         for i in range(100):
             r *= (1-0.01*r/r.max())
         r *= self.toroidal_height/r.max()
+=======
+        # c = 0.2
+        # r = r*(1-c*np.abs(np.cos(self.vanilla_axis_normal_angle(phi))))+c*self.toroidal_height
+>>>>>>> d71c40358a5bd0f894104f0297d1fbae81d8ff1b
         # TODO: implement a better pancaking transformation
         # r, theta, phi = cs.cart2sp(x, y, z)
         # theta = (
@@ -949,7 +960,11 @@ class StaticFRi3D(BaseFRi3D):
                 print(b_)
                 jpar = np.dot(j, b_)*b_
                 jperp = j-jpar
-                print(np.linalg.norm(jpar), np.linalg.norm(jperp), np.linalg.norm(jperp)/np.linalg.norm(jpar))
+                print(
+                    np.linalg.norm(jpar),
+                    np.linalg.norm(jperp),
+                    np.linalg.norm(jperp)/np.linalg.norm(jpar)
+                )
                 forcemap[i, k] = np.linalg.norm(jperp)/np.linalg.norm(jpar)
         return forcemap.T
 
