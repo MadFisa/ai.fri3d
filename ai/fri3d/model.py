@@ -508,10 +508,8 @@ class StaticFRi3D(BaseFRi3D):
         """
         # Sets the default axial coordinate
         # to cover all of the shell's length
-        phi = (
-            phi if phi is not None
-            else np.linspace(-self.half_width, self.half_width, 50)
-        )
+        if phi is None:
+            phi = np.linspace(-self.half_width, self.half_width, 50)
         # Provides support of scalar input
         phi = np.asarray(phi)
         theta = np.asarray(theta)
@@ -554,20 +552,7 @@ class StaticFRi3D(BaseFRi3D):
         # Applies correction for radial expansion
         r, _, _ = cs.cart2cyl(x, y, z)
         _, theta, phi = cs.cart2sp(x, y, z)
-        # x, y, z = cs.sp2cart(r, theta, phi)
-        # Applies pancaking deformation to the FR
-        # for i in range(100):
-        #     r *= (1-0.01*r/r.max())
-        # r *= self.toroidal_height/r.max()
-        # c = 0.2
-        # r = r*(1-c*np.abs(np.cos(self.vanilla_axis_normal_angle(phi))))+c*self.toroidal_height
-        # TODO: implement a better pancaking transformation
-        # r, theta, phi = cs.cart2sp(x, y, z)
-        # theta = (
-        #     theta/np.arctan2(self.poloidal_height, self.toroidal_height)*
-        #     self.pancaking
-        # )
-        # r = (r+self.toroidal_height*2)/3/self.toroidal_height
+        # TODO: implement pancaking transformation
         x, y, z = cs.sp2cart(r, theta, phi)
         # Orients the FR direction and tilt
         T = cs.mx_rot(-self.latitude, self.longitude, self.tilt)
@@ -581,77 +566,85 @@ class StaticFRi3D(BaseFRi3D):
             return (x.squeeze(), y.squeeze(), z.squeeze())
         return (x, y, z)
 
-    def line(self, r, phi, s=np.linspace(0, 1, 50)):
+    def line(self, r=0, phi=None, theta=0):
         """Evaluates the 3D magnetic field line of the flux rope.
 
         Args:
-            r (scalar): Relative radial coordinate of the line origin in
-                origin footpoint cross-section [m], goes from 0 (center)
-                to 1 (edge).
-            phi (scalar): Angular coordinate of the line origin in
-                origin footpoint cross-section [rad].
-            s (scalar or array_like, optional): relative sampling
-                [unitless] of the line, assuming that distance along the
-                line goes from 0 to 1 from one footpoint to the other.
+            r (scalar, optional): Relative radial coordinate of the line
+                origin in the origin footpoint cross-section [m],
+                goes from 0 (center) to 1 (edge).
+            phi (scalar or array_like, optional): Angular coordinate
+                along the axis [rad].
+            theta (scalar, optional): angular coordinate
+                in the cross-section [rad].
 
         Returns:
             tuple: (x, y, z, b) scalars or arrays with coordinates of
                 line points and scalar or array with total magnetic
                 field along the line.
         """
-        s = np.asarray(s)
+        # Sets the default axial coordinate
+        # to cover all of the shell's length
+        if phi is None:
+            phi = np.linspace(-self.half_width, self.half_width, 50)
+        # Provides support of scalar input
+        phi = np.asarray(phi)
         scalar_input = False
-        if s.ndim == 0:
-            s = s[None]
+        if phi.ndim == 0 and theta.ndim == 0:
+            phi = phi[None]
             scalar_input = True
-        phi = np.ones(s.size)*phi
+        # Checks that all of the axial coordinates are valid
+        if np.any(phi < -self.half_width) or np.any(phi > self.half_width):
+            raise ValueError('phi should be in the range of angular width')
+        # Checks that the radial coordinate is valid
         if r < 0 or r > 1:
             raise ValueError('r should be in the range [0, 1]')
-        if np.any(s < 0) or np.any(s > 1):
-            raise ValueError('s should be in the range [0, 1]')
-        # twist
-        phi += s*self.twist*np.pi*2.0*self.chirality
-        # elongation
-        z = s*self.vanilla_axis_length(self.half_width)
-        # distance to axis from origin
-        R = self.vanilla_axis_height(self.vanilla_axis_phi(z))
-        # cross-section radial size in the FR plane
-        rx = R*self.poloidal_height/self.toroidal_height
-        # cross-section radial size perp to FR plane
-        ry = R*self.pancaking
-        # coefficient of flux decay
+        # Defines distance to axis and normal angle for later usage
+        axis_height = self.vanilla_axis_height(phi)
+        axis_normal = self.vanilla_axis_normal_angle(phi)
+        # Applies twist
+        theta = (
+            self.vanilla_axis_length(phi)
+            /self.vanilla_axis_length(self.half_width)
+            *self.twist*np.pi*2.0
+            *self.chirality
+        )+np.ones(phi.size)*theta
+        # Defines cross-section radial size in the FR plane
+        rx = axis_height*self.poloidal_height/self.toroidal_height
+        # Defines cross-section radial size perp to FR plane
+        ry = axis_height*self.pancaking
+        # Defines coefficient of flux decay
         kappa = rx*ry
-        # tapering
+        # Applies tapering
         r *= rx
-        # magnetic field
+        # Estimates magnetic field
+        # TODO: calculate magnetic field more precisely
         b = self._unit_b/kappa*np.exp(
             -((r/rx)**2)/2/self.sigma**2
         )
-        x, y, z = cs.cyl2cart(r, phi, z)
-        # rotation to x
-        T = cs.mx_rot_y(np.pi/2)
-        x, y, z = cs.mx_apply(T, x, y, z)
-        # bending
-        x[x < 0] = 0
-        phi = self.vanilla_axis_phi(x)
-        r = self.vanilla_axis_height(phi)
-        t = self.vanilla_axis_tan(phi)
-        x = r*np.cos(phi)+np.sin(t-phi-np.pi/2)*y
-        y = r*np.sin(phi)+np.cos(t-phi-np.pi/2)*y
-        # pancake
-        r, theta, phi = cs.cart2sp(x, y, z)
-        theta = (
-            theta/np.arctan2(self.poloidal_height, self.toroidal_height)*
-            self.pancaking
+        # Bends the cylinder to FR shape
+        x = (
+            axis_height*np.cos(phi)
+            +r*np.cos(theta)*np.cos(axis_normal+np.abs(phi))
         )
+        y = (
+            axis_height*np.sin(phi)
+            +r*np.cos(theta)*np.sin(axis_normal+np.abs(phi))*np.sign(phi)
+        )
+        z = r*np.sin(theta)
+        # Applies correction for radial expansion
+        r, _, _ = cs.cart2cyl(x, y, z)
+        _, theta, phi = cs.cart2sp(x, y, z)
+        # TODO: implement pancaking transformation
         x, y, z = cs.sp2cart(r, theta, phi)
-        # orientation
+        # Orients the FR direction and tilt
         T = cs.mx_rot(-self.latitude, self.longitude, self.tilt)
         x, y, z = cs.mx_apply(T, x, y, z)
-        # skew
+        # Applies rotational skew deformation to the FR
         r, phi, z = cs.cart2cyl(x, y, z)
         phi += self.skew*(1-r/self.toroidal_height)
         x, y, z = cs.cyl2cart(r, phi, z)
+        # Handles the scalar output
         if scalar_input:
             return (x.squeeze(), y.squeeze(), z.squeeze(), b.squeeze())
         return (x, y, z, b)
