@@ -649,7 +649,7 @@ class StaticFRi3D(BaseFRi3D):
             return (x.squeeze(), y.squeeze(), z.squeeze(), b.squeeze())
         return (x, y, z, b)
 
-    def data(self, x, y, z, ds=1e-5):
+    def data(self, x, y, z, dphi=1e-10):
         """Evaluates magnetic field measurements at a given point (or
         trajectory) in space.
 
@@ -660,14 +660,15 @@ class StaticFRi3D(BaseFRi3D):
                 space.
             z (scalar or array_like): Z-component of coordinate in
                 space.
-            ds (scalar, optional): Length of a relative axis section
-                used to integrate the magnetic field measurement.
+            dphi (scalar, optional): axis angle step used to integrate
+                the magnetic field measurement.
 
         Returns:
             tuple: (array, array), magnetic field measurements array of
                 shape (3) or (3, n) and array of coefficients used for
                 local speed estimation of shape (2) or (2, n).
         """
+        # Provides support of scalar input
         x = np.asarray(x)
         y = np.asarray(y)
         z = np.asarray(z)
@@ -677,30 +678,26 @@ class StaticFRi3D(BaseFRi3D):
             y = y[None]
             z = z[None]
             scalar_input = True
-        # reverse skew
+        # Reverses the skew deformation
         r, theta, phi = cs.cart2sp(x, y, z)
         phi -= self.skew*(1-r/self.toroidal_height)
         x, y, z = cs.sp2cart(r, theta, phi)
-        # reverse orientation
+        # Reverses the orientation
         T = cs.mx_rot_reverse(self.latitude, -self.longitude, -self.tilt)
         x, y, z = cs.mx_apply(T, x, y, z)
-        # reverse pancaking
+        # TODO: pancaking
         r, theta, phi = cs.cart2sp(x, y, z)
-        theta = (
-            theta/self.pancaking*
-            np.arctan2(self.poloidal_height, self.toroidal_height)
-        )
-        x, y, z = cs.sp2cart(r, theta, phi)
+        # Here r, phi, z are cylindrical coordinates
         # inside axis loop mask
-        p_in = self.vanilla_axis_height(phi) >= r*np.cos(theta)
-        # get r_ax and phi_ax of the closest point on axis
+        mask_inside = self.vanilla_axis_height(phi) >= r
+        # Finds the closest point on axis
         v_vanilla_axis_min_distance = np.vectorize(
             self.vanilla_axis_min_distance,
             otypes=[np.float64, np.float64]
         )
-        _, phi_ax = v_vanilla_axis_min_distance(r*np.cos(theta), phi)
+        _, phi_ax = v_vanilla_axis_min_distance(r, phi)
         r_ax = self.vanilla_axis_height(phi_ax)
-        # get s
+        # Estimates relative length along the axis
         v_vanilla_axis_length = np.vectorize(
             self.vanilla_axis_length,
             otypes=[np.float64]
@@ -709,67 +706,71 @@ class StaticFRi3D(BaseFRi3D):
             v_vanilla_axis_length(phi_ax)
             /self.vanilla_axis_length(self.half_width)
         )
-        x_ax, y_ax, z_ax = cs.sp2cart(r_ax, np.zeros(r_ax.size), phi_ax)
+        # Estimates relative radius inside cross-section
+        x_ax, y_ax, z_ax = cs.cyl2cart(r_ax, phi_ax, np.zeros(r_ax.size))
         dx = x-x_ax
         dy = y-y_ax
         dz = z-z_ax
         r_abs = np.sqrt(dx**2+dy**2+dz**2)
         r = r_abs/(r_ax*self.poloidal_height/self.toroidal_height)
         def div0(a, b):
-            """Handling the division by zero by defaulting to zero."""
+            """Handles the division by zero by defaulting to zero."""
             with np.errstate(divide='ignore', invalid='ignore'):
                 cc = np.true_divide(a, b)
                 cc[~np.isfinite(cc)] = 0  # -inf inf NaN
             return cc
-        phi = (
+        theta = (
             np.piecewise(dz, [dz < 0, dz >= 0], [-1, 1])
             *np.arccos(div0(np.sqrt(dx**2+dy**2), r_abs))
         )
-        phi[p_in] = np.pi-phi[p_in]
-        # reverse twist
-        phi -= s*self.twist*np.pi*2*self.chirality
-        # reverse rotation to x
-        phi -= np.pi/2
-        # get magnetic field and speed coefficients along sc trajectory
-        b = []
-        vc = []
+        theta[mask_inside] = np.pi-theta[mask_inside]
+        # Reverses twist
+        theta -= s*self.twist*np.pi*2*self.chirality
+        # Reverse rotation to x
+        theta -= np.pi/2
+        # Estimates magnetic field and speed coefficients along sc trajectory
+        b_list = []
+        vc_list = []
         for i in range(r.size):
             if r[i] <= 1:
-                x_, y_, z_, b_ = self.line(
+                x, y, z, b = self.line(
                     r[i],
-                    phi[i],
-                    [s[i]-ds, s[i]+ds]
+                    [phi_ax[i]-dphi, phi_ax[i]+dphi],
+                    theta[i]
                 )
-                if b_.size != 2:
-                    b.append([np.nan, np.nan, np.nan])
-                    vc.append([np.nan, np.nan])
+                if b.size != 2:
+                    b_list.append([np.nan, np.nan, np.nan])
+                    vc_list.append([np.nan, np.nan])
                 else:
                     vtc = r_ax[i]/self.toroidal_height
                     vpc = (
                         r_ax[i]/self.toroidal_height
                         *(
                             np.sqrt(
-                                np.mean(x_)**2
-                                +np.mean(y_)**2
-                                +np.mean(z_)**2
+                                np.mean(x)**2
+                                +np.mean(y)**2
+                                +np.mean(z)**2
                             )
                             -r_ax[i]
                         )
                         /self.poloidal_height
-                        *np.cos(self.vanilla_axis_tan(phi_ax[i]))
+                        *np.cos(self.vanilla_axis_normal_angle(phi_ax[i]))
                     )
                     dr = np.array(
-                        [x_[1]-x_[0], y_[1]-y_[0], z_[1]-z_[0]]
+                        [x[1]-x[0], y[1]-y[0], z[1]-z[0]]
                     )
                     dr /= np.linalg.norm(dr)
-                    b.append(dr*np.mean(b_)*self.polarity)
-                    vc.append(np.array([vtc, vpc]))
+                    b_list.append(dr*np.mean(b)*self.polarity)
+                    vc_list.append(np.array([vtc, vpc]))
             else:
-                b.append([np.nan, np.nan, np.nan])
-                vc.append([np.nan, np.nan])
+                b_list.append([np.nan, np.nan, np.nan])
+                vc_list.append([np.nan, np.nan])
         if scalar_input:
-            return (np.array(b).squeeze(), np.array(vc).squeeze())
-        return (np.array(b), np.array(vc))
+            return (
+                np.array(b_list).squeeze(),
+                np.array(vc_list).squeeze()
+            )
+        return (np.array(b_list), np.array(vc_list))
 
     def axis_min_distance(self, x, y, z, dphi=1e-3):
         """Estimates the distance to the axis.
