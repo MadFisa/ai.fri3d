@@ -649,7 +649,7 @@ class StaticFRi3D(BaseFRi3D):
             return (x.squeeze(), y.squeeze(), z.squeeze(), b.squeeze())
         return (x, y, z, b)
 
-    def data(self, x, y, z, dphi=1e-10):
+    def data(self, x, y, z, dphi=1e-5):
         """Evaluates magnetic field measurements at a given point (or
         trajectory) in space.
 
@@ -687,6 +687,7 @@ class StaticFRi3D(BaseFRi3D):
         x, y, z = cs.mx_apply(T, x, y, z)
         # TODO: pancaking
         r, theta, phi = cs.cart2sp(x, y, z)
+        x, y, z = cs.cyl2cart(r, phi, z)
         # Here r, phi, z are cylindrical coordinates
         # inside axis loop mask
         mask_inside = self.vanilla_axis_height(phi) >= r
@@ -726,8 +727,6 @@ class StaticFRi3D(BaseFRi3D):
         theta[mask_inside] = np.pi-theta[mask_inside]
         # Reverses twist
         theta -= s*self.twist*np.pi*2*self.chirality
-        # Reverse rotation to x
-        theta -= np.pi/2
         # Estimates magnetic field and speed coefficients along sc trajectory
         b_list = []
         vc_list = []
@@ -877,9 +876,7 @@ class StaticFRi3D(BaseFRi3D):
                 yg[i, k] = p[1]
                 zg[i, k] = p[2]
         b, _ = self.data(xg.flatten(), yg.flatten(), zg.flatten())
-        bmap = np.zeros(b.shape[0])
-        for i in range(b.shape[0]):
-            bmap[i] = np.dot(b[i, :], zmc)
+        bmap = np.array([np.dot(b[i, :], zmc) for i in range(b.shape[0])])
         bmap = np.reshape(bmap, [xgrid.size, ygrid.size]).T
         return bmap
 
