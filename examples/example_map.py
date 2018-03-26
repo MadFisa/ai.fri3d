@@ -9,13 +9,14 @@ from ai.fri3d.model import StaticFRi3D
 sfr = StaticFRi3D(
     toroidal_height=1,
     poloidal_height=0.2,
-    flattening=0.5
+    flattening=0.5,
+    twist=0.1
 )
 
-xgrid = np.linspace(-0.2, 0.2, 100)
-ygrid = np.linspace(-0.2, 0.2, 100)
+xgrid = np.linspace(-0.2, 0.2, 20)
+ygrid = np.linspace(-0.2, 0.2, 20)
 
-bmap = sfr.map(
+bmap = sfr.forcemap(
     1, 0, 0,
     [1, 0, 0], [0, 0, 1],
     xgrid=xgrid,

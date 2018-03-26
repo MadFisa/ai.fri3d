@@ -7,13 +7,10 @@ and as a propagating dynamic structure, respectively.
 # pylint: disable=E1102
 # pylint: disable=C0103
 # pylint: disable=C0302
-import os
 import math
-import pickle
 import numpy as np
 import numba as nb
-from scipy.interpolate import RegularGridInterpolator, LinearNDInterpolator
-from scipy.integrate import fixed_quad, quad
+from scipy.integrate import quad
 from scipy.optimize import minimize_scalar
 from scipy import LowLevelCallable
 from ai import cs
@@ -945,14 +942,8 @@ class StaticFRi3D(BaseFRi3D):
                 ])/1.25663706e-06
                 b_ = b(p)
                 b_ /= np.linalg.norm(b_)
-                print(b_)
                 jpar = np.dot(j, b_)*b_
                 jperp = j-jpar
-                print(
-                    np.linalg.norm(jpar),
-                    np.linalg.norm(jperp),
-                    np.linalg.norm(jperp)/np.linalg.norm(jpar)
-                )
                 forcemap[i, k] = np.linalg.norm(jperp)/np.linalg.norm(jpar)
         return forcemap.T
 
