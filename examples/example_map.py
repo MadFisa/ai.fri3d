@@ -10,13 +10,20 @@ sfr = StaticFRi3D(
     toroidal_height=1,
     poloidal_height=0.2,
     flattening=0.5,
-    twist=0.1
+    twist=2
 )
 
-xgrid = np.linspace(-0.2, 0.2, 20)
-ygrid = np.linspace(-0.2, 0.2, 20)
+xgrid = np.linspace(-0.2, 0.2, 100)
+ygrid = np.linspace(-0.2, 0.2, 100)
 
-bmap = sfr.forcemap(
+# bmap = sfr.forcemap(
+#     1, 0, 0,
+#     [1, 0, 0], [0, 0, 1],
+#     xgrid=xgrid,
+#     ygrid=ygrid
+# )
+
+bmap = sfr.map(
     1, 0, 0,
     [1, 0, 0], [0, 0, 1],
     xgrid=xgrid,

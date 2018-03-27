@@ -19,6 +19,7 @@ z = np.zeros(x.shape)
 
 b, _ = sfr.data(x, y, z)
 
+plt.plot(x, np.linalg.norm(b, axis=1), 'k')
 plt.plot(x, b[:, 0], 'r')
 plt.plot(x, b[:, 1], 'g')
 plt.plot(x, b[:, 2], 'b')

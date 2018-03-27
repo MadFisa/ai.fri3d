@@ -242,17 +242,17 @@ def test_b_quiver(
     plt.colorbar()
     plt.show()
 
-    plt.pcolormesh(x, y, b[0, :])
-    plt.colorbar()
-    plt.show()
+    # plt.pcolormesh(x, y, b[0, :])
+    # plt.colorbar()
+    # plt.show()
 
-    plt.pcolormesh(x, y, b[1, :])
-    plt.colorbar()
-    plt.show()
+    # plt.pcolormesh(x, y, b[1, :])
+    # plt.colorbar()
+    # plt.show()
 
-    plt.pcolormesh(x, y, b[2, :])
-    plt.colorbar()
-    plt.show()
+    # plt.pcolormesh(x, y, b[2, :])
+    # plt.colorbar()
+    # plt.show()
 
     plt.quiver(
         x,
@@ -303,7 +303,7 @@ def test_b_quiver(
 twist = 1*2*np.pi/2.5
 # print(twist)
 test_b_quiver(
-    -np.pi/180*20,
+    -np.pi/180*0,
     1,
     np.pi/180*60,
     0.5,

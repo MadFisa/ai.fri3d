@@ -609,16 +609,29 @@ class StaticFRi3D(BaseFRi3D):
         # Defines cross-section radial size in the FR plane
         rx = axis_height*self.poloidal_height/self.toroidal_height
         # Defines cross-section radial size perp to FR plane
-        ry = axis_height*self.pancaking
+        # ry = axis_height*self.pancaking
+        ry = rx
         # Defines coefficient of flux decay
         kappa = rx*ry
         # Applies tapering
         r *= rx
         # Estimates magnetic field
+        
+        b = _nb_vanilla_axis_mag(
+            r,
+            theta-np.pi,
+            phi,
+            1,
+            self.half_width,
+            self.flattening,
+            self.twist*2*np.pi/2.5,
+            1
+        )/kappa
+
         # TODO: calculate magnetic field more precisely
-        b = self._unit_b/kappa*np.exp(
-            -((r/rx)**2)/2/self.sigma**2
-        )
+        # b = self._unit_b/kappa*np.exp(
+        #     -((r/rx)**2)/2/self.sigma**2
+        # )
         # Bends the cylinder to FR shape
         x = (
             axis_height*np.cos(phi)
@@ -873,7 +886,8 @@ class StaticFRi3D(BaseFRi3D):
                 yg[i, k] = p[1]
                 zg[i, k] = p[2]
         b, _ = self.data(xg.flatten(), yg.flatten(), zg.flatten())
-        bmap = np.array([np.dot(b[i, :], zmc) for i in range(b.shape[0])])
+        # bmap = np.array([np.dot(b[i, :], zmc) for i in range(b.shape[0])])
+        bmap = np.array([np.linalg.norm(b[i, :]) for i in range(b.shape[0])])
         bmap = np.reshape(bmap, [xgrid.size, ygrid.size]).T
         return bmap
 
@@ -1291,6 +1305,98 @@ def _nb_vanilla_axis_height(
     res = toroidal_height*np.cos(np.pi/2/half_width*phi)**flattening
     return res
 
+@nb.vectorize([nb.float64(nb.float64, nb.float64, nb.float64, nb.float64)])
+def _nb_vanilla_axis_dheight(phi, toroidal_height, half_width, flattening):
+    return (
+        -np.pi/2/half_width*flattening
+        *np.tan(np.pi/2/half_width*phi)
+        *_nb_vanilla_axis_height(phi, toroidal_height, half_width, flattening)
+    )
+
+@nb.vectorize(
+    [
+        nb.float64(
+            nb.float64, nb.float64, nb.float64, nb.float64,
+            nb.float64, nb.float64, nb.float64, nb.float64
+        )
+    ]
+)
+def _nb_vanilla_axis_mag(
+        r,
+        theta,
+        phi,
+        toroidal_height,
+        half_width,
+        flattening,
+        twist,
+        B0):
+    dheight = (
+        -np.pi/2/half_width*flattening
+        *np.tan(np.pi/2/half_width*phi)
+        *_nb_vanilla_axis_height(phi, toroidal_height, half_width, flattening)
+    )
+    d2height = (
+        -np.pi/2/half_width*flattening
+        *np.tan(np.pi/2/half_width*phi)
+        *dheight
+        -(np.pi/2/half_width)**2*flattening
+        /np.cos(np.pi/2/half_width*phi)**2
+        *_nb_vanilla_axis_height(phi, toroidal_height, half_width, flattening)
+    )
+    Rc = (
+        (
+            _nb_vanilla_axis_height(
+                phi,
+                toroidal_height,
+                half_width,
+                flattening
+            )**2
+            +dheight**2
+        )**(3/2)
+        /np.abs(
+            _nb_vanilla_axis_height(
+                phi,
+                toroidal_height,
+                half_width,
+                flattening
+            )**2
+            +2*dheight**2
+            -_nb_vanilla_axis_height(
+                phi,
+                toroidal_height,
+                half_width,
+                flattening
+            )
+            *d2height
+        )
+    )
+    dlength = np.sqrt(
+        _nb_vanilla_axis_height(
+            phi,
+            toroidal_height,
+            half_width,
+            flattening
+        )**2
+        +dheight
+    )
+    z0 = (
+        _nb_vanilla_axis_height(phi, toroidal_height, half_width, flattening)
+        *dlength
+        /dheight
+    )
+    a = twist
+    b = np.cos(theta)/Rc
+    return (
+        np.sqrt(r**2/z0**2+a**2*r**2+(1-r*b)**2)/
+        (1-r*np.cos(theta)/Rc)
+        *B0
+        *(1-r*b)
+        *((1-r*b)**2+a**2*r**2)**(-(2*a**2+b**2)/2/(a**2+b**2))
+        *np.exp(
+            -a*b/(a**2+b**2)*np.arctan(((a**2+b**2)*r-b)/a)
+            +a*b/(a**2+b**2)*np.arctan(-b/a)
+        )
+    )
 
 @nb.cfunc(nb.double(nb.intc, nb.types.CPointer(nb.double)))
 def _nb_vanilla_axis_dlength(_, args):
