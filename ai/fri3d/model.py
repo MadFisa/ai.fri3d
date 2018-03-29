@@ -211,10 +211,7 @@ class StaticFRi3D(BaseFRi3D):
         self.half_width = kwargs.get('half_width', 40*np.pi/180)
         self.tilt = kwargs.get('tilt', 0)
         self.flattening = kwargs.get('flattening', 0.5)
-        self.pancaking = kwargs.get(
-            'pancaking',
-            np.arctan(self.poloidal_height/self.toroidal_height)
-        )
+        self.pancaking = kwargs.get('pancaking', 1)
         self.skew = kwargs.get('skew', 0)
         self.twist = kwargs.get('twist', 1)
         self.flux = kwargs.get('flux', 5e14)
@@ -284,11 +281,11 @@ class StaticFRi3D(BaseFRi3D):
 
     @BaseFRi3D.pancaking.setter
     def pancaking(self, val):
-        if val > 0 and val < np.pi:
+        if val > 0 and val <= 1:
             self._pancaking = val
         else:
             raise ValueError(
-                'Pancaking should be greater than 0 and less than pi.'
+                'Pancaking should be greater than 0 and less than 1.'
             )
 
     @BaseFRi3D.twist.setter
@@ -361,12 +358,6 @@ class StaticFRi3D(BaseFRi3D):
             self.toroidal_height
             *np.cos(np.pi/2/self.half_width*phi)**self.flattening
         )
-        # res = _nb_vanilla_axis_height(
-        #     phi,
-        #     self.toroidal_height,
-        #     self.half_width,
-        #     self.flattening
-        # )
         if scalar_input:
             return res.squeeze()
         return res
@@ -632,8 +623,7 @@ class StaticFRi3D(BaseFRi3D):
             for p in phi
         ])
         theta = twist*np.pi*2.0*self.chirality+np.ones(phi.size)*theta
-        
-        # Applies tapering
+        # Applies tapering and pancaking
         rx = axis_height*self.poloidal_height/self.toroidal_height
         ry = axis_height*self.poloidal_height/self.toroidal_height
         rx *= 1-(1-self.pancaking)/np.sqrt(
@@ -644,18 +634,8 @@ class StaticFRi3D(BaseFRi3D):
             )**2
         )
         kappa = rx*ry
-        
-        r *= rx*ry/np.sqrt((ry*np.cos(theta))**2+(rx*np.sin(theta))**2)
-
-        # Defines cross-section radial size in the FR plane
-        # rx = axis_height*self.poloidal_height/self.toroidal_height
-        # Defines cross-section radial size perp to FR plane
-        # ry = axis_height*self.pancaking
-        # ry = rx
-        # Defines coefficient of flux decay
-        # kappa = rx*ry
-        # Applies tapering
-        # r *= rx
+        rtot = rx*ry/np.sqrt((ry*np.cos(theta))**2+(rx*np.sin(theta))**2)
+        r *= rtot
         # Estimates magnetic field
         
         # b = _nb_vanilla_axis_mag(
@@ -671,7 +651,7 @@ class StaticFRi3D(BaseFRi3D):
 
         # TODO: calculate magnetic field more precisely
         b = self._unit_b/kappa*np.exp(
-            -((r/rx)**2)/2/self.sigma**2
+            -((r/rtot)**2)/2/self.sigma**2
         )
         # Bends the cylinder to FR shape
         x = (

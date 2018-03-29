@@ -9,6 +9,7 @@ from ai.fri3d.model import StaticFRi3D
 sfr = StaticFRi3D(
     toroidal_height=1,
     poloidal_height=0.2,
+    pancaking=0.5,
     # skew=np.pi/6,
     flattening=0.5
 )
