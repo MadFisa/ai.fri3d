@@ -8,11 +8,14 @@ from ai.fri3d.model import StaticFRi3D
 
 sfr = StaticFRi3D(
     toroidal_height=1,
-    poloidal_height=0.2,
+    poloidal_height=0.4,
     half_width=np.pi/4,
     # skew=np.pi/6,
+    pancaking=0.6,
     flattening=0.5,
-    twist=2
+    twist=2,
+    
+    # skew=np.pi/6
 )
 
 phi = np.linspace(-sfr.half_width, sfr.half_width, 100)

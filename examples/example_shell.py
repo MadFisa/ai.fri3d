@@ -8,14 +8,15 @@ from ai.fri3d.model import StaticFRi3D
 
 sfr = StaticFRi3D(
     toroidal_height=1,
-    poloidal_height=0.2,
+    poloidal_height=0.4,
+    pancaking=0.4,
     # skew=np.pi/6,
     flattening=0.5
 )
 
 phi = np.linspace(-sfr.half_width, sfr.half_width, 20)
 
-x, y, z = sfr.shell()
+x, y, z = sfr.shell(theta=np.linspace(0, np.pi*2, 24*2))
 
 fig = plt.figure()
 
