@@ -357,12 +357,16 @@ class StaticFRi3D(BaseFRi3D):
         if phi.ndim == 0:
             phi = phi[None]
             scalar_input = True
-        res = _nb_vanilla_axis_height(
-            phi,
-            self.toroidal_height,
-            self.half_width,
-            self.flattening
+        res = (
+            self.toroidal_height
+            *np.cos(np.pi/2/self.half_width*phi)**self.flattening
         )
+        # res = _nb_vanilla_axis_height(
+        #     phi,
+        #     self.toroidal_height,
+        #     self.half_width,
+        #     self.flattening
+        # )
         if scalar_input:
             return res.squeeze()
         return res
@@ -600,12 +604,31 @@ class StaticFRi3D(BaseFRi3D):
         axis_height = self.vanilla_axis_height(phi)
         axis_normal = self.vanilla_axis_normal_angle(phi)
         # Applies twist
-        theta = (
-            self.vanilla_axis_length(phi)
-            /self.vanilla_axis_length(self.half_width)
-            *self.twist*np.pi*2.0
-            *self.chirality
-        )+np.ones(phi.size)*theta
+        # TODO: non-uniform twist (no twist in legs)
+        twist = np.array([
+            self.twist
+            /quad(
+                LowLevelCallable(_nb_vanilla_axis_height.ctypes),
+                -self.half_width,
+                self.half_width,
+                (self.toroidal_height, self.half_width, self.flattening)
+            )[0]
+            *quad(
+                LowLevelCallable(_nb_vanilla_axis_height.ctypes),
+                -self.half_width,
+                p,
+                (self.toroidal_height, self.half_width, self.flattening)
+            )[0]
+            for p in phi
+        ])
+        theta = twist*np.pi*2.0*self.chirality+np.ones(phi.size)*theta
+                
+        # theta = (
+        #     self.vanilla_axis_length(phi)
+        #     /self.vanilla_axis_length(self.half_width)
+        #     *self.twist*np.pi*2.0
+        #     *self.chirality
+        # )+np.ones(phi.size)*theta
         # Defines cross-section radial size in the FR plane
         rx = axis_height*self.poloidal_height/self.toroidal_height
         # Defines cross-section radial size perp to FR plane
@@ -617,21 +640,21 @@ class StaticFRi3D(BaseFRi3D):
         r *= rx
         # Estimates magnetic field
         
-        b = _nb_vanilla_axis_mag(
-            r,
-            theta-np.pi,
-            phi,
-            1,
-            self.half_width,
-            self.flattening,
-            self.twist*2*np.pi/2.5,
-            1
-        )/kappa
+        # b = _nb_vanilla_axis_mag(
+        #     r,
+        #     theta-np.pi,
+        #     phi,
+        #     1,
+        #     self.half_width,
+        #     self.flattening,
+        #     self.twist*2*np.pi/2.5,
+        #     1
+        # )/kappa
 
         # TODO: calculate magnetic field more precisely
-        # b = self._unit_b/kappa*np.exp(
-        #     -((r/rx)**2)/2/self.sigma**2
-        # )
+        b = self._unit_b/kappa*np.exp(
+            -((r/rx)**2)/2/self.sigma**2
+        )
         # Bends the cylinder to FR shape
         x = (
             axis_height*np.cos(phi)
@@ -1278,40 +1301,40 @@ def subtract_period(value, period):
     """
     return value-math.copysign(value, 1)*(math.fabs(value)//period)*period
 
-@nb.vectorize([nb.float64(nb.float64, nb.float64, nb.float64, nb.float64)])
-def _nb_vanilla_axis_height(
-        phi,
-        toroidal_height,
-        half_width,
-        flattening):
-    """Evaluates the axis function r(phi) in polar coordinates. Note
-    that rotational skewing is not taken into account.
+# @nb.vectorize([nb.float64(nb.float64, nb.float64, nb.float64, nb.float64)])
+# def _nb_vanilla_axis_height(
+#         phi,
+#         toroidal_height,
+#         half_width,
+#         flattening):
+#     """Evaluates the axis function r(phi) in polar coordinates. Note
+#     that rotational skewing is not taken into account.
 
-    Args:
-        phi (scalar or array_like): Angular coordinate of a point on
-            the axis [rad] in polar coordinates, lies in the range
-            [-half_width, half_width].
-        toroidal_height (scalar or array_like): Toroidal
-            height for the calculation [m].
-        half_width (scalar or array_like): Half width angle for the
-            calculation [unitless].
-        flattening (scalar or array_like): Flattening coefficient
-            for the calculation [unitless].
+#     Args:
+#         phi (scalar or array_like): Angular coordinate of a point on
+#             the axis [rad] in polar coordinates, lies in the range
+#             [-half_width, half_width].
+#         toroidal_height (scalar or array_like): Toroidal
+#             height for the calculation [m].
+#         half_width (scalar or array_like): Half width angle for the
+#             calculation [unitless].
+#         flattening (scalar or array_like): Flattening coefficient
+#             for the calculation [unitless].
 
-    Returns:
-        scalar or array: Radial coordinate of the point of the axis
-            in polar coordinates [m].
-    """
-    res = toroidal_height*np.cos(np.pi/2/half_width*phi)**flattening
-    return res
+#     Returns:
+#         scalar or array: Radial coordinate of the point of the axis
+#             in polar coordinates [m].
+#     """
+#     res = toroidal_height*np.cos(np.pi/2/half_width*phi)**flattening
+#     return res
 
-@nb.vectorize([nb.float64(nb.float64, nb.float64, nb.float64, nb.float64)])
-def _nb_vanilla_axis_dheight(phi, toroidal_height, half_width, flattening):
-    return (
-        -np.pi/2/half_width*flattening
-        *np.tan(np.pi/2/half_width*phi)
-        *_nb_vanilla_axis_height(phi, toroidal_height, half_width, flattening)
-    )
+# @nb.vectorize([nb.float64(nb.float64, nb.float64, nb.float64, nb.float64)])
+# def _nb_vanilla_axis_dheight(phi, toroidal_height, half_width, flattening):
+#     return (
+#         -np.pi/2/half_width*flattening
+#         *np.tan(np.pi/2/half_width*phi)
+#         *_nb_vanilla_axis_height(phi, toroidal_height, half_width, flattening)
+#     )
 
 @nb.vectorize(
     [
@@ -1330,10 +1353,11 @@ def _nb_vanilla_axis_mag(
         flattening,
         twist,
         B0):
+    height = toroidal_height*np.cos(np.pi/2/half_width*phi)**flattening
     dheight = (
         -np.pi/2/half_width*flattening
         *np.tan(np.pi/2/half_width*phi)
-        *_nb_vanilla_axis_height(phi, toroidal_height, half_width, flattening)
+        *height
     )
     d2height = (
         -np.pi/2/half_width*flattening
@@ -1341,46 +1365,26 @@ def _nb_vanilla_axis_mag(
         *dheight
         -(np.pi/2/half_width)**2*flattening
         /np.cos(np.pi/2/half_width*phi)**2
-        *_nb_vanilla_axis_height(phi, toroidal_height, half_width, flattening)
+        *height
     )
     Rc = (
         (
-            _nb_vanilla_axis_height(
-                phi,
-                toroidal_height,
-                half_width,
-                flattening
-            )**2
+            height**2
             +dheight**2
         )**(3/2)
         /np.abs(
-            _nb_vanilla_axis_height(
-                phi,
-                toroidal_height,
-                half_width,
-                flattening
-            )**2
+            height**2
             +2*dheight**2
-            -_nb_vanilla_axis_height(
-                phi,
-                toroidal_height,
-                half_width,
-                flattening
-            )
+            -height
             *d2height
         )
     )
     dlength = np.sqrt(
-        _nb_vanilla_axis_height(
-            phi,
-            toroidal_height,
-            half_width,
-            flattening
-        )**2
+        height**2
         +dheight
     )
     z0 = (
-        _nb_vanilla_axis_height(phi, toroidal_height, half_width, flattening)
+        height
         *dlength
         /dheight
     )
@@ -1397,6 +1401,29 @@ def _nb_vanilla_axis_mag(
             +a*b/(a**2+b**2)*np.arctan(-b/a)
         )
     )
+
+@nb.cfunc(nb.double(nb.intc, nb.types.CPointer(nb.double)))
+def _nb_vanilla_axis_height(_, args):
+    """Evaluates height of the axis. Note that rotational skewing is not
+    taken into account.
+
+    Args:
+        _ (scalar): number of elements in args array,
+            which is always equal to 4 [unitless].
+        args[0] (scalar): Angular coordinate of a point on
+            the axis [rad] in polar coordinates, lies in the range
+            [-half_width, half_width] [rad].
+        args[1] (scalar): Toroidal height [m].
+        args[2] (scalar): Half width agnle [rad].
+        args[3] (scalar): Flattening coefficient [unitless].
+
+    Returns:
+        scalar: height evaluated at `phi` angular location
+            of the axis [m/rad].
+    """
+    coeff_angle = np.pi/2/args[2]
+    res = args[1]*np.cos(coeff_angle*args[0])**args[3]
+    return res
 
 @nb.cfunc(nb.double(nb.intc, nb.types.CPointer(nb.double)))
 def _nb_vanilla_axis_dlength(_, args):
