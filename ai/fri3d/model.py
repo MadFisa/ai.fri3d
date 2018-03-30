@@ -626,32 +626,23 @@ class StaticFRi3D(BaseFRi3D):
         # Applies tapering and pancaking
         rx = axis_height*self.poloidal_height/self.toroidal_height
         ry = axis_height*self.poloidal_height/self.toroidal_height
-        rx *= 1-(1-self.pancaking)/np.sqrt(
+        pancaking = 1-(1-self.pancaking)/np.sqrt(
             1+(
                 self.flattening
                 *self._coeff_angle
                 *np.tan(self._coeff_angle*phi)
             )**2
         )
-        kappa = rx*ry
+        rx *= pancaking
         rtot = rx*ry/np.sqrt((ry*np.cos(theta))**2+(rx*np.sin(theta))**2)
         r *= rtot
         # Estimates magnetic field
-        
-        # b = _nb_vanilla_axis_mag(
-        #     r,
-        #     theta-np.pi,
-        #     phi,
-        #     1,
-        #     self.half_width,
-        #     self.flattening,
-        #     self.twist*2*np.pi/2.5,
-        #     1
-        # )/kappa
-
-        # TODO: calculate magnetic field more precisely
-        b = self._unit_b/kappa*np.exp(
-            -((r/rtot)**2)/2/self.sigma**2
+        sigmax = self.sigma*pancaking
+        sigmay = self.sigma
+        b_ax = self.flux/2/np.pi/sigmax/sigmay
+        b = b_ax*np.exp(
+            -(r*np.cos(theta))**2/2/sigmax**2
+            -(r*np.sin(theta))**2/2/sigmay**2
         )
         # Bends the cylinder to FR shape
         x = (
@@ -666,7 +657,6 @@ class StaticFRi3D(BaseFRi3D):
         # Applies correction for radial expansion
         r, _, _ = cs.cart2cyl(x, y, z)
         _, theta, phi = cs.cart2sp(x, y, z)
-        # TODO: implement pancaking transformation
         x, y, z = cs.sp2cart(r, theta, phi)
         # Orients the FR direction and tilt
         T = cs.mx_rot(-self.latitude, self.longitude, self.tilt)
@@ -716,7 +706,7 @@ class StaticFRi3D(BaseFRi3D):
         # Reverses the orientation
         T = cs.mx_rot_reverse(self.latitude, -self.longitude, -self.tilt)
         x, y, z = cs.mx_apply(T, x, y, z)
-        # TODO: pancaking
+        # Reverses correction for radial expansion
         r, theta, phi = cs.cart2sp(x, y, z)
         x, y, z = cs.cyl2cart(r, phi, z)
         # Here r, phi, z are cylindrical coordinates
@@ -729,35 +719,45 @@ class StaticFRi3D(BaseFRi3D):
         )
         _, phi_ax = v_vanilla_axis_min_distance(r, phi)
         r_ax = self.vanilla_axis_height(phi_ax)
-        # Estimates relative length along the axis
-        v_vanilla_axis_length = np.vectorize(
-            self.vanilla_axis_length,
-            otypes=[np.float64]
-        )
-        s = (
-            v_vanilla_axis_length(phi_ax)
-            /self.vanilla_axis_length(self.half_width)
-        )
-        # Estimates relative radius inside cross-section
+        # Estimates relative radius and polar angle inside cross-section
         x_ax, y_ax, z_ax = cs.cyl2cart(r_ax, phi_ax, np.zeros(r_ax.size))
         dx = x-x_ax
         dy = y-y_ax
         dz = z-z_ax
         r_abs = np.sqrt(dx**2+dy**2+dz**2)
-        r = r_abs/(r_ax*self.poloidal_height/self.toroidal_height)
-        def div0(a, b):
-            """Handles the division by zero by defaulting to zero."""
-            with np.errstate(divide='ignore', invalid='ignore'):
-                cc = np.true_divide(a, b)
-                cc[~np.isfinite(cc)] = 0  # -inf inf NaN
-            return cc
-        theta = (
-            np.piecewise(dz, [dz < 0, dz >= 0], [-1, 1])
-            *np.arccos(div0(np.sqrt(dx**2+dy**2), r_abs))
-        )
+        theta = np.arctan2(dz, np.sqrt(dx**2+dy**2))
         theta[mask_inside] = np.pi-theta[mask_inside]
+        rx = r_ax*self.poloidal_height/self.toroidal_height
+        ry = r_ax*self.poloidal_height/self.toroidal_height
+        pancaking = 1-(1-self.pancaking)/np.sqrt(
+            1+(
+                self.flattening
+                *self._coeff_angle
+                *np.tan(self._coeff_angle*phi_ax)
+            )**2
+        )
+        rx *= pancaking
+        r_tot = rx*ry/np.sqrt((ry*np.cos(theta))**2+(rx*np.sin(theta))**2)
+        r = r_abs/r_tot
+        theta = np.arctan2(r_abs*np.sin(theta), r_abs*np.cos(theta)/pancaking)
         # Reverses twist
-        theta -= s*self.twist*np.pi*2*self.chirality
+        twist = np.array([
+            self.twist
+            /quad(
+                LowLevelCallable(_nb_vanilla_axis_height.ctypes),
+                -self.half_width,
+                self.half_width,
+                (self.toroidal_height, self.half_width, self.flattening)
+            )[0]
+            *quad(
+                LowLevelCallable(_nb_vanilla_axis_height.ctypes),
+                -self.half_width,
+                p,
+                (self.toroidal_height, self.half_width, self.flattening)
+            )[0]
+            for p in phi
+        ])
+        theta -= twist*np.pi*2.0*self.chirality
         # Estimates magnetic field and speed coefficients along sc trajectory
         b_list = []
         vc_list = []
@@ -802,7 +802,7 @@ class StaticFRi3D(BaseFRi3D):
             )
         return (np.array(b_list), np.array(vc_list))
 
-    def axis_min_distance(self, x, y, z, dphi=1e-3):
+    def axis_min_distance(self, x, y, z, dphi=1e-5):
         """Estimates the distance to the axis.
 
         Args:
@@ -907,8 +907,8 @@ class StaticFRi3D(BaseFRi3D):
                 yg[i, k] = p[1]
                 zg[i, k] = p[2]
         b, _ = self.data(xg.flatten(), yg.flatten(), zg.flatten())
-        # bmap = np.array([np.dot(b[i, :], zmc) for i in range(b.shape[0])])
-        bmap = np.array([np.linalg.norm(b[i, :]) for i in range(b.shape[0])])
+        bmap = np.array([np.dot(b[i, :], zmc) for i in range(b.shape[0])])
+        # bmap = np.array([np.linalg.norm(b[i, :]) for i in range(b.shape[0])])
         bmap = np.reshape(bmap, [xgrid.size, ygrid.size]).T
         return bmap
 

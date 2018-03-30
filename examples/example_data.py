@@ -8,15 +8,15 @@ from ai.fri3d.model import StaticFRi3D
 
 sfr = StaticFRi3D(
     toroidal_height=1,
-    poloidal_height=0.2,
+    poloidal_height=0.3,
     pancaking=0.5,
     # skew=np.pi/6,
     flattening=0.5
 )
 
 x = np.linspace(0.8, 1.2, 50)
-y = np.zeros(x.shape)
-z = np.zeros(x.shape)
+y = np.ones(50)*0.0
+z = np.ones(50)*0.25
 
 b, _ = sfr.data(x, y, z)
 

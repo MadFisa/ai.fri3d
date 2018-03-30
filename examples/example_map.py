@@ -9,8 +9,9 @@ from ai.fri3d.model import StaticFRi3D
 sfr = StaticFRi3D(
     toroidal_height=1,
     poloidal_height=0.2,
-    flattening=0.5,
-    twist=2
+    pancaking=0.8,
+    # skew=np.pi/6,
+    flattening=0.5
 )
 
 xgrid = np.linspace(-0.2, 0.2, 100)

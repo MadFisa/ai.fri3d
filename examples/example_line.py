@@ -11,7 +11,7 @@ sfr = StaticFRi3D(
     poloidal_height=0.4,
     half_width=np.pi/4,
     # skew=np.pi/6,
-    pancaking=0.6,
+    pancaking=0.4,
     flattening=0.5,
     twist=2,
     
