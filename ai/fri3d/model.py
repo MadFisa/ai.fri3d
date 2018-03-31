@@ -639,11 +639,13 @@ class StaticFRi3D(BaseFRi3D):
         # Estimates magnetic field
         sigmax = self.sigma*pancaking
         sigmay = self.sigma
+        # TODO: correct MF estimation
         b_ax = self.flux/2/np.pi/sigmax/sigmay
         b = b_ax*np.exp(
             -(r*np.cos(theta))**2/2/sigmax**2
             -(r*np.sin(theta))**2/2/sigmay**2
         )
+        print(b_ax)
         # Bends the cylinder to FR shape
         x = (
             axis_height*np.cos(phi)
@@ -790,6 +792,10 @@ class StaticFRi3D(BaseFRi3D):
                         [x[1]-x[0], y[1]-y[0], z[1]-z[0]]
                     )
                     dr /= np.linalg.norm(dr)
+                    print(
+                        np.mean(b),
+                        vars(self)
+                    )
                     b_list.append(dr*np.mean(b)*self.polarity)
                     vc_list.append(np.array([vtc, vpc]))
             else:
