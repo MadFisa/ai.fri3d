@@ -10,7 +10,7 @@ and as a propagating dynamic structure, respectively.
 import math
 import numpy as np
 import numba as nb
-from scipy.integrate import quad
+from scipy.integrate import quad, dblquad
 from scipy.optimize import minimize_scalar
 from scipy import LowLevelCallable
 from ai import cs
@@ -214,7 +214,7 @@ class StaticFRi3D(BaseFRi3D):
         self.pancaking = kwargs.get('pancaking', 1)
         self.skew = kwargs.get('skew', 0)
         self.twist = kwargs.get('twist', 1)
-        self.flux = kwargs.get('flux', 5e14)
+        self.flux = kwargs.get('flux', 1e13)
         self.sigma = kwargs.get('sigma', 2)
         self.polarity = kwargs.get('polarity', 1)
         self.chirality = kwargs.get('chirality', 1)
@@ -637,15 +637,45 @@ class StaticFRi3D(BaseFRi3D):
         rtot = rx*ry/np.sqrt((ry*np.cos(theta))**2+(rx*np.sin(theta))**2)
         r *= rtot
         # Estimates magnetic field
+        b_ax = np.array([
+            self.flux
+            /dblquad(
+                LowLevelCallable(_nb_vanilla_axis_rdflux.ctypes),
+                0, 2*np.pi,
+                lambda theta: 0,
+                lambda theta:
+                    rx[i]*ry[i]
+                    /np.sqrt(
+                        (ry[i]*np.cos(theta))**2+(rx[i]*np.sin(theta))**2
+                    ),
+                (
+                    phi[i],
+                    self.toroidal_height,
+                    self.poloidal_height,
+                    self.half_width,
+                    self.flattening,
+                    self.pancaking,
+                    self.twist,
+                    self.sigma,
+                    quad(
+                        LowLevelCallable(_nb_vanilla_axis_height.ctypes),
+                        -self.half_width,
+                        self.half_width,
+                        (
+                            self.toroidal_height,
+                            self.half_width,
+                            self.flattening
+                        )
+                    )[0]
+                )
+            )[0] for i in range(phi.size)
+        ])
         sigmax = self.sigma*pancaking
         sigmay = self.sigma
-        # TODO: correct MF estimation
-        b_ax = self.flux/2/np.pi/sigmax/sigmay
         b = b_ax*np.exp(
-            -(r*np.cos(theta))**2/2/sigmax**2
-            -(r*np.sin(theta))**2/2/sigmay**2
+            -(r*np.cos(theta)/rx)**2/2/sigmax**2
+            -(r*np.sin(theta)/ry)**2/2/sigmay**2
         )
-        print(b_ax)
         # Bends the cylinder to FR shape
         x = (
             axis_height*np.cos(phi)
@@ -792,10 +822,10 @@ class StaticFRi3D(BaseFRi3D):
                         [x[1]-x[0], y[1]-y[0], z[1]-z[0]]
                     )
                     dr /= np.linalg.norm(dr)
-                    print(
-                        np.mean(b),
-                        vars(self)
-                    )
+                    # print(
+                    #     np.mean(b),
+                    #     vars(self)
+                    # )
                     b_list.append(dr*np.mean(b)*self.polarity)
                     vc_list.append(np.array([vtc, vpc]))
             else:
@@ -1305,105 +1335,53 @@ def subtract_period(value, period):
     """
     return value-math.copysign(value, 1)*(math.fabs(value)//period)*period
 
-# @nb.vectorize([nb.float64(nb.float64, nb.float64, nb.float64, nb.float64)])
-# def _nb_vanilla_axis_height(
-#         phi,
-#         toroidal_height,
-#         half_width,
-#         flattening):
-#     """Evaluates the axis function r(phi) in polar coordinates. Note
-#     that rotational skewing is not taken into account.
-
-#     Args:
-#         phi (scalar or array_like): Angular coordinate of a point on
-#             the axis [rad] in polar coordinates, lies in the range
-#             [-half_width, half_width].
-#         toroidal_height (scalar or array_like): Toroidal
-#             height for the calculation [m].
-#         half_width (scalar or array_like): Half width angle for the
-#             calculation [unitless].
-#         flattening (scalar or array_like): Flattening coefficient
-#             for the calculation [unitless].
-
-#     Returns:
-#         scalar or array: Radial coordinate of the point of the axis
-#             in polar coordinates [m].
-#     """
-#     res = toroidal_height*np.cos(np.pi/2/half_width*phi)**flattening
-#     return res
-
-# @nb.vectorize([nb.float64(nb.float64, nb.float64, nb.float64, nb.float64)])
-# def _nb_vanilla_axis_dheight(phi, toroidal_height, half_width, flattening):
-#     return (
-#         -np.pi/2/half_width*flattening
-#         *np.tan(np.pi/2/half_width*phi)
-#         *_nb_vanilla_axis_height(phi, toroidal_height, half_width, flattening)
-#     )
-
-@nb.vectorize(
-    [
-        nb.float64(
-            nb.float64, nb.float64, nb.float64, nb.float64,
-            nb.float64, nb.float64, nb.float64, nb.float64
-        )
-    ]
-)
-def _nb_vanilla_axis_mag(
-        r,
-        theta,
-        phi,
-        toroidal_height,
-        half_width,
-        flattening,
-        twist,
-        B0):
-    height = toroidal_height*np.cos(np.pi/2/half_width*phi)**flattening
-    dheight = (
-        -np.pi/2/half_width*flattening
-        *np.tan(np.pi/2/half_width*phi)
-        *height
+@nb.cfunc(nb.double(nb.intc, nb.types.CPointer(nb.double)))
+def _nb_vanilla_axis_rdflux(_, args):
+    # args[0] = r
+    # args[1] = theta
+    # args[2] = phi
+    # args[3] = toroidal_height
+    # args[4] = poloidal_height
+    # args[5] = half_width
+    # args[6] = flattening
+    # args[7] = pancaking
+    # args[8] = twist
+    # args[9] = sigma
+    # args[10] = intrdphi
+    
+    coeff_angle = np.pi/2/args[5]
+    axis_height = args[3]*np.cos(coeff_angle*args[2])**args[6]
+    axis_dheight = (
+        -coeff_angle*args[6]
+        *np.tan(coeff_angle*args[2])
+        *axis_height
     )
-    d2height = (
-        -np.pi/2/half_width*flattening
-        *np.tan(np.pi/2/half_width*phi)
-        *dheight
-        -(np.pi/2/half_width)**2*flattening
-        /np.cos(np.pi/2/half_width*phi)**2
-        *height
+    axis_dlength = np.sqrt(
+        axis_height**2
+        +axis_dheight**2
     )
-    Rc = (
-        (
-            height**2
-            +dheight**2
-        )**(3/2)
-        /np.abs(
-            height**2
-            +2*dheight**2
-            -height
-            *d2height
-        )
+    rx = axis_height*args[4]/args[3]
+    ry = axis_height*args[4]/args[3]
+    pancaking = 1-(1-args[7])/np.sqrt(
+        1+(
+            args[6]
+            *coeff_angle
+            *np.tan(coeff_angle*args[2])
+        )**2
     )
-    dlength = np.sqrt(
-        height**2
-        +dheight
-    )
-    z0 = (
-        height
-        *dlength
-        /dheight
-    )
-    a = twist
-    b = np.cos(theta)/Rc
+    rx *= pancaking
+    sigmax = args[9]*args[7]
+    sigmay = args[9]
     return (
-        np.sqrt(r**2/z0**2+a**2*r**2+(1-r*b)**2)/
-        (1-r*np.cos(theta)/Rc)
-        *B0
-        *(1-r*b)
-        *((1-r*b)**2+a**2*r**2)**(-(2*a**2+b**2)/2/(a**2+b**2))
-        *np.exp(
-            -a*b/(a**2+b**2)*np.arctan(((a**2+b**2)*r-b)/a)
-            +a*b/(a**2+b**2)*np.arctan(-b/a)
-        )
+        np.exp(
+            -(args[0]*np.cos(args[1])/rx)**2/2/sigmax**2
+            -(args[0]*np.sin(args[1])/ry)**2/2/sigmay**2
+        )*np.sin(
+            np.arctan2(
+                axis_dlength*args[10],
+                axis_height**2*2*np.pi*args[8]
+            )
+        )*args[0]
     )
 
 @nb.cfunc(nb.double(nb.intc, nb.types.CPointer(nb.double)))

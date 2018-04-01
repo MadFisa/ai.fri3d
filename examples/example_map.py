@@ -14,8 +14,8 @@ sfr = StaticFRi3D(
     flattening=0.5
 )
 
-xgrid = np.linspace(-0.2, 0.2, 100)
-ygrid = np.linspace(-0.2, 0.2, 100)
+xgrid = np.linspace(-0.2, 0.2, 10)
+ygrid = np.linspace(-0.2, 0.2, 10)
 
 # bmap = sfr.forcemap(
 #     1, 0, 0,

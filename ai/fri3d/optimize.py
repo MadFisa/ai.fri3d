@@ -204,7 +204,7 @@ def fit2insitu(
                     params = profile.params
                     if prop in (
                             'latitude', 'longitude', 'half_width', 'tilt',
-                            'pancaking', 'skew'):
+                            'skew'):
                         params = u.rad.to(u.deg, params)
                     elif prop in ('toroidal_height', 'poloidal_height'):
                         if len(profile.params) == 1:
