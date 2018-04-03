@@ -203,10 +203,10 @@ def fit2insitu(
                 for prop, profile in profiles.items():
                     params = profile.params
                     if prop in (
-                            'latitude', 'longitude', 'half_width', 'tilt',
-                            'skew'):
+                            'latitude', 'longitude', 'half_width',
+                            'half_height', 'tilt', 'skew'):
                         params = u.rad.to(u.deg, params)
-                    elif prop in ('toroidal_height', 'poloidal_height'):
+                    elif prop in ('toroidal_height'):
                         if len(profile.params) == 1:
                             params = u.m.to(u.au, params)
                         else:

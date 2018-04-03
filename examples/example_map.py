@@ -9,13 +9,13 @@ from ai.fri3d.model import StaticFRi3D
 sfr = StaticFRi3D(
     toroidal_height=1,
     poloidal_height=0.2,
-    pancaking=0.8,
+    pancaking=0.6,
     # skew=np.pi/6,
     flattening=0.5
 )
 
-xgrid = np.linspace(-0.2, 0.2, 10)
-ygrid = np.linspace(-0.2, 0.2, 10)
+xgrid = np.linspace(-0.2, 0.2, 50)
+ygrid = np.linspace(-0.2, 0.2, 50)
 
 # bmap = sfr.forcemap(
 #     1, 0, 0,

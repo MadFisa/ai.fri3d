@@ -25,6 +25,7 @@ class BaseFRi3D:
         self._toroidal_height = None
         self._poloidal_height = None
         self._half_width = None
+        self._half_height = None
         self._coeff_angle = None
         self._tilt = None
         self._flattening = None
@@ -72,16 +73,6 @@ class BaseFRi3D:
         self._toroidal_height = val
 
     @property
-    def poloidal_height(self):
-        """scalar, profile function or profile object:
-        distance from the apex of the CME's axis to its global apex [m].
-        """
-        return self._poloidal_height
-    @poloidal_height.setter
-    def poloidal_height(self, val):
-        self._poloidal_height = val
-
-    @property
     def half_width(self):
         """scalar, profile function or profile object:
         angular half width of the CME [rad].
@@ -90,6 +81,16 @@ class BaseFRi3D:
     @half_width.setter
     def half_width(self, val):
         self._half_width = val
+
+    @property
+    def half_height(self):
+        """scalar, profile function or profile object:
+        angular half height of the CME (pancaking) [rad].
+        """
+        return self._half_height
+    @half_height.setter
+    def half_height(self, val):
+        self._half_height = val
 
     @property
     def tilt(self):
@@ -207,8 +208,8 @@ class StaticFRi3D(BaseFRi3D):
         self.latitude = kwargs.get('latitude', 0)
         self.longitude = kwargs.get('longitude', 0)
         self.toroidal_height = kwargs.get('toroidal_height', 149597870700)
-        self.poloidal_height = kwargs.get('poloidal_height', 149597870700*0.2)
         self.half_width = kwargs.get('half_width', 40*np.pi/180)
+        self.half_height = kwargs.get('half_height', 30*np.pi/180)
         self.tilt = kwargs.get('tilt', 0)
         self.flattening = kwargs.get('flattening', 0.5)
         self.pancaking = kwargs.get('pancaking', 1)
@@ -224,8 +225,8 @@ class StaticFRi3D(BaseFRi3D):
 
         Args:
             **kwargs: Scalar model parameters. Allowed keywords:
-                latitude, longitude, toroidal_height, poloidal_height,
-                half_width, tilt, flattening, pancaking, skew, twist,
+                latitude, longitude, toroidal_height, half_width,
+                half_height, tilt, flattening, pancaking, skew, twist,
                 flux, sigma, polarity, chirality."""
         for k, v in kwargs.items():
             if k in self._props:
@@ -243,17 +244,18 @@ class StaticFRi3D(BaseFRi3D):
 
     @BaseFRi3D.toroidal_height.setter
     def toroidal_height(self, val):
+        """Sets not only toroidal height explicitly but also poloidal
+        height implicitly.
+        """
         if val > 0:
             self._toroidal_height = val
+            if self.half_height is not None:
+                self._poloidal_height = (
+                    self.toroidal_height
+                    *np.tan(self.half_height)
+                )
         else:
             raise ValueError('Toroidal height should be positive.')
-
-    @BaseFRi3D.poloidal_height.setter
-    def poloidal_height(self, val):
-        if val > 0:
-            self._poloidal_height = val
-        else:
-            raise ValueError('Poloidal height should be positive.')
 
     @BaseFRi3D.half_width.setter
     def half_width(self, val):
@@ -265,6 +267,22 @@ class StaticFRi3D(BaseFRi3D):
             self._coeff_angle = np.pi/2/self.half_width
         else:
             raise ValueError('Half width should positive and less than 2pi.')
+
+    @BaseFRi3D.half_height.setter
+    def half_height(self, val):
+        """Sets not only half height explicitly but also poloidal height
+        implicitly.
+        """
+        if val > 0 and val < np.pi:
+            self._half_height = val
+            if self.toroidal_height is not None:
+                self._poloidal_height = (
+                    self.toroidal_height
+                    *np.tan(self.half_height)
+                )
+        else:
+            raise ValueError('Half height should positive and less than pi.')
+
 
     @BaseFRi3D.tilt.setter
     def tilt(self, val):
@@ -300,25 +318,15 @@ class StaticFRi3D(BaseFRi3D):
 
     @BaseFRi3D.flux.setter
     def flux(self, val):
-        """Set not only magnetic flux but also unit magnetic field if
-        sigma is already defined.
-        """
         if val >= 0:
             self._flux = np.absolute(val)
-            if self.sigma is not None:
-                self._unit_b = self.flux/(2*np.pi*self.sigma**2)
         else:
             raise ValueError('Flux should be positive.')
 
     @BaseFRi3D.sigma.setter
     def sigma(self, val):
-        """Set not only sigma but also unit magnetic field if magnetic
-        flux is already defined.
-        """
         if val > 0:
             self._sigma = val
-            if self.flux is not None:
-                self._unit_b = self.flux/(2*np.pi*self.sigma**2)
         else:
             raise ValueError('Sigma should be positive.')
 
@@ -354,9 +362,14 @@ class StaticFRi3D(BaseFRi3D):
         if phi.ndim == 0:
             phi = phi[None]
             scalar_input = True
-        res = (
+        res = np.ones(phi.shape)*np.nan
+        mask = np.logical_and(
+            phi >= -self.half_width,
+            phi <= self.half_width
+        )
+        res[mask] = (
             self.toroidal_height
-            *np.cos(np.pi/2/self.half_width*phi)**self.flattening
+            *np.cos(np.pi/2/self.half_width*phi[mask])**self.flattening
         )
         if scalar_input:
             return res.squeeze()
@@ -521,7 +534,7 @@ class StaticFRi3D(BaseFRi3D):
         # Tapers the cylinder
         r = (
             np.ones(phi.shape)
-            *self.poloidal_height
+            *self._poloidal_height
             *axis_height
             /self.toroidal_height
         )
@@ -624,8 +637,8 @@ class StaticFRi3D(BaseFRi3D):
         ])
         theta = twist*np.pi*2.0*self.chirality+np.ones(phi.size)*theta
         # Applies tapering and pancaking
-        rx = axis_height*self.poloidal_height/self.toroidal_height
-        ry = axis_height*self.poloidal_height/self.toroidal_height
+        rx = axis_height*self._poloidal_height/self.toroidal_height
+        ry = axis_height*self._poloidal_height/self.toroidal_height
         pancaking = 1-(1-self.pancaking)/np.sqrt(
             1+(
                 self.flattening
@@ -634,6 +647,7 @@ class StaticFRi3D(BaseFRi3D):
             )**2
         )
         rx *= pancaking
+        theta = np.arctan2(np.sin(theta), np.cos(theta)*pancaking)
         rtot = rx*ry/np.sqrt((ry*np.cos(theta))**2+(rx*np.sin(theta))**2)
         r *= rtot
         # Estimates magnetic field
@@ -651,8 +665,8 @@ class StaticFRi3D(BaseFRi3D):
                 (
                     phi[i],
                     self.toroidal_height,
-                    self.poloidal_height,
                     self.half_width,
+                    self.half_height,
                     self.flattening,
                     self.pancaking,
                     self.twist,
@@ -670,10 +684,10 @@ class StaticFRi3D(BaseFRi3D):
                 )
             )[0] for i in range(phi.size)
         ])
-        sigmax = self.sigma*pancaking
+        # sigmax = self.sigma*pancaking
         sigmay = self.sigma
         b = b_ax*np.exp(
-            -(r*np.cos(theta)/rx)**2/2/sigmax**2
+            -(r*np.cos(theta)/ry)**2/2/sigmay**2
             -(r*np.sin(theta)/ry)**2/2/sigmay**2
         )
         # Bends the cylinder to FR shape
@@ -743,7 +757,8 @@ class StaticFRi3D(BaseFRi3D):
         x, y, z = cs.cyl2cart(r, phi, z)
         # Here r, phi, z are cylindrical coordinates
         # inside axis loop mask
-        mask_inside = self.vanilla_axis_height(phi) >= r
+        with np.errstate(invalid='ignore'):
+            mask_inside = self.vanilla_axis_height(phi) >= r
         # Finds the closest point on axis
         v_vanilla_axis_min_distance = np.vectorize(
             self.vanilla_axis_min_distance,
@@ -759,8 +774,8 @@ class StaticFRi3D(BaseFRi3D):
         r_abs = np.sqrt(dx**2+dy**2+dz**2)
         theta = np.arctan2(dz, np.sqrt(dx**2+dy**2))
         theta[mask_inside] = np.pi-theta[mask_inside]
-        rx = r_ax*self.poloidal_height/self.toroidal_height
-        ry = r_ax*self.poloidal_height/self.toroidal_height
+        rx = r_ax*self._poloidal_height/self.toroidal_height
+        ry = r_ax*self._poloidal_height/self.toroidal_height
         pancaking = 1-(1-self.pancaking)/np.sqrt(
             1+(
                 self.flattening
@@ -787,7 +802,7 @@ class StaticFRi3D(BaseFRi3D):
                 p,
                 (self.toroidal_height, self.half_width, self.flattening)
             )[0]
-            for p in phi
+            for p in phi_ax
         ])
         theta -= twist*np.pi*2.0*self.chirality
         # Estimates magnetic field and speed coefficients along sc trajectory
@@ -815,7 +830,7 @@ class StaticFRi3D(BaseFRi3D):
                             )
                             -r_ax[i]
                         )
-                        /self.poloidal_height
+                        /self._poloidal_height
                         *np.cos(self.vanilla_axis_normal_angle(phi_ax[i]))
                     )
                     dr = np.array(
@@ -866,10 +881,7 @@ class StaticFRi3D(BaseFRi3D):
         x, y, z = cs.mx_apply(T, x, y, z)
         # reverse pancaking
         r, theta, phi = cs.cart2sp(x, y, z)
-        theta = (
-            theta/self.pancaking*
-            np.arctan2(self.poloidal_height, self.toroidal_height)
-        )
+        theta = theta/self.pancaking*self.half_height
         # get r_ax and phi_ax of the closest point on axis
         _, phi_ax = self.vanilla_axis_min_distance(r*np.cos(theta), phi)
         r_ax = self.vanilla_axis_height(phi_ax)
@@ -1034,13 +1046,13 @@ class DynamicFRi3D(BaseFRi3D):
             'toroidal_height',
             lambda t: self.__sfr.toroidal_height
         )
-        self.poloidal_height = kwargs.get(
-            'poloidal_height',
-            lambda t: self.__sfr.poloidal_height
-        )
         self.half_width = kwargs.get(
             'half_width',
             lambda t: self.__sfr.half_width
+        )
+        self.half_height = kwargs.get(
+            'half_height',
+            lambda t: self.__sfr.half_height
         )
         self.tilt = kwargs.get('tilt', lambda t: self.__sfr.tilt)
         self.flattening = kwargs.get(
@@ -1066,8 +1078,8 @@ class DynamicFRi3D(BaseFRi3D):
 
         Args:
             **kwargs: Callable model parameters. Allowed keywords:
-                latitude, longitude, toroidal_height, poloidal_height,
-                half_width, tilt, flattening, pancaking, skew, twist,
+                latitude, longitude, toroidal_height, half_width,
+                half_height, tilt, flattening, pancaking, skew, twist,
                 flux, sigma, polarity, chirality. Each parameter should
                 be function of time."""
         for k, v in kwargs.items():
@@ -1099,15 +1111,6 @@ class DynamicFRi3D(BaseFRi3D):
                 'Toroidal height profile is expected to be a callable.'
             )
 
-    @BaseFRi3D.poloidal_height.setter
-    def poloidal_height(self, func):
-        if callable(func):
-            self._poloidal_height = func
-        else:
-            raise ValueError(
-                'Poloidal height profile is expected to be a callable.'
-            )
-
     @BaseFRi3D.half_width.setter
     def half_width(self, func):
         if callable(func):
@@ -1115,6 +1118,15 @@ class DynamicFRi3D(BaseFRi3D):
         else:
             raise ValueError(
                 'Half width profile is expected to be a callable.'
+            )
+
+    @BaseFRi3D.half_height.setter
+    def half_height(self, func):
+        if callable(func):
+            self._half_height = func
+        else:
+            raise ValueError(
+                'Half height profile is expected to be a callable.'
             )
 
     @BaseFRi3D.tilt.setter
@@ -1212,8 +1224,8 @@ class DynamicFRi3D(BaseFRi3D):
             latitude=self.latitude(t),
             longitude=self.longitude(t),
             toroidal_height=self.toroidal_height(t),
-            poloidal_height=self.poloidal_height(t),
             half_width=self.half_width(t),
+            half_height=self.half_height(t),
             tilt=self.tilt(t),
             flattening=self.flattening(t),
             pancaking=self.pancaking(t),
@@ -1272,7 +1284,10 @@ class DynamicFRi3D(BaseFRi3D):
             b.append(_b.ravel())
             vt.append(
                 _c[0]*(self.toroidal_height(_t)-self.toroidal_height(_t-1))
-                +_c[1]*(self.poloidal_height(_t)-self.poloidal_height(_t-1))
+                +_c[1]*(
+                    self.toroidal_height(_t)*np.tan(self.half_height(_t))
+                    -self.toroidal_height(_t-1)*np.tan(self.half_height(_t-1))
+                )
             )
         b = np.array(b)
         vt = np.array(vt)
@@ -1341,15 +1356,15 @@ def _nb_vanilla_axis_rdflux(_, args):
     # args[1] = theta
     # args[2] = phi
     # args[3] = toroidal_height
-    # args[4] = poloidal_height
-    # args[5] = half_width
+    # args[4] = half_width
+    # args[5] = half_height
     # args[6] = flattening
     # args[7] = pancaking
     # args[8] = twist
     # args[9] = sigma
     # args[10] = intrdphi
     
-    coeff_angle = np.pi/2/args[5]
+    coeff_angle = np.pi/2/args[4]
     axis_height = args[3]*np.cos(coeff_angle*args[2])**args[6]
     axis_dheight = (
         -coeff_angle*args[6]
@@ -1360,26 +1375,17 @@ def _nb_vanilla_axis_rdflux(_, args):
         axis_height**2
         +axis_dheight**2
     )
-    rx = axis_height*args[4]/args[3]
-    ry = axis_height*args[4]/args[3]
-    pancaking = 1-(1-args[7])/np.sqrt(
-        1+(
-            args[6]
-            *coeff_angle
-            *np.tan(coeff_angle*args[2])
-        )**2
-    )
-    rx *= pancaking
-    sigmax = args[9]*args[7]
+    ry = axis_height*np.tan(args[5])*args[3]/args[3]
     sigmay = args[9]
     return (
         np.exp(
-            -(args[0]*np.cos(args[1])/rx)**2/2/sigmax**2
+            -(args[0]*np.cos(args[1])/ry)**2/2/sigmay**2
             -(args[0]*np.sin(args[1])/ry)**2/2/sigmay**2
         )*np.sin(
             np.arctan2(
                 axis_dlength*args[10],
                 axis_height**2*2*np.pi*args[8]
+                /(1-(1-args[7])*np.sin(args[1]))
             )
         )*args[0]
     )
