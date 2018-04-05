@@ -831,6 +831,7 @@ class StaticFRi3D(BaseFRi3D):
                             -r_ax[i]
                         )
                         /self._poloidal_height
+                        *self.pancaking
                         *np.cos(self.vanilla_axis_normal_angle(phi_ax[i]))
                     )
                     dr = np.array(
