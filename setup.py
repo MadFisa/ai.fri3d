@@ -14,7 +14,7 @@ with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), "README.rst")
     long_description = f.read()
 
 setup(
-    name="ai.cdas",
+    name="ai.fri3d",
     version="{ver}".format(ver=version_py),
     description="FRi3D model of coronal mass ejections",
     long_description=long_description,
@@ -32,6 +32,5 @@ setup(
     keywords="research space solar physics science model coronal mass ejection flare CME",
     packages=find_packages("src", exclude=["test*"]),
     package_dir={"": "src"},
-    install_requires=["numpy", "scipy", "matplotlib", "numba", "python3-tk", "astropy", "fastdtw", "ai.cs"],
-    extras_require={"CDF": ["spacepy"]},
+    install_requires=["numpy", "scipy", "matplotlib", "numba", "astropy", "fastdtw", "ai.cs"],
 )

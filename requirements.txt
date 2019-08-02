@@ -1,7 +1,7 @@
-numpy==1.13.3
-scipy==1.0.0
-matplotlib==2.1.1
-fastdtw==0.3.2
-ai.cs==1.0.3
+numpy
+scipy
+matplotlib
+fastdtw
+ai.cs
 numba
 astropy
