@@ -68,3 +68,6 @@ target/
 
 # VS Code
 .vscode/
+
+# Python env
+py3env/
