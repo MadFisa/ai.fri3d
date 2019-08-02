@@ -71,3 +71,8 @@ target/
 
 # Python env
 py3env/
+force_free_sandbox.py
+new_shell_sandbox.py
+sandbox.py
+src/ai/demo.py
+src/ai/shared/data.py

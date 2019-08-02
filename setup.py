@@ -1,11 +1,12 @@
-import sys
-import subprocess
 import os
 import shutil
+import subprocess
+import sys
 
 # for consistent encoding
 from codecs import open
-from setuptools import setup, find_packages
+
+from setuptools import find_packages, setup
 
 version_py = open(os.path.join(os.path.dirname(__file__), "version.py")).read().strip().split("=")[-1].replace('"', "")
 

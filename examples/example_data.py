@@ -1,12 +1,12 @@
 import os
 import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
 import numpy as np
+from ai import cs
+from ai.fri3d.model import StaticFRi3D
+from astropy import units as u
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import proj3d
-from astropy import units as u
-from ai.fri3d.model import StaticFRi3D
-from ai import cs
 
 sfr = StaticFRi3D(
     toroidal_height=u.au.to(u.m, 1),
@@ -18,13 +18,13 @@ sfr = StaticFRi3D(
     pancaking=0.2,
     # skew=np.pi/6,
     flattening=0.5,
-    flux=1e12
+    flux=1e12,
 )
 
 n = 100
 r = u.au.to(u.m, np.linspace(1.2, 0.8, n))
-theta = np.ones(n)*u.deg.to(u.rad, 0)
-phi = np.ones(n)*u.deg.to(u.rad, 0)
+theta = np.ones(n) * u.deg.to(u.rad, 0)
+phi = np.ones(n) * u.deg.to(u.rad, 0)
 
 x, y, z = cs.sp2cart(r, theta, phi)
 
@@ -39,9 +39,9 @@ b *= 1e9
 
 r = u.m.to(u.au, r)
 
-plt.plot(r, np.linalg.norm(b, axis=1), 'k')
-plt.plot(r, b[:, 0], 'r')
-plt.plot(r, b[:, 1], 'g')
-plt.plot(r, b[:, 2], 'b')
+plt.plot(r, np.linalg.norm(b, axis=1), "k")
+plt.plot(r, b[:, 0], "r")
+plt.plot(r, b[:, 1], "g")
+plt.plot(r, b[:, 2], "b")
 
 plt.show()
