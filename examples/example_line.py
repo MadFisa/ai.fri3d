@@ -7,21 +7,14 @@ from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import proj3d
 
 sfr = StaticFRi3D(
-    toroidal_height=1,
-    poloidal_height=0.4,
-    half_width=np.pi / 4,
-    # skew=np.pi/6,
-    pancaking=0.4,
-    flattening=0.5,
-    twist=2,
-    # skew=np.pi/6
+    toroidal_height=1, poloidal_height=0.2, half_width=np.pi / 4, skew=np.pi / 9, pancaking=0.4, flattening=0.5, twist=2
 )
 
 phi = np.linspace(-sfr.half_width, sfr.half_width, 100)
 
 fig = plt.figure()
 
-ax = fig.add_subplot(111, projection="3d", adjustable="box", aspect=1.0)
+ax = fig.add_subplot(111, projection="3d", adjustable="box")
 for r in np.linspace(0, 1, 40):
     x, y, z, _ = sfr.line(r, phi, np.random.rand() * np.pi * 2)
     ax.plot(x, y, z, alpha=0.4)

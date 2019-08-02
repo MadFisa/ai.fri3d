@@ -17,7 +17,17 @@ from astropy import units as u
 from fastdtw import fastdtw
 from ai.fri3d.model import StaticFRi3D, DynamicFRi3D
 from ai import cs
-from ai.shared.color import BLIND_PALETTE
+
+BLIND_PALETTE = {
+    "orange": (0.901960784, 0.623529412, 0.0),
+    "sky-blue": (0.337254902, 0.705882353, 0.91372549),
+    "bluish-green": (0.0, 0.619607843, 0.450980392),
+    "yellow": (0.941176471, 0.894117647, 0.258823529),
+    "blue": (0.0, 0.447058824, 0.698039216),
+    "vermillion": (0.835294118, 0.368627451, 0.0),
+    "reddish-purple": (0.8, 0.474509804, 0.654901961),
+}
+
 
 d_prev = np.inf
 

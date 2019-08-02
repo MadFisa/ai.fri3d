@@ -20,11 +20,11 @@ cdas.set_cache(True, os.path.join(os.path.dirname(__file__), "data"))
 
 # get magnetic field data from CDAS
 data_mag = cdas.get_data(
-    "sp_phys", "WI_H0_MFI", datetime(2008, 12, 17), datetime(2008, 12, 18), ["BF1", "BGSE"], cdf=True
+    "sp_phys", "WI_H0_MFI", datetime(2008, 12, 17), datetime(2008, 12, 18), ["BF1", "BGSE"], cdf=False
 )
 
 # get plasma data from CDAS
-data_pla = cdas.get_data("sp_phys", "WI_K0_SWE", datetime(2008, 12, 17), datetime(2008, 12, 18), ["V_GSE"], cdf=True)
+data_pla = cdas.get_data("sp_phys", "WI_K0_SWE", datetime(2008, 12, 17), datetime(2008, 12, 18), ["V_GSE"], cdf=False)
 
 # filter the magnetic field data
 m = np.logical_and(
