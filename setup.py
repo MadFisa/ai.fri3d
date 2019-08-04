@@ -5,9 +5,8 @@ import sys
 from codecs import open
 from distutils.command.build import build
 
+from Cython.Build import cythonize
 from setuptools import find_packages, setup
-
-# from src.ai.fri3d.nb import cc
 
 version_py = open(os.path.join(os.path.dirname(__file__), "version.py")).read().strip().split("=")[-1].replace('"', "")
 
@@ -33,6 +32,6 @@ setup(
     keywords="research space solar physics science model coronal mass ejection flare CME",
     packages=find_packages("src", exclude=["test*"]),
     package_dir={"": "src"},
-    # ext_modules=[cc.distutils_extension()],
-    install_requires=["numpy", "scipy", "matplotlib", "numba", "astropy", "fastdtw", "ai.cs"],
+    ext_modules=cythonize(os.path.join("src", "ai", "fri3d", "lib.pyx")),
+    install_requires=["numpy", "scipy", "matplotlib", "astropy", "fastdtw", "ai.cs"],
 )
