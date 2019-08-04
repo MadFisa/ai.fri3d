@@ -2,9 +2,8 @@ import os
 import shutil
 import subprocess
 import sys
-
-# for consistent encoding
 from codecs import open
+from distutils.command.build import build
 
 from setuptools import find_packages, setup
 
@@ -12,7 +11,6 @@ from src.ai.fri3d.nb import cc
 
 version_py = open(os.path.join(os.path.dirname(__file__), "version.py")).read().strip().split("=")[-1].replace('"', "")
 
-# Get the long description from the README file
 with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), "README.rst"), encoding="utf-8") as f:
     long_description = f.read()
 
@@ -33,9 +31,8 @@ setup(
         "Programming Language :: Python :: 3",
     ],
     keywords="research space solar physics science model coronal mass ejection flare CME",
-    packages=find_packages("src", exclude=["test*", "ai/fri3d/nb.py"]),
+    packages=find_packages("src", exclude=["test*"]),
     package_dir={"": "src"},
-    # include_package_data=True,
     ext_modules=[cc.distutils_extension()],
     install_requires=["numpy", "scipy", "matplotlib", "numba", "astropy", "fastdtw", "ai.cs"],
 )
