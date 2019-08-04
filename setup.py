@@ -34,5 +34,5 @@ setup(
     packages=find_packages("src", exclude=["test*"]),
     package_dir={"": "src"},
     ext_modules=cythonize(os.path.join("src", "ai", "fri3d", "lib.pyx")),
-    install_requires=["numpy", "scipy", "matplotlib", "astropy", "fastdtw", "ai.cs"],
+    install_requires=["Cython", "numpy", "scipy", "matplotlib", "astropy", "fastdtw", "ai.cs"],
 )
