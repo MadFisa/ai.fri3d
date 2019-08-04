@@ -3,11 +3,11 @@ import shutil
 import subprocess
 import sys
 from codecs import open
-from distutils.command.build import build
 from distutils.extension import Extension
 
-from Cython.Build import cythonize
 from setuptools import find_packages, setup
+from Cython.Build import cythonize
+
 
 version_py = open(os.path.join(os.path.dirname(__file__), "version.py")).read().strip().split("=")[-1].replace('"', "")
 
