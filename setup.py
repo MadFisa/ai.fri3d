@@ -33,6 +33,6 @@ setup(
     keywords="research space solar physics science model coronal mass ejection flare CME",
     packages=find_packages("src", exclude=["test*"]),
     package_dir={"": "src"},
-    ext_modules=cythonize(os.path.join("src", "ai", "fri3d", "lib.pyx")),
-    install_requires=["Cython", "numpy", "scipy", "matplotlib", "astropy", "fastdtw", "ai.cs"],
+    ext_modules=cythonize(os.path.join(".", "src", "ai", "fri3d", "lib.pyx")),
+    install_requires=["numpy", "scipy", "matplotlib", "astropy", "fastdtw", "ai.cs"],
 )
