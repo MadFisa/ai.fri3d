@@ -4,8 +4,7 @@ import subprocess
 import sys
 from codecs import open
 
-# from distutils.extension import Extension
-
+# do not reorder these imports
 from setuptools import find_packages, setup
 from Cython.Build import cythonize
 
@@ -34,7 +33,6 @@ setup(
     keywords="research space solar physics science model coronal mass ejection flare CME",
     packages=find_packages("src", exclude=["test*"]),
     package_dir={"": "src"},
-    # ext_modules=cythonize([Extension("ai.fri3d.lib", sources=[os.path.join("src", "ai", "fri3d", "lib.pyx")])]),
     ext_modules=cythonize(os.path.join("src", "ai", "fri3d", "lib.pyx")),
     install_requires=["numpy", "scipy", "matplotlib", "astropy", "fastdtw", "ai.cs"],
 )
