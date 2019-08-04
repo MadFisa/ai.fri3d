@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import proj3d
 
 sfr = StaticFRi3D(
-    toroidal_height=1, poloidal_height=0.2, half_width=np.pi / 4, skew=np.pi / 9, pancaking=0.4, flattening=0.5, twist=2
+    toroidal_height=1, half_width=45 * np.pi / 180, half_height=20 * np.pi / 180, pancaking=0.7, flattening=0.5
 )
 
 phi = np.linspace(-sfr.half_width, sfr.half_width, 20)
