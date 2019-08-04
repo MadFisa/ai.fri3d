@@ -1,7 +1,8 @@
+import numba as nb
 import numpy as np
 from numba.pycc import CC
 
-cc = CC("nb")
+cc = CC("ai_fri3d_nb")
 cc.verbose = True
 
 

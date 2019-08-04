@@ -8,6 +8,8 @@ from codecs import open
 
 from setuptools import find_packages, setup
 
+from src.ai.fri3d.nb import cc
+
 version_py = open(os.path.join(os.path.dirname(__file__), "version.py")).read().strip().split("=")[-1].replace('"', "")
 
 # Get the long description from the README file
@@ -31,7 +33,9 @@ setup(
         "Programming Language :: Python :: 3",
     ],
     keywords="research space solar physics science model coronal mass ejection flare CME",
-    packages=find_packages("src", exclude=["test*"]),
+    packages=find_packages("src", exclude=["test*", "ai/fri3d/nb.py"]),
     package_dir={"": "src"},
+    # include_package_data=True,
+    ext_modules=[cc.distutils_extension()],
     install_requires=["numpy", "scipy", "matplotlib", "numba", "astropy", "fastdtw", "ai.cs"],
 )

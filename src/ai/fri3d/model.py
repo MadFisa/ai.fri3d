@@ -9,12 +9,13 @@ and as a propagating dynamic structure, respectively.
 # pylint: disable=C0302
 import math
 
-import numba as nb
 import numpy as np
 from ai import cs
 from scipy import LowLevelCallable
 from scipy.integrate import dblquad, quad
 from scipy.optimize import minimize_scalar
+
+import ai_fri3d_nb as nb
 
 
 class BaseFRi3D:
@@ -475,7 +476,8 @@ class StaticFRi3D(BaseFRi3D):
         res = np.array(
             [
                 quad(
-                    LowLevelCallable(_nb_vanilla_axis_dlength.ctypes),
+                    # LowLevelCallable(nb._nb_vanilla_axis_dlength.ctypes),
+                    nb._nb_vanilla_axis_dlength,
                     -self.half_width,
                     p,
                     (self.toroidal_height, self.half_width, self.flattening),
@@ -597,13 +599,15 @@ class StaticFRi3D(BaseFRi3D):
             [
                 self.twist
                 / quad(
-                    LowLevelCallable(_nb_vanilla_axis_height.ctypes),
+                    # LowLevelCallable(nb._nb_vanilla_axis_height.ctypes),
+                    nb._nb_vanilla_axis_height,
                     -self.half_width,
                     self.half_width,
                     (self.toroidal_height, self.half_width, self.flattening),
                 )[0]
                 * quad(
-                    LowLevelCallable(_nb_vanilla_axis_height.ctypes),
+                    # LowLevelCallable(nb._nb_vanilla_axis_height.ctypes),
+                    nb._nb_vanilla_axis_height,
                     -self.half_width,
                     p,
                     (self.toroidal_height, self.half_width, self.flattening),
@@ -627,7 +631,8 @@ class StaticFRi3D(BaseFRi3D):
             [
                 self.flux
                 / dblquad(
-                    LowLevelCallable(_nb_vanilla_axis_rdflux.ctypes),
+                    # LowLevelCallable(nb._nb_vanilla_axis_rdflux.ctypes),
+                    nb._nb_vanilla_axis_rdflux,
                     0,
                     2 * np.pi,
                     lambda theta: 0,
@@ -642,7 +647,8 @@ class StaticFRi3D(BaseFRi3D):
                         self.twist,
                         self.sigma,
                         quad(
-                            LowLevelCallable(_nb_vanilla_axis_height.ctypes),
+                            # LowLevelCallable(nb._nb_vanilla_axis_height.ctypes),
+                            nb._nb_vanilla_axis_height,
                             -self.half_width,
                             self.half_width,
                             (self.toroidal_height, self.half_width, self.flattening),
@@ -746,13 +752,15 @@ class StaticFRi3D(BaseFRi3D):
             [
                 self.twist
                 / quad(
-                    LowLevelCallable(_nb_vanilla_axis_height.ctypes),
+                    # LowLevelCallable(nb._nb_vanilla_axis_height.ctypes),
+                    nb._nb_vanilla_axis_height,
                     -self.half_width,
                     self.half_width,
                     (self.toroidal_height, self.half_width, self.flattening),
                 )[0]
                 * quad(
-                    LowLevelCallable(_nb_vanilla_axis_height.ctypes),
+                    # LowLevelCallable(nb._nb_vanilla_axis_height.ctypes),
+                    nb._nb_vanilla_axis_height,
                     -self.half_width,
                     p,
                     (self.toroidal_height, self.half_width, self.flattening),
@@ -1257,87 +1265,87 @@ def subtract_period(value, period):
     return value - math.copysign(value, 1) * (math.fabs(value) // period) * period
 
 
-@nb.cfunc(nb.double(nb.intc, nb.types.CPointer(nb.double)))
-def _nb_vanilla_axis_rdflux(_, args):
-    # args[0] = r
-    # args[1] = theta
-    # args[2] = phi
-    # args[3] = toroidal_height
-    # args[4] = half_width
-    # args[5] = half_height
-    # args[6] = flattening
-    # args[7] = pancaking
-    # args[8] = twist
-    # args[9] = sigma
-    # args[10] = intrdphi
+# @nb.cfunc(nb.double(nb.intc, nb.types.CPointer(nb.double)))
+# def _nb_vanilla_axis_rdflux(_, args):
+#     # args[0] = r
+#     # args[1] = theta
+#     # args[2] = phi
+#     # args[3] = toroidal_height
+#     # args[4] = half_width
+#     # args[5] = half_height
+#     # args[6] = flattening
+#     # args[7] = pancaking
+#     # args[8] = twist
+#     # args[9] = sigma
+#     # args[10] = intrdphi
 
-    coeff_angle = np.pi / 2 / args[4]
-    axis_height = args[3] * np.cos(coeff_angle * args[2]) ** args[6]
-    axis_dheight = -coeff_angle * args[6] * np.tan(coeff_angle * args[2]) * axis_height
-    axis_dlength = np.sqrt(axis_height ** 2 + axis_dheight ** 2)
-    ry = axis_height * np.tan(args[5]) * args[3] / args[3]
-    sigmay = args[9]
-    return (
-        np.exp(
-            -(args[0] * np.cos(args[1]) / ry) ** 2 / 2 / sigmay ** 2
-            - (args[0] * np.sin(args[1]) / ry) ** 2 / 2 / sigmay ** 2
-        )
-        * np.sin(
-            np.arctan2(
-                axis_dlength * args[10], axis_height ** 2 * 2 * np.pi * args[8] / (1 - (1 - args[7]) * np.sin(args[1]))
-            )
-        )
-        * args[0]
-    )
-
-
-@nb.cfunc(nb.double(nb.intc, nb.types.CPointer(nb.double)))
-def _nb_vanilla_axis_height(_, args):
-    """Evaluates height of the axis. Note that rotational skewing is not
-    taken into account.
-
-    Args:
-        _ (scalar): number of elements in args array,
-            which is always equal to 4 [unitless].
-        args[0] (scalar): Angular coordinate of a point on
-            the axis [rad] in polar coordinates, lies in the range
-            [-half_width, half_width] [rad].
-        args[1] (scalar): Toroidal height [m].
-        args[2] (scalar): Half width agnle [rad].
-        args[3] (scalar): Flattening coefficient [unitless].
-
-    Returns:
-        scalar: height evaluated at `phi` angular location
-            of the axis [m/rad].
-    """
-    coeff_angle = np.pi / 2 / args[2]
-    res = args[1] * np.cos(coeff_angle * args[0]) ** args[3]
-    return res
+#     coeff_angle = np.pi / 2 / args[4]
+#     axis_height = args[3] * np.cos(coeff_angle * args[2]) ** args[6]
+#     axis_dheight = -coeff_angle * args[6] * np.tan(coeff_angle * args[2]) * axis_height
+#     axis_dlength = np.sqrt(axis_height ** 2 + axis_dheight ** 2)
+#     ry = axis_height * np.tan(args[5]) * args[3] / args[3]
+#     sigmay = args[9]
+#     return (
+#         np.exp(
+#             -(args[0] * np.cos(args[1]) / ry) ** 2 / 2 / sigmay ** 2
+#             - (args[0] * np.sin(args[1]) / ry) ** 2 / 2 / sigmay ** 2
+#         )
+#         * np.sin(
+#             np.arctan2(
+#                 axis_dlength * args[10], axis_height ** 2 * 2 * np.pi * args[8] / (1 - (1 - args[7]) * np.sin(args[1]))
+#             )
+#         )
+#         * args[0]
+#     )
 
 
-@nb.cfunc(nb.double(nb.intc, nb.types.CPointer(nb.double)))
-def _nb_vanilla_axis_dlength(_, args):
-    """Evaluates derivative of the axis length ds/d(phi). Note that
-    rotational skewing is not taken into account.
+# @nb.cfunc(nb.double(nb.intc, nb.types.CPointer(nb.double)))
+# def _nb_vanilla_axis_height(_, args):
+#     """Evaluates height of the axis. Note that rotational skewing is not
+#     taken into account.
 
-    Args:
-        _ (scalar): number of elements in args array,
-            which is always equal to 4 [unitless].
-        args[0] (scalar): Angular coordinate of a point on
-            the axis [rad] in polar coordinates, lies in the range
-            [-half_width, half_width] [rad].
-        args[1] (scalar): Toroidal height [m].
-        args[2] (scalar): Half width agnle [rad].
-        args[3] (scalar): Flattening coefficient [unitless].
+#     Args:
+#         _ (scalar): number of elements in args array,
+#             which is always equal to 4 [unitless].
+#         args[0] (scalar): Angular coordinate of a point on
+#             the axis [rad] in polar coordinates, lies in the range
+#             [-half_width, half_width] [rad].
+#         args[1] (scalar): Toroidal height [m].
+#         args[2] (scalar): Half width agnle [rad].
+#         args[3] (scalar): Flattening coefficient [unitless].
 
-    Returns:
-        scalar: ds/d(phi) evaluated at `phi` angular location
-            of the axis [m/rad].
-    """
-    coeff_angle = np.pi / 2 / args[2]
-    res = (
-        args[1]
-        * np.cos(coeff_angle * args[0]) ** args[3]
-        * np.sqrt(coeff_angle ** 2 * args[3] ** 2 * np.tan(coeff_angle * args[0]) ** 2 + 1)
-    )
-    return res
+#     Returns:
+#         scalar: height evaluated at `phi` angular location
+#             of the axis [m/rad].
+#     """
+#     coeff_angle = np.pi / 2 / args[2]
+#     res = args[1] * np.cos(coeff_angle * args[0]) ** args[3]
+#     return res
+
+
+# @nb.cfunc(nb.double(nb.intc, nb.types.CPointer(nb.double)))
+# def _nb_vanilla_axis_dlength(_, args):
+#     """Evaluates derivative of the axis length ds/d(phi). Note that
+#     rotational skewing is not taken into account.
+
+#     Args:
+#         _ (scalar): number of elements in args array,
+#             which is always equal to 4 [unitless].
+#         args[0] (scalar): Angular coordinate of a point on
+#             the axis [rad] in polar coordinates, lies in the range
+#             [-half_width, half_width] [rad].
+#         args[1] (scalar): Toroidal height [m].
+#         args[2] (scalar): Half width agnle [rad].
+#         args[3] (scalar): Flattening coefficient [unitless].
+
+#     Returns:
+#         scalar: ds/d(phi) evaluated at `phi` angular location
+#             of the axis [m/rad].
+#     """
+#     coeff_angle = np.pi / 2 / args[2]
+#     res = (
+#         args[1]
+#         * np.cos(coeff_angle * args[0]) ** args[3]
+#         * np.sqrt(coeff_angle ** 2 * args[3] ** 2 * np.tan(coeff_angle * args[0]) ** 2 + 1)
+#     )
+#     return res
