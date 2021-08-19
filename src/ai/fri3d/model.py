@@ -807,10 +807,10 @@ class StaticFRi3D(BaseFRi3D):
                 axis direction at its closest point.
 
         Returns:
-            tuple: (scalar, array, array), impact distance [m],
+            tuple: (scalar, array, array, scalar), impact distance [m],
                 (x, y, z)-coordinates of the closest point on the axis,
                 (x, y, z) unit vector tangent to the the axis near the
-                closest point.
+                closest point, phi_ax of the closest point on axis.
         """
         x0 = x
         y0 = y
@@ -856,7 +856,7 @@ class StaticFRi3D(BaseFRi3D):
         x2, y2, z2 = cs.sp2cart(r, theta, phi)
         d = np.array([x2, y2, z2]) - np.array([x1, y1, z1])
         d /= np.linalg.norm(d)
-        return (np.linalg.norm(np.array([x - x0, y - y0, z - z0])), np.array([x, y, z]).squeeze(), d.squeeze())
+        return (np.linalg.norm(np.array([x - x0, y - y0, z - z0])), np.array([x, y, z]).squeeze(), d.squeeze(), phi_ax)
 
     def map(
         self,
