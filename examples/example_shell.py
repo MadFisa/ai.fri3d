@@ -1,13 +1,14 @@
-import os
-import sys
-
 import numpy as np
-from ai.fri3d.model import StaticFRi3D
 from matplotlib import pyplot as plt
-from mpl_toolkits.mplot3d import proj3d
+
+from ai.fri3d.model import StaticFRi3D
 
 sfr = StaticFRi3D(
-    toroidal_height=1, half_width=45 * np.pi / 180, half_height=20 * np.pi / 180, pancaking=0.7, flattening=0.5
+    toroidal_height=1,
+    half_width=45 * np.pi / 180,
+    half_height=20 * np.pi / 180,
+    pancaking=0.7,
+    flattening=0.5,
 )
 
 phi = np.linspace(-sfr.half_width, sfr.half_width, 20)

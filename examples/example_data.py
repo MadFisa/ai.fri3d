@@ -1,12 +1,9 @@
-import os
-import sys
-
 import numpy as np
-from ai import cs
-from ai.fri3d.model import StaticFRi3D
 from astropy import units as u
 from matplotlib import pyplot as plt
-from mpl_toolkits.mplot3d import proj3d
+
+from ai import cs
+from ai.fri3d.model import StaticFRi3D
 
 sfr = StaticFRi3D(
     toroidal_height=u.au.to(u.m, 1),

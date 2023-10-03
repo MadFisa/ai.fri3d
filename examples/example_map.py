@@ -1,12 +1,15 @@
-import os
-import sys
-
 import numpy as np
-from ai.fri3d.model import StaticFRi3D
 from matplotlib import pyplot as plt
-from mpl_toolkits.mplot3d import proj3d
 
-sfr = StaticFRi3D(toroidal_height=1, poloidal_height=0.2, pancaking=0.6, skew=np.pi / 6, flattening=0.5)
+from ai.fri3d.model import StaticFRi3D
+
+sfr = StaticFRi3D(
+    toroidal_height=1,
+    poloidal_height=0.2,
+    pancaking=0.6,
+    skew=np.pi / 6,
+    flattening=0.5,
+)
 
 xgrid = np.linspace(-0.2, 0.2, 50)
 ygrid = np.linspace(-0.2, 0.2, 50)

@@ -8,15 +8,17 @@ white-light and in-situ data.
 # pylint: disable=W0102
 # pylint: disable=W0212
 from datetime import datetime
+
 import numpy as np
-from scipy.optimize import differential_evolution
-from scipy.spatial.distance import euclidean
-from matplotlib import pyplot as plt
-from matplotlib import gridspec
 from astropy import units as u
 from fastdtw import fastdtw
-from ai.fri3d.model import StaticFRi3D, DynamicFRi3D
+from matplotlib import gridspec
+from matplotlib import pyplot as plt
+from scipy.optimize import differential_evolution
+from scipy.spatial.distance import euclidean
+
 from ai import cs
+from ai.fri3d.model import DynamicFRi3D, StaticFRi3D
 
 BLIND_PALETTE = {
     "orange": (0.901960784, 0.623529412, 0.0),
@@ -43,7 +45,17 @@ d_prev = np.inf
 
 
 def fit2insitu(
-    x, y, z, t, b, vt=None, sampling=50, relative=True, weights={"t": 1, "b": 1, "vt": 1}, verbose=False, **kwargs
+    x,
+    y,
+    z,
+    t,
+    b,
+    vt=None,
+    sampling=50,
+    relative=True,
+    weights={"t": 1, "b": 1, "vt": 1},
+    verbose=False,
+    **kwargs
 ):
     """Fits FRi3D model to in-situ data (magnetic field and speed).
 
@@ -85,7 +97,11 @@ def fit2insitu(
             profiles[prop] = kwargs[prop]
             if profiles[prop].bounds is None:
                 if relative:
-                    setattr(dfr, prop, lambda t, profile=profiles[prop]: profile.eval(t - t_real[0]))
+                    setattr(
+                        dfr,
+                        prop,
+                        lambda t, profile=profiles[prop]: profile.eval(t - t_real[0]),
+                    )
                 else:
                     setattr(dfr, prop, profiles[prop].eval)
 
@@ -98,11 +114,17 @@ def fit2insitu(
                 profile.params = params[i : i + n]
                 i += n
                 if relative:
-                    setattr(dfr, prop, lambda t, profile=profile: profile.eval(t - t_real[0]))
+                    setattr(
+                        dfr,
+                        prop,
+                        lambda t, profile=profile: profile.eval(t - t_real[0]),
+                    )
                 else:
                     setattr(dfr, prop, profile.eval)
         t_model = np.arange(
-            t_real[0] - dt_real * np.round(sampling / 2), t_real[-1] + dt_real * np.round((sampling + 1) / 2), dt_real
+            t_real[0] - dt_real * np.round(sampling / 2),
+            t_real[-1] + dt_real * np.round((sampling + 1) / 2),
+            dt_real,
         )
         b_model, vt_model = dfr.insitu(t_model, x, y, z)
         bt_model = np.sqrt(b_model[:, 0] ** 2 + b_model[:, 1] ** 2 + b_model[:, 2] ** 2)
@@ -119,13 +141,17 @@ def fit2insitu(
             db = fastdtw(
                 np.hstack(
                     (
-                        (np.array([t_model]).T - t_real[0]) / (t_real[-1] - t_real[0]) * weights["t"],
+                        (np.array([t_model]).T - t_real[0])
+                        / (t_real[-1] - t_real[0])
+                        * weights["t"],
                         b_model / np.amax(bt_real) * weights["b"],
                     )
                 ),
                 np.hstack(
                     (
-                        (np.array([tb_real]).T - t_real[0]) / (t_real[-1] - t_real[0]) * weights["t"],
+                        (np.array([tb_real]).T - t_real[0])
+                        / (t_real[-1] - t_real[0])
+                        * weights["t"],
                         b_real / np.amax(bt_real) * weights["b"],
                     )
                 ),
@@ -137,14 +163,22 @@ def fit2insitu(
                 fastdtw(
                     np.vstack(
                         (
-                            (t_model - t_real[0]) / (t_real[-1] - t_real[0]) * weights["t"],
-                            (vt_model - np.amin(vt_real)) / (np.amax(vt_real) - np.amin(vt_real)) * weights["vt"],
+                            (t_model - t_real[0])
+                            / (t_real[-1] - t_real[0])
+                            * weights["t"],
+                            (vt_model - np.amin(vt_real))
+                            / (np.amax(vt_real) - np.amin(vt_real))
+                            * weights["vt"],
                         )
                     ).T,
                     np.vstack(
                         (
-                            (tvt_real - t_real[0]) / (t_real[-1] - t_real[0]) * weights["t"],
-                            (vt_real - np.amin(vt_real)) / (np.amax(vt_real) - np.amin(vt_real)) * weights["vt"],
+                            (tvt_real - t_real[0])
+                            / (t_real[-1] - t_real[0])
+                            * weights["t"],
+                            (vt_real - np.amin(vt_real))
+                            / (np.amax(vt_real) - np.amin(vt_real))
+                            * weights["vt"],
                         )
                     ).T,
                     dist=euclidean,
@@ -163,11 +197,21 @@ def fit2insitu(
                 fig = plt.figure()
                 plt.subplots_adjust(hspace=0.001)
                 ax1 = fig.add_subplot(211)
-                ax1.plot(db_real, np.sqrt(b_real[:, 0] ** 2 + b_real[:, 1] ** 2 + b_real[:, 2] ** 2), "k")
+                ax1.plot(
+                    db_real,
+                    np.sqrt(b_real[:, 0] ** 2 + b_real[:, 1] ** 2 + b_real[:, 2] ** 2),
+                    "k",
+                )
                 ax1.plot(db_real, b_real[:, 0], "r")
                 ax1.plot(db_real, b_real[:, 1], "g")
                 ax1.plot(db_real, b_real[:, 2], "b")
-                ax1.plot(d_model, np.sqrt(b_model[:, 0] ** 2 + b_model[:, 1] ** 2 + b_model[:, 2] ** 2), "--k")
+                ax1.plot(
+                    d_model,
+                    np.sqrt(
+                        b_model[:, 0] ** 2 + b_model[:, 1] ** 2 + b_model[:, 2] ** 2
+                    ),
+                    "--k",
+                )
                 ax1.plot(d_model, b_model[:, 0], "--r")
                 ax1.plot(d_model, b_model[:, 1], "--g")
                 ax1.plot(d_model, b_model[:, 2], "--b")
@@ -185,7 +229,14 @@ def fit2insitu(
                 print("fitness", d_prev)
                 for prop, profile in profiles.items():
                     params = profile.params
-                    if prop in ("latitude", "longitude", "half_width", "half_height", "tilt", "skew"):
+                    if prop in (
+                        "latitude",
+                        "longitude",
+                        "half_width",
+                        "half_height",
+                        "tilt",
+                        "skew",
+                    ):
                         params = u.rad.to(u.deg, params)
                     elif prop in ("toroidal_height"):
                         if len(profile.params) == 1:
@@ -291,7 +342,12 @@ def fit2cor(
         ax.imshow(
             plt.imread(cor2b_img_path),
             zorder=0,
-            extent=[-cor2b_fov - cor2b_dx, cor2b_fov - cor2b_dx, -cor2b_fov - cor2b_dy, cor2b_fov - cor2b_dy],
+            extent=[
+                -cor2b_fov - cor2b_dx,
+                cor2b_fov - cor2b_dx,
+                -cor2b_fov - cor2b_dy,
+                cor2b_fov - cor2b_dy,
+            ],
         )
         ax.set_xlim([-cor2b_fov - cor2b_dx, cor2b_fov - cor2b_dx])
         ax.set_ylim([-cor2b_fov - cor2b_dy, cor2b_fov - cor2b_dy])
@@ -301,7 +357,12 @@ def fit2cor(
         ax.imshow(
             plt.imread(cor2b_img_path),
             zorder=0,
-            extent=[-cor2b_fov - cor2b_dx, cor2b_fov - cor2b_dx, -cor2b_fov - cor2b_dy, cor2b_fov - cor2b_dy],
+            extent=[
+                -cor2b_fov - cor2b_dx,
+                cor2b_fov - cor2b_dx,
+                -cor2b_fov - cor2b_dy,
+                cor2b_fov - cor2b_dy,
+            ],
         )
         T = cs.mx_rot_y(stb_lat) * cs.mx_rot_z(-stb_lon)
         x, y, z = cs.mx_apply(T, x0, y0, z0)
@@ -316,7 +377,9 @@ def fit2cor(
     if c3_img_path is not None:
         ax = plt.subplot(gs[i])
         ax.imshow(
-            plt.imread(c3_img_path), zorder=0, extent=[-c3_fov - c3_dx, c3_fov - c3_dx, -c3_fov - c3_dy, c3_fov - c3_dy]
+            plt.imread(c3_img_path),
+            zorder=0,
+            extent=[-c3_fov - c3_dx, c3_fov - c3_dx, -c3_fov - c3_dy, c3_fov - c3_dy],
         )
         ax.set_xlim([-c3_fov - c3_dx, c3_fov - c3_dx])
         ax.set_ylim([-c3_fov - c3_dy, c3_fov - c3_dy])
@@ -324,7 +387,9 @@ def fit2cor(
         plt.axis("off")
         ax = plt.subplot(gs[i + ncols])
         ax.imshow(
-            plt.imread(c3_img_path), zorder=0, extent=[-c3_fov - c3_dx, c3_fov - c3_dx, -c3_fov - c3_dy, c3_fov - c3_dy]
+            plt.imread(c3_img_path),
+            zorder=0,
+            extent=[-c3_fov - c3_dx, c3_fov - c3_dx, -c3_fov - c3_dy, c3_fov - c3_dy],
         )
         T = cs.mx_rot_y(soho_lat) * cs.mx_rot_z(-soho_lon)
         x, y, z = cs.mx_apply(T, x0, y0, z0)
@@ -339,7 +404,9 @@ def fit2cor(
     if c2_img_path is not None:
         ax = plt.subplot(gs[i])
         ax.imshow(
-            plt.imread(c2_img_path), zorder=0, extent=[-c2_fov - c2_dx, c2_fov - c2_dx, -c2_fov - c2_dy, c2_fov - c2_dy]
+            plt.imread(c2_img_path),
+            zorder=0,
+            extent=[-c2_fov - c2_dx, c2_fov - c2_dx, -c2_fov - c2_dy, c2_fov - c2_dy],
         )
         ax.set_xlim([-c2_fov - c2_dx, c2_fov - c2_dx])
         ax.set_ylim([-c2_fov - c2_dy, c2_fov - c2_dy])
@@ -347,7 +414,9 @@ def fit2cor(
         plt.axis("off")
         ax = plt.subplot(gs[i + ncols])
         ax.imshow(
-            plt.imread(c2_img_path), zorder=0, extent=[-c2_fov - c2_dx, c2_fov - c2_dx, -c2_fov - c2_dy, c2_fov - c2_dy]
+            plt.imread(c2_img_path),
+            zorder=0,
+            extent=[-c2_fov - c2_dx, c2_fov - c2_dx, -c2_fov - c2_dy, c2_fov - c2_dy],
         )
         T = cs.mx_rot_y(soho_lat) * cs.mx_rot_z(-soho_lon)
         x, y, z = cs.mx_apply(T, x0, y0, z0)
@@ -365,7 +434,12 @@ def fit2cor(
         ax.imshow(
             plt.imread(cor2a_img_path),
             zorder=0,
-            extent=[-cor2a_fov - cor2a_dx, cor2a_fov - cor2a_dx, -cor2a_fov - cor2a_dy, cor2a_fov - cor2a_dy],
+            extent=[
+                -cor2a_fov - cor2a_dx,
+                cor2a_fov - cor2a_dx,
+                -cor2a_fov - cor2a_dy,
+                cor2a_fov - cor2a_dy,
+            ],
         )
         ax.set_xlim([-cor2a_fov - cor2a_dx, cor2a_fov - cor2a_dx])
         ax.set_ylim([-cor2a_fov - cor2a_dy, cor2a_fov - cor2a_dy])
@@ -375,7 +449,12 @@ def fit2cor(
         ax.imshow(
             plt.imread(cor2a_img_path),
             zorder=0,
-            extent=[-cor2a_fov - cor2a_dx, cor2a_fov - cor2a_dx, -cor2a_fov - cor2a_dx, cor2a_fov - cor2a_dy],
+            extent=[
+                -cor2a_fov - cor2a_dx,
+                cor2a_fov - cor2a_dx,
+                -cor2a_fov - cor2a_dx,
+                cor2a_fov - cor2a_dy,
+            ],
         )
         T = cs.mx_rot_y(sta_lat) * cs.mx_rot_z(-sta_lon)
         x, y, z = cs.mx_apply(T, x0, y0, z0)
@@ -466,5 +545,7 @@ class ExpProfile(BaseProfile):
 
     def eval(self, t):
         """Evaluates the profile function at a given time."""
-        return self.params[0] * np.exp(self.params[1] * (t - self.relative)) + self.params[2]
-
+        return (
+            self.params[0] * np.exp(self.params[1] * (t - self.relative))
+            + self.params[2]
+        )
