@@ -401,10 +401,15 @@ class StaticFRi3D(BaseFRi3D):
             scalar_input = True
         r_sc = np.asarray(r_sc)
         phi_sc = np.asarray(phi_sc)
+        ''' 
+        Modification: removing sqrt for simplication (not necessary to find minimum)
+        '''
+        r = self.vanilla_axis_height(phi)
         res = np.sqrt(
-            (self.vanilla_axis_height(phi) * np.cos(phi) - r_sc * np.cos(phi_sc)) ** 2
-            + (self.vanilla_axis_height(phi) * np.sin(phi) - r_sc * np.sin(phi_sc)) ** 2
+             r**2 + r_sc **2
+             - 2 * r_sc * r  * np.cos(phi-phi_sc)
         )
+
         if scalar_input:
             return res.squeeze()
         return res
@@ -557,7 +562,7 @@ class StaticFRi3D(BaseFRi3D):
             return (x.squeeze(), y.squeeze(), z.squeeze())
         return (x, y, z)
 
-    def line(self, r=0, phi=None, theta=0):
+    def line(self, r=0, phi=None, theta=0, intrphi = 0):
         """Evaluates the 3D magnetic field line of the flux rope.
 
         Args:
@@ -568,6 +573,7 @@ class StaticFRi3D(BaseFRi3D):
                 along the axis [rad].
             theta (scalar, optional): angular coordinate
                 in the cross-section [rad].
+            intrphi (scalar): Integral over the axis height
 
         Returns:
             tuple: (x, y, z, b) scalars or arrays with coordinates of
@@ -593,17 +599,14 @@ class StaticFRi3D(BaseFRi3D):
         # Defines distance to axis and normal angle for later usage
         axis_height = self.vanilla_axis_height(phi)
         axis_normal = self.vanilla_axis_normal_angle(phi)
+
+        '''
+          Modification: Using the imported intrphi already computed in the data()
+        '''
         # Applies twist
-        twist = np.array(
+        twist = self.twist / intrphi * np.array(
             [
-                self.twist
-                / quad(
-                    LowLevelCallable.from_cython(lib, "vanilla_axis_height"),
-                    -self.half_width,
-                    self.half_width,
-                    (self.toroidal_height, self.half_width, self.flattening),
-                )[0]
-                * quad(
+                quad(
                     LowLevelCallable.from_cython(lib, "vanilla_axis_height"),
                     -self.half_width,
                     p,
@@ -623,16 +626,16 @@ class StaticFRi3D(BaseFRi3D):
         theta = np.arctan2(np.sin(theta), np.cos(theta) * pancaking)
         rtot = rx * ry / np.sqrt((ry * np.cos(theta)) ** 2 + (rx * np.sin(theta)) ** 2)
         r *= rtot
+        '''
+        Modification: Simplified b_ax computation using the new function in cython
+        '''
         # Estimates magnetic field
-        b_ax = np.array(
+        b_ax = self.flux / np.array(
             [
-                self.flux
-                / dblquad(
-                    LowLevelCallable.from_cython(lib, "vanilla_axis_rdflux"),
+                quad(
+                    LowLevelCallable.from_cython(lib, "modded_axis_1Dfluxintgrand"),
                     0,
                     2 * np.pi,
-                    lambda theta: 0,
-                    lambda theta: rx[i] * ry[i] / np.sqrt((ry[i] * np.cos(theta)) ** 2 + (rx[i] * np.sin(theta)) ** 2),
                     (
                         phi[i],
                         self.toroidal_height,
@@ -642,12 +645,7 @@ class StaticFRi3D(BaseFRi3D):
                         self.pancaking,
                         self.twist,
                         self.sigma,
-                        quad(
-                            LowLevelCallable.from_cython(lib, "vanilla_axis_height"),
-                            -self.half_width,
-                            self.half_width,
-                            (self.toroidal_height, self.half_width, self.flattening),
-                        )[0],
+                        intrphi,
                     ),
                 )[0]
                 for i in range(phi.size)
@@ -655,9 +653,10 @@ class StaticFRi3D(BaseFRi3D):
         )
         # sigmax = self.sigma*pancaking
         sigmay = self.sigma
-        b = b_ax * np.exp(
-            -(r * np.cos(theta) / ry) ** 2 / 2 / sigmay ** 2 - (r * np.sin(theta) / ry) ** 2 / 2 / sigmay ** 2
-        )
+        ''' 
+        Modification: simplified like in lib.pyx
+        '''
+        b = b_ax * np.exp( -(r / ry / sigmay ) ** 2 / 2 )        
         # Bends the cylinder to FR shape
         x = axis_height * np.cos(phi) + r * np.cos(theta) * np.cos(axis_normal + np.abs(phi))
         y = axis_height * np.sin(phi) + r * np.cos(theta) * np.sin(axis_normal + np.abs(phi)) * np.sign(phi)
@@ -742,17 +741,22 @@ class StaticFRi3D(BaseFRi3D):
         r_tot = rx * ry / np.sqrt((ry * np.cos(theta)) ** 2 + (rx * np.sin(theta)) ** 2)
         r = r_abs / r_tot
         theta = np.arctan2(r_abs * np.sin(theta), r_abs * np.cos(theta) / pancaking)
+
+        '''
+        Modification: factor self.twist and integral quad(...) out of array
+                                
+        '''
+        integralphi = self.toroidal_height  * self.half_width * 4/np.pi * quad(
+            LowLevelCallable.from_cython(lib, "modded_axis_height"),
+            -0,
+            np.pi/2,
+            (self.flattening),
+        )[0]
+
         # Reverses twist
-        twist = np.array(
+        twist = self.twist/integralphi * np.array(
             [
-                self.twist
-                / quad(
-                    LowLevelCallable.from_cython(lib, "vanilla_axis_height"),
-                    -self.half_width,
-                    self.half_width,
-                    (self.toroidal_height, self.half_width, self.flattening),
-                )[0]
-                * quad(
+                quad(
                     LowLevelCallable.from_cython(lib, "vanilla_axis_height"),
                     -self.half_width,
                     p,
@@ -767,7 +771,8 @@ class StaticFRi3D(BaseFRi3D):
         vc_list = []
         for i in range(r.size):
             if r[i] <= 1:
-                x, y, z, b = self.line(r[i], [phi_ax[i] - dphi, phi_ax[i] + dphi], theta[i])
+                #Modified line() functions arguments - already computing the integral over axis height in this function
+                x, y, z, b = self.line(r[i], [phi_ax[i] - dphi, phi_ax[i] + dphi], theta[i], intrphi = integralphi) 
                 if b.size != 2:
                     b_list.append([np.nan, np.nan, np.nan])
                     vc_list.append([np.nan, np.nan])
