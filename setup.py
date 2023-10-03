@@ -3,13 +3,7 @@ from codecs import open
 
 from setuptools import Extension, find_packages, setup
 
-version_py = (
-    open(os.path.join(os.path.dirname(__file__), "version.py"))
-    .read()
-    .strip()
-    .split("=")[-1]
-    .replace('"', "")
-)
+version_py = open(os.path.join(os.path.dirname(__file__), "version.py")).read().strip().split("=")[-1].replace('"', "")
 
 with open(
     os.path.join(os.path.abspath(os.path.dirname(__file__)), "README.rst"),
@@ -36,9 +30,7 @@ setup(
     keywords="research space solar physics science model coronal mass ejection flare CME",
     packages=find_packages("src", exclude=["test*"]),
     package_dir={"": "src"},
-    ext_modules=[
-        Extension("ai.fri3d.lib", [os.path.join("src", "ai", "fri3d", "lib.pyx")])
-    ],
+    ext_modules=[Extension("ai.fri3d.lib", [os.path.join("src", "ai", "fri3d", "lib.pyx")])],
     install_requires=["numpy", "scipy", "matplotlib", "astropy", "fastdtw", "ai.cs"],
     setup_requires=["setuptools>=18.0", "cython"],
 )

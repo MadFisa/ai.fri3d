@@ -40,9 +40,7 @@ class BaseFRi3D:
         self._sigma = None
         self._polarity = None
         self._chirality = None
-        self._props = [
-            p for p in dir(BaseFRi3D) if isinstance(getattr(BaseFRi3D, p), property)
-        ]
+        self._props = [p for p in dir(BaseFRi3D) if isinstance(getattr(BaseFRi3D, p), property)]
 
     @property
     def latitude(self):
@@ -372,10 +370,7 @@ class StaticFRi3D(BaseFRi3D):
             scalar_input = True
         res = np.ones(phi.shape) * np.nan
         mask = np.logical_and(phi >= -self.half_width, phi <= self.half_width)
-        res[mask] = (
-            self.toroidal_height
-            * np.cos(np.pi / 2 / self.half_width * phi[mask]) ** self.flattening
-        )
+        res[mask] = self.toroidal_height * np.cos(np.pi / 2 / self.half_width * phi[mask]) ** self.flattening
         if scalar_input:
             return res.squeeze()
         return res
@@ -454,11 +449,7 @@ class StaticFRi3D(BaseFRi3D):
         if phi.ndim == 0:
             phi = phi[None]
             scalar_input = True
-        res = np.abs(
-            np.arctan(
-                self._coeff_angle * self.flattening * np.tan(self._coeff_angle * phi)
-            )
-        )
+        res = np.abs(np.arctan(self._coeff_angle * self.flattening * np.tan(self._coeff_angle * phi)))
         if scalar_input:
             return res.squeeze()
         return res
@@ -531,12 +522,7 @@ class StaticFRi3D(BaseFRi3D):
         # Starts with a cylinder aligned with Z axis in cylindrical CS
         z = self.vanilla_axis_length(phi)
         # Tapers the cylinder
-        r = (
-            np.ones(phi.shape)
-            * self._poloidal_height
-            * axis_height
-            / self.toroidal_height
-        )
+        r = np.ones(phi.shape) * self._poloidal_height * axis_height / self.toroidal_height
         # Converts coordinates to meshgrid
         z, _ = np.meshgrid(z, theta, indexing="ij")
         r, _ = np.meshgrid(r, theta, indexing="ij")
@@ -547,18 +533,12 @@ class StaticFRi3D(BaseFRi3D):
         rx = np.copy(r)
         ry = np.copy(r)
         rx *= 1 - (1 - self.pancaking) / np.sqrt(
-            1
-            + (self.flattening * self._coeff_angle * np.tan(self._coeff_angle * phi))
-            ** 2
+            1 + (self.flattening * self._coeff_angle * np.tan(self._coeff_angle * phi)) ** 2
         )
         r = rx * ry / np.sqrt((ry * np.cos(theta)) ** 2 + (rx * np.sin(theta)) ** 2)
         # Bends the cylinder to FR shape
-        x = axis_height * np.cos(phi) + r * np.cos(theta) * np.cos(
-            axis_normal + np.abs(phi)
-        )
-        y = axis_height * np.sin(phi) + r * np.cos(theta) * np.sin(
-            axis_normal + np.abs(phi)
-        ) * np.sign(phi)
+        x = axis_height * np.cos(phi) + r * np.cos(theta) * np.cos(axis_normal + np.abs(phi))
+        y = axis_height * np.sin(phi) + r * np.cos(theta) * np.sin(axis_normal + np.abs(phi)) * np.sign(phi)
         z = r * np.sin(theta)
         # Applies correction for radial expansion
         r, _, _ = cs.cart2cyl(x, y, z)
@@ -638,9 +618,7 @@ class StaticFRi3D(BaseFRi3D):
         rx = axis_height * self._poloidal_height / self.toroidal_height
         ry = axis_height * self._poloidal_height / self.toroidal_height
         pancaking = 1 - (1 - self.pancaking) / np.sqrt(
-            1
-            + (self.flattening * self._coeff_angle * np.tan(self._coeff_angle * phi))
-            ** 2
+            1 + (self.flattening * self._coeff_angle * np.tan(self._coeff_angle * phi)) ** 2
         )
         rx *= pancaking
         theta = np.arctan2(np.sin(theta), np.cos(theta) * pancaking)
@@ -674,12 +652,8 @@ class StaticFRi3D(BaseFRi3D):
         # Simplified like in lib.pyx
         b = b_ax * np.exp(-((r / ry / sigmay) ** 2) / 2)
         # Bends the cylinder to FR shape
-        x = axis_height * np.cos(phi) + r * np.cos(theta) * np.cos(
-            axis_normal + np.abs(phi)
-        )
-        y = axis_height * np.sin(phi) + r * np.cos(theta) * np.sin(
-            axis_normal + np.abs(phi)
-        ) * np.sign(phi)
+        x = axis_height * np.cos(phi) + r * np.cos(theta) * np.cos(axis_normal + np.abs(phi))
+        y = axis_height * np.sin(phi) + r * np.cos(theta) * np.sin(axis_normal + np.abs(phi)) * np.sign(phi)
         z = r * np.sin(theta)
         # Applies correction for radial expansion
         r, _, _ = cs.cart2cyl(x, y, z)
@@ -741,9 +715,7 @@ class StaticFRi3D(BaseFRi3D):
         with np.errstate(invalid="ignore"):
             mask_inside = self.vanilla_axis_height(phi) >= r
         # Finds the closest point on axis
-        v_vanilla_axis_min_distance = np.vectorize(
-            self.vanilla_axis_min_distance, otypes=[np.float64, np.float64]
-        )
+        v_vanilla_axis_min_distance = np.vectorize(self.vanilla_axis_min_distance, otypes=[np.float64, np.float64])
         _, phi_ax = v_vanilla_axis_min_distance(r, phi)
         r_ax = self.vanilla_axis_height(phi_ax)
         # Estimates relative radius and polar angle inside cross-section
@@ -757,9 +729,7 @@ class StaticFRi3D(BaseFRi3D):
         rx = r_ax * self._poloidal_height / self.toroidal_height
         ry = r_ax * self._poloidal_height / self.toroidal_height
         pancaking = 1 - (1 - self.pancaking) / np.sqrt(
-            1
-            + (self.flattening * self._coeff_angle * np.tan(self._coeff_angle * phi_ax))
-            ** 2
+            1 + (self.flattening * self._coeff_angle * np.tan(self._coeff_angle * phi_ax)) ** 2
         )
         rx *= pancaking
         r_tot = rx * ry / np.sqrt((ry * np.cos(theta)) ** 2 + (rx * np.sin(theta)) ** 2)
@@ -805,10 +775,7 @@ class StaticFRi3D(BaseFRi3D):
                     vpc = (
                         r_ax[i]
                         / self.toroidal_height
-                        * (
-                            np.sqrt(np.mean(x) ** 2 + np.mean(y) ** 2 + np.mean(z) ** 2)
-                            - r_ax[i]
-                        )
+                        * (np.sqrt(np.mean(x) ** 2 + np.mean(y) ** 2 + np.mean(z) ** 2) - r_ax[i])
                         / self._poloidal_height
                         * self.pancaking
                         * np.cos(self.vanilla_axis_normal_angle(phi_ax[i]))
@@ -1047,9 +1014,7 @@ class DynamicFRi3D(BaseFRi3D):
         self.__sfr = StaticFRi3D()
         self.latitude = kwargs.get("latitude", lambda t: self.__sfr.latitude)
         self.longitude = kwargs.get("longitude", lambda t: self.__sfr.longitude)
-        self.toroidal_height = kwargs.get(
-            "toroidal_height", lambda t: self.__sfr.toroidal_height
-        )
+        self.toroidal_height = kwargs.get("toroidal_height", lambda t: self.__sfr.toroidal_height)
         self.half_width = kwargs.get("half_width", lambda t: self.__sfr.half_width)
         self.half_height = kwargs.get("half_height", lambda t: self.__sfr.half_height)
         self.tilt = kwargs.get("tilt", lambda t: self.__sfr.tilt)

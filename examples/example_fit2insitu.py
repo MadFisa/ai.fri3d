@@ -48,12 +48,8 @@ b = data_mag["BGSE"][m]
 b[b == -1e31] = np.nan
 
 # convert magnetic field data from GSE to HEEQ coordinates
-bx0, by0, bz0 = cs.cxform(
-    "GSE", "HEEQ", d, np.zeros(len(d)), np.zeros(len(d)), np.zeros(len(d))
-)
-bx1, by1, bz1 = cs.cxform(
-    "GSE", "HEEQ", d, np.ravel(b[:, 0]), np.ravel(b[:, 1]), np.ravel(b[:, 2])
-)
+bx0, by0, bz0 = cs.cxform("GSE", "HEEQ", d, np.zeros(len(d)), np.zeros(len(d)), np.zeros(len(d)))
+bx1, by1, bz1 = cs.cxform("GSE", "HEEQ", d, np.ravel(b[:, 0]), np.ravel(b[:, 1]), np.ravel(b[:, 2]))
 b = np.array([bx1 - bx0, by1 - by0, bz1 - bz0]).T
 
 # filter plasma speed data
@@ -61,11 +57,7 @@ data_pla["V_GSE"][np.any(data_pla["V_GSE"] == -1e31, axis=1), :] = np.nan
 # construct an interpolator for the plasma data
 f = interp1d(
     np.asarray([calendar.timegm(x.timetuple()) for x in data_pla["Epoch"]]),
-    np.sqrt(
-        data_pla["V_GSE"][:, 0] ** 2
-        + data_pla["V_GSE"][:, 1] ** 2
-        + data_pla["V_GSE"][:, 2] ** 2
-    ),
+    np.sqrt(data_pla["V_GSE"][:, 0] ** 2 + data_pla["V_GSE"][:, 1] ** 2 + data_pla["V_GSE"][:, 2] ** 2),
     kind="linear",
     bounds_error=False,
     fill_value=np.nan,

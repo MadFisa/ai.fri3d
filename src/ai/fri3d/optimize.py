@@ -45,17 +45,7 @@ d_prev = np.inf
 
 
 def fit2insitu(
-    x,
-    y,
-    z,
-    t,
-    b,
-    vt=None,
-    sampling=50,
-    relative=True,
-    weights={"t": 1, "b": 1, "vt": 1},
-    verbose=False,
-    **kwargs
+    x, y, z, t, b, vt=None, sampling=50, relative=True, weights={"t": 1, "b": 1, "vt": 1}, verbose=False, **kwargs
 ):
     """Fits FRi3D model to in-situ data (magnetic field and speed).
 
@@ -141,17 +131,13 @@ def fit2insitu(
             db = fastdtw(
                 np.hstack(
                     (
-                        (np.array([t_model]).T - t_real[0])
-                        / (t_real[-1] - t_real[0])
-                        * weights["t"],
+                        (np.array([t_model]).T - t_real[0]) / (t_real[-1] - t_real[0]) * weights["t"],
                         b_model / np.amax(bt_real) * weights["b"],
                     )
                 ),
                 np.hstack(
                     (
-                        (np.array([tb_real]).T - t_real[0])
-                        / (t_real[-1] - t_real[0])
-                        * weights["t"],
+                        (np.array([tb_real]).T - t_real[0]) / (t_real[-1] - t_real[0]) * weights["t"],
                         b_real / np.amax(bt_real) * weights["b"],
                     )
                 ),
@@ -163,22 +149,14 @@ def fit2insitu(
                 fastdtw(
                     np.vstack(
                         (
-                            (t_model - t_real[0])
-                            / (t_real[-1] - t_real[0])
-                            * weights["t"],
-                            (vt_model - np.amin(vt_real))
-                            / (np.amax(vt_real) - np.amin(vt_real))
-                            * weights["vt"],
+                            (t_model - t_real[0]) / (t_real[-1] - t_real[0]) * weights["t"],
+                            (vt_model - np.amin(vt_real)) / (np.amax(vt_real) - np.amin(vt_real)) * weights["vt"],
                         )
                     ).T,
                     np.vstack(
                         (
-                            (tvt_real - t_real[0])
-                            / (t_real[-1] - t_real[0])
-                            * weights["t"],
-                            (vt_real - np.amin(vt_real))
-                            / (np.amax(vt_real) - np.amin(vt_real))
-                            * weights["vt"],
+                            (tvt_real - t_real[0]) / (t_real[-1] - t_real[0]) * weights["t"],
+                            (vt_real - np.amin(vt_real)) / (np.amax(vt_real) - np.amin(vt_real)) * weights["vt"],
                         )
                     ).T,
                     dist=euclidean,
@@ -207,9 +185,7 @@ def fit2insitu(
                 ax1.plot(db_real, b_real[:, 2], "b")
                 ax1.plot(
                     d_model,
-                    np.sqrt(
-                        b_model[:, 0] ** 2 + b_model[:, 1] ** 2 + b_model[:, 2] ** 2
-                    ),
+                    np.sqrt(b_model[:, 0] ** 2 + b_model[:, 1] ** 2 + b_model[:, 2] ** 2),
                     "--k",
                 )
                 ax1.plot(d_model, b_model[:, 0], "--r")
@@ -545,7 +521,4 @@ class ExpProfile(BaseProfile):
 
     def eval(self, t):
         """Evaluates the profile function at a given time."""
-        return (
-            self.params[0] * np.exp(self.params[1] * (t - self.relative))
-            + self.params[2]
-        )
+        return self.params[0] * np.exp(self.params[1] * (t - self.relative)) + self.params[2]
